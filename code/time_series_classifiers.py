@@ -6,10 +6,13 @@ from tsai.all import my_setup
 import pandas as pd
 from sklearn.metrics import confusion_matrix
 import optuna
+import plotly
 
 # TODO:
-# - optuna
 # - true eval on full lenght
+# - just train with some columns / column selection
+# - try different models
+# - train through CREATE
 
 # Models to try: HydraMultiRocketPlus
 
@@ -29,9 +32,9 @@ class TS_Model_Trainer:
         return None
 
     def optuna_objective(self, trial: optuna.Trial):
-        stride = trial.suggest_int("stride", low=700, high=1000, step=50)
+        stride = trial.suggest_int("stride", low=500, high=1000, step=50)
         max_dilations_per_kernel = trial.suggest_int(
-            "max_dilations_per_kernel", low=16, high=64, step=8)
+            "max_dilations_per_kernel", low=16, high=128, step=8)
         val_X_TS, val_Y_TS, train_X_TS, train_Y_TS = self.data.get_timeseries_format(
             intervallength=1000, stride=stride, verbose=False)
 
@@ -58,16 +61,21 @@ if __name__ == '__main__':
         sessions_train=[0, 1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], sessions_val=[0, 3, 4, 7, 8, 11, 12, 13])
 
     study = optuna.create_study(direction="maximize")
-    study.optimize(trainer.optuna_objective, n_trials=6)
+    study.optimize(trainer.optuna_objective, n_trials=4)
 
     print("Best trial:")
     for key, value in study.best_trial.params.items():
         print(f"    {key}: {value}")
 
-    optuna.visualization.plot_optimization_history(study)
-    optuna.visualization.plot_param_importances(study)
-    optuna.visualization.plot_slice(study)
-    optuna.visualization.plot_parallel_coordinate(study)
+    if False:
+        fig = optuna.visualization.plot_optimization_history(study)
+        fig.show()
+        fig = optuna.visualization.plot_param_importances(study)
+        fig.show()
+        fig = optuna.visualization.plot_slice(study)
+        fig.show()
+        fig = optuna.visualization.plot_parallel_coordinate(study)
+        fig.show()
 
     if False:
         for col in trainer.data.train_X.columns:
