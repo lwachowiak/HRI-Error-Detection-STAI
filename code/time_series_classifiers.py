@@ -10,6 +10,7 @@ from optuna.integration import WeightsAndBiasesCallback
 import wandb
 import os
 import datetime
+import platform
 
 # TODO:
 # - true eval on full lenght
@@ -40,10 +41,11 @@ class TS_Model_Trainer:
 
         # parameters being optimized
         max_dilations_per_kernel = trial.suggest_int(
-            "max_dilations_per_kernel", low=16, high=128, step=8)
+            "max_dilations_per_kernel", low=4, high=256, step=8)
         val_X_TS, val_Y_TS, train_X_TS, train_Y_TS = self.data.get_timeseries_format(
             intervallength=1000, stride=stride, verbose=False)
-        n_estimators = trial.suggest_int("n_estimators", low=2, high=8, step=2)
+        n_estimators = trial.suggest_int(
+            "n_estimators", low=4, high=12, step=2)
 
         train_Y_TS_task = train_Y_TS[:, self.task]
         val_Y_TS_task = val_Y_TS[:, self.task]
@@ -66,7 +68,7 @@ class TS_Model_Trainer:
 
         date = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         study = optuna.create_study(
-            direction="maximize", study_name=study_name + "_"+date)
+            direction="maximize", study_name=date + "_" + study_name)
         print(f"Sampler is {study.sampler.__class__.__name__}")
         study.optimize(self.optuna_objective_minirocket,
                        n_trials=n_trials, callbacks=[wandbc])
@@ -82,11 +84,12 @@ class TS_Model_Trainer:
 
 if __name__ == '__main__':
     my_setup(optuna)
-    print(os.uname())
-    if "Linux" in os.uname():
-        n_jobs = -1
-    else:
+    print(platform.platform())
+    if "macOS" in platform.platform():
         n_jobs = 2
+    else:
+        n_jobs = -1
+    print("n_jobs:", n_jobs)
 
     trainer = TS_Model_Trainer("data/", task=2, n_jobs=n_jobs)
 
