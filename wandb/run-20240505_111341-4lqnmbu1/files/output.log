@@ -1,0 +1,15 @@
+Number of sessions (data) parsed: 55 16
+Number of sessions (labels) parsed: 55 16
+Number of rows in merged dataframes: Train_X: 2528752 Train_Y: 3151940 Val_X: 790266 Val_Y: 1153106
+Sampler is TPESampler
+[32m[I 2024-05-05 11:14:13,656][39m A new study created in memory with name: no-name-6dba308b-532f-45eb-a4db-56dabea60abb
+[[252  29]
+ [ 63  29]]
+[32m[I 2024-05-05 11:16:12,303][39m Trial 0 finished with value: 0.7533512064343163 and parameters: {'stride': 950, 'max_dilations_per_kernel': 88}. Best is trial 0 with value: 0.7533512064343163.
+[[257  24]
+ [ 64  28]]
+Best trial:
+Value:  0.7640750670241286
+    stride: 750
+    max_dilations_per_kernel: 64
+[32m[I 2024-05-05 11:17:58,483][39m Trial 1 finished with value: 0.7640750670241286 and parameters: {'stride': 750, 'max_dilations_per_kernel': 64}. Best is trial 1 with value: 0.7640750670241286.

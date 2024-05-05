@@ -1,0 +1,315 @@
+2024-05-05 11:13:41,223 INFO    StreamThr :14789 [internal.py:wandb_internal():86] W&B internal server running at pid: 14789, started at: 2024-05-05 11:13:41.220433
+2024-05-05 11:13:41,225 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status
+2024-05-05 11:13:41,230 INFO    WriterThread:14789 [datastore.py:open_for_write():87] open: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/run-4lqnmbu1.wandb
+2024-05-05 11:13:41,230 DEBUG   SenderThread:14789 [sender.py:send():379] send: header
+2024-05-05 11:13:41,261 DEBUG   SenderThread:14789 [sender.py:send():379] send: run
+2024-05-05 11:13:41,728 INFO    SenderThread:14789 [dir_watcher.py:__init__():211] watching files in: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files
+2024-05-05 11:13:41,728 INFO    SenderThread:14789 [sender.py:_start_run_threads():1124] run started: 4lqnmbu1 with start time 1714904021.222448
+2024-05-05 11:13:41,742 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: check_version
+2024-05-05 11:13:41,742 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: check_version
+2024-05-05 11:13:41,855 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: run_start
+2024-05-05 11:13:41,862 DEBUG   HandlerThread:14789 [system_info.py:__init__():26] System info init
+2024-05-05 11:13:41,862 DEBUG   HandlerThread:14789 [system_info.py:__init__():41] System info init done
+2024-05-05 11:13:41,862 INFO    HandlerThread:14789 [system_monitor.py:start():194] Starting system monitor
+2024-05-05 11:13:41,862 INFO    SystemMonitor:14789 [system_monitor.py:_start():158] Starting system asset monitoring threads
+2024-05-05 11:13:41,862 INFO    HandlerThread:14789 [system_monitor.py:probe():214] Collecting system info
+2024-05-05 11:13:41,864 INFO    SystemMonitor:14789 [interfaces.py:start():190] Started cpu monitoring
+2024-05-05 11:13:41,864 DEBUG   HandlerThread:14789 [system_info.py:probe():150] Probing system
+2024-05-05 11:13:41,864 INFO    SystemMonitor:14789 [interfaces.py:start():190] Started disk monitoring
+2024-05-05 11:13:41,866 INFO    SystemMonitor:14789 [interfaces.py:start():190] Started gpuapple monitoring
+2024-05-05 11:13:41,867 INFO    SystemMonitor:14789 [interfaces.py:start():190] Started memory monitoring
+2024-05-05 11:13:41,868 INFO    SystemMonitor:14789 [interfaces.py:start():190] Started network monitoring
+2024-05-05 11:13:41,872 DEBUG   HandlerThread:14789 [system_info.py:_probe_git():135] Probing git
+2024-05-05 11:13:41,892 DEBUG   HandlerThread:14789 [system_info.py:_probe_git():143] Probing git done
+2024-05-05 11:13:41,892 DEBUG   HandlerThread:14789 [system_info.py:probe():198] Probing system done
+2024-05-05 11:13:41,892 DEBUG   HandlerThread:14789 [system_monitor.py:probe():223] {'os': 'macOS-14.4-arm64-arm-64bit', 'python': '3.11.9', 'heartbeatAt': '2024-05-05T10:13:41.865286', 'startedAt': '2024-05-05T10:13:41.208197', 'docker': None, 'cuda': None, 'args': (), 'state': 'running', 'program': '/Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/code/time_series_classifiers.py', 'codePathLocal': 'code/time_series_classifiers.py', 'codePath': 'code/time_series_classifiers.py', 'git': {'remote': 'https://github.com/lwachowiak/HRI-Error-Detection-STAI.git', 'commit': '5e492ddbf1086d6eae2f9c571ba8b2a4d1286dcb'}, 'email': 'lennart.wachowiak@gmail.com', 'root': '/Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI', 'host': 'MBP-von-Lennart.cust.communityfibre.co.uk', 'username': 'lennartwachowiak', 'executable': '/Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/venv_hri_err/bin/python', 'cpu_count': 8, 'cpu_count_logical': 8, 'cpu_freq': {'current': 3204, 'min': 600, 'max': 3204}, 'cpu_freq_per_core': [{'current': 3204, 'min': 600, 'max': 3204}], 'disk': {'/': {'total': 926.3517189025879, 'used': 10.112373352050781}}, 'gpuapple': {'type': 'arm', 'vendor': 'Apple'}, 'memory': {'total': 16.0}}
+2024-05-05 11:13:41,892 INFO    HandlerThread:14789 [system_monitor.py:probe():224] Finished collecting system info
+2024-05-05 11:13:41,892 INFO    HandlerThread:14789 [system_monitor.py:probe():227] Publishing system info
+2024-05-05 11:13:41,893 INFO    HandlerThread:14789 [system_monitor.py:probe():229] Finished publishing system info
+2024-05-05 11:13:41,895 DEBUG   SenderThread:14789 [sender.py:send():379] send: files
+2024-05-05 11:13:41,895 INFO    SenderThread:14789 [sender.py:_save_file():1390] saving file wandb-metadata.json with policy now
+2024-05-05 11:13:41,946 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: python_packages
+2024-05-05 11:13:41,947 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: python_packages
+2024-05-05 11:13:41,947 DEBUG   SenderThread:14789 [sender.py:send():379] send: telemetry
+2024-05-05 11:13:41,947 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:13:41,947 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:13:41,949 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:13:42,436 INFO    wandb-upload_0:14789 [upload_job.py:push():131] Uploaded file /var/folders/bv/9t03hlvd6jv_vzfmf4gqhkfm0000gn/T/tmp7nlor80fwandb/42lzg0bd-wandb-metadata.json
+2024-05-05 11:13:42,733 INFO    Thread-12 :14789 [dir_watcher.py:_on_file_created():271] file/dir created: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/requirements.txt
+2024-05-05 11:13:42,733 INFO    Thread-12 :14789 [dir_watcher.py:_on_file_created():271] file/dir created: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/wandb-metadata.json
+2024-05-05 11:13:47,224 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:13:52,246 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:13:56,976 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:13:57,024 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:13:57,024 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:13:57,251 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:14:02,273 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:14:07,298 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:14:09,867 INFO    Thread-12 :14789 [dir_watcher.py:_on_file_created():271] file/dir created: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/output.log
+2024-05-05 11:14:11,877 INFO    Thread-12 :14789 [dir_watcher.py:_on_file_modified():288] file/dir modified: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/output.log
+2024-05-05 11:14:12,100 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:14:12,102 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:14:12,104 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:14:12,326 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:14:12,880 INFO    Thread-12 :14789 [dir_watcher.py:_on_file_modified():288] file/dir modified: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/config.yaml
+2024-05-05 11:14:13,885 INFO    Thread-12 :14789 [dir_watcher.py:_on_file_modified():288] file/dir modified: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/output.log
+2024-05-05 11:14:15,895 INFO    Thread-12 :14789 [dir_watcher.py:_on_file_modified():288] file/dir modified: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/output.log
+2024-05-05 11:14:17,672 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:14:22,706 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:14:27,104 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:14:27,105 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:14:27,106 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:14:28,288 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:14:33,308 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:14:38,325 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:14:41,871 DEBUG   SystemMonitor:14789 [system_monitor.py:_start():172] Starting system metrics aggregation loop
+2024-05-05 11:14:41,872 DEBUG   SenderThread:14789 [sender.py:send():379] send: telemetry
+2024-05-05 11:14:41,872 DEBUG   SenderThread:14789 [sender.py:send():379] send: stats
+2024-05-05 11:14:42,108 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:14:42,108 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:14:42,108 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:14:43,401 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:14:44,022 INFO    Thread-12 :14789 [dir_watcher.py:_on_file_modified():288] file/dir modified: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/config.yaml
+2024-05-05 11:14:48,554 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:14:53,571 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:14:57,111 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:14:57,112 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:14:57,112 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:14:59,355 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:15:04,379 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:15:09,404 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:15:11,876 DEBUG   SenderThread:14789 [sender.py:send():379] send: stats
+2024-05-05 11:15:12,115 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:15:12,115 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:15:12,116 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:15:15,327 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:15:20,343 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:15:25,368 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:15:27,117 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:15:27,117 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:15:27,120 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:15:31,341 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:15:36,364 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:15:41,386 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:15:41,880 DEBUG   SenderThread:14789 [sender.py:send():379] send: stats
+2024-05-05 11:15:42,121 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:15:42,121 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:15:42,122 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:15:47,367 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:15:52,385 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:15:57,125 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:15:57,125 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:15:57,126 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:15:57,457 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:16:02,477 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:16:07,489 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:16:11,893 DEBUG   SenderThread:14789 [sender.py:send():379] send: stats
+2024-05-05 11:16:12,303 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:16:12,304 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:16:12,304 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: partial_history
+2024-05-05 11:16:12,304 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:16:12,434 DEBUG   SenderThread:14789 [sender.py:send():379] send: telemetry
+2024-05-05 11:16:12,434 DEBUG   SenderThread:14789 [sender.py:send():379] send: config
+2024-05-05 11:16:13,437 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:16:13,445 INFO    Thread-12 :14789 [dir_watcher.py:_on_file_modified():288] file/dir modified: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/output.log
+2024-05-05 11:16:14,449 INFO    Thread-12 :14789 [dir_watcher.py:_on_file_modified():288] file/dir modified: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/output.log
+2024-05-05 11:16:18,462 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:16:19,474 INFO    Thread-12 :14789 [dir_watcher.py:_on_file_modified():288] file/dir modified: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/config.yaml
+2024-05-05 11:16:23,671 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:16:27,310 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:16:27,310 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:16:27,311 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:16:29,566 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:16:34,587 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:16:39,605 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:16:41,891 DEBUG   SenderThread:14789 [sender.py:send():379] send: stats
+2024-05-05 11:16:42,313 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:16:42,313 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:16:42,313 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:16:44,621 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:16:49,645 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:16:54,671 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:16:57,314 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:16:57,318 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:16:57,318 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:17:00,526 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:17:05,540 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:17:10,562 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:17:11,896 DEBUG   SenderThread:14789 [sender.py:send():379] send: stats
+2024-05-05 11:17:12,318 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:17:12,318 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:17:12,318 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:17:16,541 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:17:21,566 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:17:26,591 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:17:27,321 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:17:27,322 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:17:27,323 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:17:32,516 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:17:37,538 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:17:41,901 DEBUG   SenderThread:14789 [sender.py:send():379] send: stats
+2024-05-05 11:17:42,326 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:17:42,327 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:17:42,327 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:17:43,487 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:17:48,506 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:17:53,529 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:17:57,330 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:17:57,330 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: stop_status
+2024-05-05 11:17:57,331 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: stop_status
+2024-05-05 11:17:58,484 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: partial_history
+2024-05-05 11:17:58,485 DEBUG   SenderThread:14789 [sender.py:send():379] send: history
+2024-05-05 11:17:58,485 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: summary_record
+2024-05-05 11:17:58,486 INFO    SenderThread:14789 [sender.py:_save_file():1390] saving file wandb-summary.json with policy end
+2024-05-05 11:17:58,486 DEBUG   SenderThread:14789 [sender.py:send():379] send: config
+2024-05-05 11:17:59,051 INFO    Thread-12 :14789 [dir_watcher.py:_on_file_created():271] file/dir created: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/wandb-summary.json
+2024-05-05 11:17:59,181 DEBUG   SenderThread:14789 [sender.py:send():379] send: exit
+2024-05-05 11:17:59,181 INFO    SenderThread:14789 [sender.py:send_exit():586] handling exit code: 0
+2024-05-05 11:17:59,182 INFO    SenderThread:14789 [sender.py:send_exit():588] handling runtime: 257
+2024-05-05 11:17:59,182 INFO    SenderThread:14789 [sender.py:_save_file():1390] saving file wandb-summary.json with policy end
+2024-05-05 11:17:59,182 INFO    SenderThread:14789 [sender.py:send_exit():594] send defer
+2024-05-05 11:17:59,182 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: defer
+2024-05-05 11:17:59,182 INFO    HandlerThread:14789 [handler.py:handle_request_defer():172] handle defer: 0
+2024-05-05 11:17:59,182 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:17:59,182 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: defer
+2024-05-05 11:17:59,182 INFO    SenderThread:14789 [sender.py:send_request_defer():610] handle sender defer: 0
+2024-05-05 11:17:59,182 INFO    SenderThread:14789 [sender.py:transition_state():614] send defer: 1
+2024-05-05 11:17:59,183 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: defer
+2024-05-05 11:17:59,183 INFO    HandlerThread:14789 [handler.py:handle_request_defer():172] handle defer: 1
+2024-05-05 11:17:59,183 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: defer
+2024-05-05 11:17:59,183 INFO    SenderThread:14789 [sender.py:send_request_defer():610] handle sender defer: 1
+2024-05-05 11:17:59,183 INFO    SenderThread:14789 [sender.py:transition_state():614] send defer: 2
+2024-05-05 11:17:59,183 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: defer
+2024-05-05 11:17:59,183 INFO    HandlerThread:14789 [handler.py:handle_request_defer():172] handle defer: 2
+2024-05-05 11:17:59,183 INFO    HandlerThread:14789 [system_monitor.py:finish():203] Stopping system monitor
+2024-05-05 11:17:59,183 DEBUG   SystemMonitor:14789 [system_monitor.py:_start():179] Finished system metrics aggregation loop
+2024-05-05 11:17:59,183 DEBUG   SystemMonitor:14789 [system_monitor.py:_start():183] Publishing last batch of metrics
+2024-05-05 11:17:59,183 INFO    HandlerThread:14789 [interfaces.py:finish():202] Joined cpu monitor
+2024-05-05 11:17:59,183 INFO    HandlerThread:14789 [interfaces.py:finish():202] Joined disk monitor
+2024-05-05 11:17:59,231 INFO    HandlerThread:14789 [interfaces.py:finish():202] Joined gpuapple monitor
+2024-05-05 11:17:59,231 INFO    HandlerThread:14789 [interfaces.py:finish():202] Joined memory monitor
+2024-05-05 11:17:59,231 INFO    HandlerThread:14789 [interfaces.py:finish():202] Joined network monitor
+2024-05-05 11:17:59,231 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: defer
+2024-05-05 11:17:59,231 INFO    SenderThread:14789 [sender.py:send_request_defer():610] handle sender defer: 2
+2024-05-05 11:17:59,231 INFO    SenderThread:14789 [sender.py:transition_state():614] send defer: 3
+2024-05-05 11:17:59,231 DEBUG   SenderThread:14789 [sender.py:send():379] send: stats
+2024-05-05 11:17:59,231 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: defer
+2024-05-05 11:17:59,231 INFO    HandlerThread:14789 [handler.py:handle_request_defer():172] handle defer: 3
+2024-05-05 11:17:59,231 DEBUG   SenderThread:14789 [sender.py:send():379] send: history
+2024-05-05 11:17:59,231 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: summary_record
+2024-05-05 11:17:59,232 INFO    SenderThread:14789 [sender.py:_save_file():1390] saving file wandb-summary.json with policy end
+2024-05-05 11:17:59,232 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: defer
+2024-05-05 11:17:59,232 INFO    SenderThread:14789 [sender.py:send_request_defer():610] handle sender defer: 3
+2024-05-05 11:17:59,232 INFO    SenderThread:14789 [sender.py:transition_state():614] send defer: 4
+2024-05-05 11:17:59,232 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: defer
+2024-05-05 11:17:59,232 INFO    HandlerThread:14789 [handler.py:handle_request_defer():172] handle defer: 4
+2024-05-05 11:17:59,232 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: defer
+2024-05-05 11:17:59,232 INFO    SenderThread:14789 [sender.py:send_request_defer():610] handle sender defer: 4
+2024-05-05 11:17:59,232 INFO    SenderThread:14789 [sender.py:transition_state():614] send defer: 5
+2024-05-05 11:17:59,232 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: defer
+2024-05-05 11:17:59,232 INFO    HandlerThread:14789 [handler.py:handle_request_defer():172] handle defer: 5
+2024-05-05 11:17:59,232 DEBUG   SenderThread:14789 [sender.py:send():379] send: summary
+2024-05-05 11:17:59,232 INFO    SenderThread:14789 [sender.py:_save_file():1390] saving file wandb-summary.json with policy end
+2024-05-05 11:17:59,232 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: defer
+2024-05-05 11:17:59,232 INFO    SenderThread:14789 [sender.py:send_request_defer():610] handle sender defer: 5
+2024-05-05 11:17:59,232 INFO    SenderThread:14789 [sender.py:transition_state():614] send defer: 6
+2024-05-05 11:17:59,232 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: defer
+2024-05-05 11:17:59,232 INFO    HandlerThread:14789 [handler.py:handle_request_defer():172] handle defer: 6
+2024-05-05 11:17:59,232 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: defer
+2024-05-05 11:17:59,232 INFO    SenderThread:14789 [sender.py:send_request_defer():610] handle sender defer: 6
+2024-05-05 11:17:59,234 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:17:59,365 INFO    SenderThread:14789 [sender.py:transition_state():614] send defer: 7
+2024-05-05 11:17:59,365 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: defer
+2024-05-05 11:17:59,365 INFO    HandlerThread:14789 [handler.py:handle_request_defer():172] handle defer: 7
+2024-05-05 11:17:59,365 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: defer
+2024-05-05 11:17:59,365 INFO    SenderThread:14789 [sender.py:send_request_defer():610] handle sender defer: 7
+2024-05-05 11:18:00,055 INFO    Thread-12 :14789 [dir_watcher.py:_on_file_modified():288] file/dir modified: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/output.log
+2024-05-05 11:18:00,055 INFO    Thread-12 :14789 [dir_watcher.py:_on_file_modified():288] file/dir modified: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/config.yaml
+2024-05-05 11:18:00,055 INFO    Thread-12 :14789 [dir_watcher.py:_on_file_modified():288] file/dir modified: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/wandb-summary.json
+2024-05-05 11:18:00,182 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: poll_exit
+2024-05-05 11:18:00,282 INFO    SenderThread:14789 [sender.py:transition_state():614] send defer: 8
+2024-05-05 11:18:00,283 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: poll_exit
+2024-05-05 11:18:00,283 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: defer
+2024-05-05 11:18:00,283 INFO    HandlerThread:14789 [handler.py:handle_request_defer():172] handle defer: 8
+2024-05-05 11:18:00,284 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: defer
+2024-05-05 11:18:00,284 INFO    SenderThread:14789 [sender.py:send_request_defer():610] handle sender defer: 8
+2024-05-05 11:18:00,284 INFO    SenderThread:14789 [job_builder.py:build():318] Attempting to build job artifact
+2024-05-05 11:18:00,286 INFO    SenderThread:14789 [job_builder.py:_get_source_type():455] is repo sourced job
+2024-05-05 11:18:00,333 INFO    SenderThread:14789 [job_builder.py:build():431] adding wandb-job metadata file
+2024-05-05 11:18:00,337 INFO    SenderThread:14789 [sender.py:transition_state():614] send defer: 9
+2024-05-05 11:18:00,337 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: defer
+2024-05-05 11:18:00,337 DEBUG   SenderThread:14789 [sender.py:send():379] send: artifact
+2024-05-05 11:18:00,337 INFO    HandlerThread:14789 [handler.py:handle_request_defer():172] handle defer: 9
+2024-05-05 11:18:01,059 INFO    Thread-12 :14789 [dir_watcher.py:_on_file_modified():288] file/dir modified: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/output.log
+2024-05-05 11:18:01,183 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: poll_exit
+2024-05-05 11:18:01,530 INFO    wandb-upload_0:14789 [upload_job.py:push():89] Uploaded file /var/folders/bv/9t03hlvd6jv_vzfmf4gqhkfm0000gn/T/tmpqzh9g9no/wandb-job.json
+2024-05-05 11:18:01,531 INFO    wandb-upload_1:14789 [upload_job.py:push():89] Uploaded file /Users/lennartwachowiak/Library/Application Support/wandb/artifacts/staging/tmp76ielwcc
+2024-05-05 11:18:02,481 INFO    SenderThread:14789 [sender.py:send_artifact():1468] sent artifact job-https___github.com_lwachowiak_HRI-Error-Detection-STAI.git_code_time_series_classifiers.py - {'id': 'QXJ0aWZhY3Q6ODIxODMxNjUx', 'state': 'PENDING', 'artifactSequence': {'id': 'QXJ0aWZhY3RDb2xsZWN0aW9uOjE3MDc3MTAyMg==', 'latestArtifact': None}}
+2024-05-05 11:18:02,481 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: defer
+2024-05-05 11:18:02,481 INFO    SenderThread:14789 [sender.py:send_request_defer():610] handle sender defer: 9
+2024-05-05 11:18:02,481 INFO    SenderThread:14789 [dir_watcher.py:finish():358] shutting down directory watcher
+2024-05-05 11:18:03,069 INFO    SenderThread:14789 [dir_watcher.py:finish():388] scan: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files
+2024-05-05 11:18:03,070 INFO    SenderThread:14789 [dir_watcher.py:finish():402] scan save: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/requirements.txt requirements.txt
+2024-05-05 11:18:03,070 INFO    SenderThread:14789 [dir_watcher.py:finish():402] scan save: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/output.log output.log
+2024-05-05 11:18:03,071 INFO    SenderThread:14789 [dir_watcher.py:finish():402] scan save: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/config.yaml config.yaml
+2024-05-05 11:18:03,076 INFO    SenderThread:14789 [dir_watcher.py:finish():402] scan save: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/wandb-summary.json wandb-summary.json
+2024-05-05 11:18:03,080 INFO    SenderThread:14789 [dir_watcher.py:finish():402] scan save: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/wandb-metadata.json wandb-metadata.json
+2024-05-05 11:18:03,081 INFO    SenderThread:14789 [sender.py:transition_state():614] send defer: 10
+2024-05-05 11:18:03,081 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: poll_exit
+2024-05-05 11:18:03,084 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: defer
+2024-05-05 11:18:03,085 INFO    HandlerThread:14789 [handler.py:handle_request_defer():172] handle defer: 10
+2024-05-05 11:18:03,086 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: defer
+2024-05-05 11:18:03,086 INFO    SenderThread:14789 [sender.py:send_request_defer():610] handle sender defer: 10
+2024-05-05 11:18:03,086 INFO    SenderThread:14789 [file_pusher.py:finish():172] shutting down file pusher
+2024-05-05 11:18:03,186 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: poll_exit
+2024-05-05 11:18:03,187 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: poll_exit
+2024-05-05 11:18:03,445 INFO    wandb-upload_0:14789 [upload_job.py:push():131] Uploaded file /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/requirements.txt
+2024-05-05 11:18:03,445 INFO    wandb-upload_1:14789 [upload_job.py:push():131] Uploaded file /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/output.log
+2024-05-05 11:18:03,524 INFO    wandb-upload_2:14789 [upload_job.py:push():131] Uploaded file /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/config.yaml
+2024-05-05 11:18:03,524 INFO    wandb-upload_3:14789 [upload_job.py:push():131] Uploaded file /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/files/wandb-summary.json
+2024-05-05 11:18:03,726 INFO    Thread-11 (_thread_body):14789 [sender.py:transition_state():614] send defer: 11
+2024-05-05 11:18:03,726 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: defer
+2024-05-05 11:18:03,726 INFO    HandlerThread:14789 [handler.py:handle_request_defer():172] handle defer: 11
+2024-05-05 11:18:03,727 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: defer
+2024-05-05 11:18:03,727 INFO    SenderThread:14789 [sender.py:send_request_defer():610] handle sender defer: 11
+2024-05-05 11:18:03,727 INFO    SenderThread:14789 [file_pusher.py:join():178] waiting for file pusher
+2024-05-05 11:18:03,727 INFO    SenderThread:14789 [sender.py:transition_state():614] send defer: 12
+2024-05-05 11:18:03,727 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: defer
+2024-05-05 11:18:03,727 INFO    HandlerThread:14789 [handler.py:handle_request_defer():172] handle defer: 12
+2024-05-05 11:18:03,727 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: defer
+2024-05-05 11:18:03,728 INFO    SenderThread:14789 [sender.py:send_request_defer():610] handle sender defer: 12
+2024-05-05 11:18:03,728 INFO    SenderThread:14789 [file_stream.py:finish():614] file stream finish called
+2024-05-05 11:18:04,191 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: poll_exit
+2024-05-05 11:18:04,277 INFO    SenderThread:14789 [file_stream.py:finish():618] file stream finish is done
+2024-05-05 11:18:04,277 INFO    SenderThread:14789 [sender.py:transition_state():614] send defer: 13
+2024-05-05 11:18:04,278 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: poll_exit
+2024-05-05 11:18:04,278 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: defer
+2024-05-05 11:18:04,278 INFO    HandlerThread:14789 [handler.py:handle_request_defer():172] handle defer: 13
+2024-05-05 11:18:04,278 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: status_report
+2024-05-05 11:18:04,278 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: defer
+2024-05-05 11:18:04,278 INFO    SenderThread:14789 [sender.py:send_request_defer():610] handle sender defer: 13
+2024-05-05 11:18:04,278 INFO    SenderThread:14789 [sender.py:transition_state():614] send defer: 14
+2024-05-05 11:18:04,279 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: defer
+2024-05-05 11:18:04,279 DEBUG   SenderThread:14789 [sender.py:send():379] send: final
+2024-05-05 11:18:04,279 INFO    HandlerThread:14789 [handler.py:handle_request_defer():172] handle defer: 14
+2024-05-05 11:18:04,279 DEBUG   SenderThread:14789 [sender.py:send():379] send: footer
+2024-05-05 11:18:04,279 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: defer
+2024-05-05 11:18:04,279 INFO    SenderThread:14789 [sender.py:send_request_defer():610] handle sender defer: 14
+2024-05-05 11:18:04,279 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: poll_exit
+2024-05-05 11:18:04,280 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: poll_exit
+2024-05-05 11:18:04,280 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: poll_exit
+2024-05-05 11:18:04,280 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: server_info
+2024-05-05 11:18:04,281 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: get_summary
+2024-05-05 11:18:04,281 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: poll_exit
+2024-05-05 11:18:04,281 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: sampled_history
+2024-05-05 11:18:04,281 DEBUG   SenderThread:14789 [sender.py:send_request():406] send_request: server_info
+2024-05-05 11:18:04,281 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: internal_messages
+2024-05-05 11:18:04,402 INFO    MainThread:14789 [wandb_run.py:_footer_history_summary_info():3936] rendering history
+2024-05-05 11:18:04,403 INFO    MainThread:14789 [wandb_run.py:_footer_history_summary_info():3968] rendering summary
+2024-05-05 11:18:04,403 INFO    MainThread:14789 [wandb_run.py:_footer_sync_info():3895] logging synced files
+2024-05-05 11:18:04,404 DEBUG   HandlerThread:14789 [handler.py:handle_request():146] handle_request: shutdown
+2024-05-05 11:18:04,404 INFO    HandlerThread:14789 [handler.py:finish():866] shutting down handler
+2024-05-05 11:18:05,286 INFO    WriterThread:14789 [datastore.py:close():296] close: /Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/wandb/run-20240505_111341-4lqnmbu1/run-4lqnmbu1.wandb
+2024-05-05 11:18:05,407 INFO    SenderThread:14789 [sender.py:finish():1546] shutting down sender
+2024-05-05 11:18:05,408 INFO    SenderThread:14789 [file_pusher.py:finish():172] shutting down file pusher
+2024-05-05 11:18:05,408 INFO    SenderThread:14789 [file_pusher.py:join():178] waiting for file pusher

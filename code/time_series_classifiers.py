@@ -6,7 +6,10 @@ from tsai.all import my_setup
 import pandas as pd
 from sklearn.metrics import confusion_matrix
 import optuna
-import plotly
+from optuna.integration import WeightsAndBiasesCallback
+import wandb
+import os
+import datetime
 
 # TODO:
 # - true eval on full lenght
@@ -23,26 +26,30 @@ import plotly
 
 class TS_Model_Trainer:
 
-    def __init__(self, data_folder, task):
+    def __init__(self, data_folder, task, n_jobs):
         self.data = DataLoader_HRI(data_folder)
         self.task = task
+        self.n_jobs = n_jobs
 
     def evaluate_model(model, data):
         # Evaluate the model
         return None
 
-    def optuna_objective(self, trial: optuna.Trial):
+    def optuna_objective_minirocket(self, trial: optuna.Trial):
         stride = trial.suggest_int("stride", low=500, high=1000, step=50)
+
+        # parameters being optimized
         max_dilations_per_kernel = trial.suggest_int(
             "max_dilations_per_kernel", low=16, high=128, step=8)
         val_X_TS, val_Y_TS, train_X_TS, train_Y_TS = self.data.get_timeseries_format(
             intervallength=1000, stride=stride, verbose=False)
+        n_estimators = trial.suggest_int("n_estimators", low=2, high=8, step=2)
 
         train_Y_TS_task = train_Y_TS[:, self.task]
         val_Y_TS_task = val_Y_TS[:, self.task]
 
         model = MINIROCKET.MiniRocketVotingClassifier(
-            n_estimators=2, n_jobs=4, max_dilations_per_kernel=max_dilations_per_kernel)
+            n_estimators=n_estimators, n_jobs=self.n_jobs, max_dilations_per_kernel=max_dilations_per_kernel)
         model.fit(train_X_TS, train_Y_TS_task)
 
         test_acc = model.score(val_X_TS, val_Y_TS_task)
@@ -51,21 +58,43 @@ class TS_Model_Trainer:
 
         return test_acc
 
+    def optuna_study(self, n_trials, study_name, trainer, verbose=False):
+
+        wandb_kwargs = {"project": "HRI-Errors"}
+        wandbc = WeightsAndBiasesCallback(
+            metric_name="accuracy", wandb_kwargs=wandb_kwargs)
+
+        date = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        study = optuna.create_study(
+            direction="maximize", study_name=study_name + "_"+date)
+        print(f"Sampler is {study.sampler.__class__.__name__}")
+        study.optimize(self.optuna_objective_minirocket,
+                       n_trials=n_trials, callbacks=[wandbc])
+
+        if verbose:
+            print("Best trial:")
+            print("Value: ", study.best_trial.value)
+            for key, value in study.best_trial.params.items():
+                print(f"    {key}: {value}")
+
+        return study
+
 
 if __name__ == '__main__':
     my_setup(optuna)
+    print(os.uname())
+    if "Linux" in os.uname():
+        n_jobs = -1
+    else:
+        n_jobs = 2
 
-    trainer = TS_Model_Trainer("data/", task=2)
+    trainer = TS_Model_Trainer("data/", task=2, n_jobs=n_jobs)
 
     trainer.data.limit_to_sessions(
         sessions_train=[0, 1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], sessions_val=[0, 3, 4, 7, 8, 11, 12, 13])
 
-    study = optuna.create_study(direction="maximize")
-    study.optimize(trainer.optuna_objective, n_trials=4)
-
-    print("Best trial:")
-    for key, value in study.best_trial.params.items():
-        print(f"    {key}: {value}")
+    study = trainer.optuna_study(
+        n_trials=2, study_name="MiniRocket", trainer=trainer, verbose=True)
 
     if False:
         fig = optuna.visualization.plot_optimization_history(study)

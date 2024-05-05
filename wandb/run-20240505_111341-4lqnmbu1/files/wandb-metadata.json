@@ -1,0 +1,49 @@
+{
+    "os": "macOS-14.4-arm64-arm-64bit",
+    "python": "3.11.9",
+    "heartbeatAt": "2024-05-05T10:13:41.865286",
+    "startedAt": "2024-05-05T10:13:41.208197",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/code/time_series_classifiers.py",
+    "codePathLocal": "code/time_series_classifiers.py",
+    "codePath": "code/time_series_classifiers.py",
+    "git": {
+        "remote": "https://github.com/lwachowiak/HRI-Error-Detection-STAI.git",
+        "commit": "5e492ddbf1086d6eae2f9c571ba8b2a4d1286dcb"
+    },
+    "email": "lennart.wachowiak@gmail.com",
+    "root": "/Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI",
+    "host": "MBP-von-Lennart.cust.communityfibre.co.uk",
+    "username": "lennartwachowiak",
+    "executable": "/Users/lennartwachowiak/Documents/GitHub/HRI-Error-Detection-STAI/venv_hri_err/bin/python",
+    "cpu_count": 8,
+    "cpu_count_logical": 8,
+    "cpu_freq": {
+        "current": 3204,
+        "min": 600,
+        "max": 3204
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 3204,
+            "min": 600,
+            "max": 3204
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 926.3517189025879,
+            "used": 10.112373352050781
+        }
+    },
+    "gpuapple": {
+        "type": "arm",
+        "vendor": "Apple"
+    },
+    "memory": {
+        "total": 16.0
+    }
+}
