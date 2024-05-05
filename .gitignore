@@ -1,3 +1,4 @@
 data/
 venv_hri_err/
 wandb/
+*.pyc
