@@ -1,1 +1,0 @@
-{"stride": 850, "max_dilations_per_kernel": 16, "n_estimators": 6, "accuracy": 0.7935656836461126, "_timestamp": 1714905976.1891358, "_runtime": 337.2151908874512, "_step": 1, "_wandb": {"runtime": 337}}
