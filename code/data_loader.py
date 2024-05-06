@@ -1,10 +1,12 @@
 import os
 import pandas as pd
 import numpy as np
+import re
+import math
 
 # TODO:
 # - upsampling/downsampling/SMOTE functionality
-# - what to do with the last few frames of a session? (currently they are ignored if they don't fit in an interval) --> label as 0? or as the last label?
+# - make final val_Y evaluation independent from sampling rate --> one datastructrue that is independent
 # - remove unnecessary columns from TS format
 # - what to do with NANs?
 
@@ -106,12 +108,19 @@ class DataLoader_HRI:
                            'robot_group_openpose', 'end_opensmile', 'start_opensmile']
         self.exclude_columns(columns_to_drop)
 
+    @staticmethod
+    def extract_file_number(filename):
+        '''extract the number from the filename, e.g. 1 from 1_train.csv'''
+        match = re.search(r'\d+', filename)
+        return int(match.group()) if match else None
+
     def load_data(self, data_dir):
         '''
         load the data from the data_dir into a list of dataframes
         '''
         data_frames = []
-        for filename in sorted(os.listdir(data_dir)):
+        print(sorted(os.listdir(data_dir), key=self.extract_file_number))
+        for filename in sorted(os.listdir(data_dir), key=self.extract_file_number):
             if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
                 df = pd.read_csv(os.path.join(data_dir, filename))
                 # add session number and df
@@ -123,7 +132,49 @@ class DataLoader_HRI:
         load the labels from the data_dir into a list of dataframes
         '''
         data_frames = []
-        for filename in sorted(os.listdir(data_dir)):
+        for filename in sorted(os.listdir(data_dir), key=self.extract_file_number):
+            if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
+                df = pd.read_csv(os.path.join(data_dir, filename))
+                # change being/end time to frame number, expanding one row to multiple rows based on the duration
+                if expand:
+                    new_data = []
+                    frame_counter = 1
+                    final_end_time = df['End Time - ss.msec'].iloc[-1]
+                    labels_needed = math.ceil(final_end_time * rows_per_second)
+                    print("labels needed for session",
+                          filename, ":", labels_needed)
+                    for i in range(labels_needed):
+                        current_time = i / rows_per_second
+                        try:
+                            current_df_row = df[(df['Begin Time - ss.msec'] <= current_time) & (
+                                df['End Time - ss.msec'] >= current_time)]
+                            user_awkwardness = current_df_row['UserAwkwardness'].values[0]
+                            robot_mistake = current_df_row['RobotMistake'].values[0]
+                            interaction_rupture = current_df_row['InteractionRupture'].values[0]
+                        except:
+                            print("no row found for session",
+                                  filename, " at time: ", current_time)
+                            # continue
+                        new_data.append({
+                            "frame": frame_counter,
+                            "Duration - ss.msec": 1 / rows_per_second,
+                            "Begin Time - ss.msec": current_time,
+                            "UserAwkwardness": user_awkwardness,
+                            "RobotMistake": robot_mistake,
+                            "InteractionRupture": interaction_rupture
+                        })
+                        frame_counter += 1
+                    df = pd.DataFrame(new_data)
+                data_frames.append((filename, df))
+        return data_frames
+
+    # TODO remove
+    def load_labels_old(self, data_dir, expand, rows_per_second=100):
+        '''
+        load the labels from the data_dir into a list of dataframes
+        '''
+        data_frames = []
+        for filename in sorted(os.listdir(data_dir), key=self.extract_file_number):
             if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
                 df = pd.read_csv(os.path.join(data_dir, filename))
                 # print(filename, len(df))
@@ -134,7 +185,7 @@ class DataLoader_HRI:
                     for _, row in df.iterrows():
                         begin_time = row['Begin Time - ss.msec']
                         end_time = row['End Time - ss.msec']
-                        total_intervals = int(
+                        total_intervals = math.ceil(
                             (end_time - begin_time) * rows_per_second)  # this is the number of frames for the interval
                         # print(filename, begin_time, end_time, total_intervals, _) # DEBUG, TODO
 
@@ -195,12 +246,12 @@ class DataLoader_HRI:
         Split takes place of adjacent frames of the same session.
         :param intervallength: The length of the intervals
         :param stride: The stride of the intervals
-        :return: val_X_TS, val_Y_TS, train_X_TS, train_Y_TS
+        :return: The data in timeseries format
         """
 
         num_features = self.train_X.shape[1]
-        val_Y_TS = []
-        val_X_TS = []
+        val_Y_TS_list = []
+        val_X_TS_list = []
         train_Y_TS = []
         train_X_TS = []
 
@@ -212,7 +263,7 @@ class DataLoader_HRI:
             session_labels = self.train_Y[self.train_Y['session'] == session]
             for i in range(0, len(session_df), stride):
                 if i + intervallength > len(session_df):
-                    # TODO
+                    # TODO IMPLEMENT PADDING
                     break
                 interval = session_df.iloc[i:i+intervallength].values.T
                 # for labels use the 3 columns called UserAwkwardness, RobotMistake, InteractionRupture
@@ -231,12 +282,15 @@ class DataLoader_HRI:
 
         # for validation data, stride is equal to intervallength
         for session in self.val_X['session'].unique():
+            val_X_TS = []
+            val_Y_TS = []
             if verbose:
                 print("TS Processing for session: ", session)
             session_df = self.val_X[self.val_X['session'] == session]
             session_labels = self.val_Y[self.val_Y['session'] == session]
             for i in range(0, len(session_df), intervallength):
                 if i + intervallength > len(session_df):
+                    # TODO IMPLEMENT PADDING
                     break
                 interval = session_df.iloc[i:i+intervallength].values.T
                 labels = session_labels.iloc[i:i+intervallength][[
@@ -246,13 +300,17 @@ class DataLoader_HRI:
                     majority_labels.append(np.argmax(np.bincount(label)))
                 val_X_TS.append(interval)
                 val_Y_TS.append(majority_labels)
+            val_X_TS_list.append(val_X_TS)
+            val_Y_TS_list.append(val_Y_TS)
 
-        val_X_TS = np.array(val_X_TS)
-        val_Y_TS = np.array(val_Y_TS)
+        # convert to numpy arrays
         train_X_TS = np.array(train_X_TS)
         train_Y_TS = np.array(train_Y_TS)
+        for i in range(len(val_X_TS_list)):
+            val_X_TS_list[i] = np.array(val_X_TS_list[i])
+            val_Y_TS_list[i] = np.array(val_Y_TS_list[i])
 
-        return val_X_TS, val_Y_TS, train_X_TS, train_Y_TS
+        return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS
 
     def exclude_columns(self, columns):
         """
