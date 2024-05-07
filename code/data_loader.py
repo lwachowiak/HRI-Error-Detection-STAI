@@ -301,6 +301,9 @@ class DataLoader_HRI:
                     # TODO IMPLEMENT PADDING
                     break
                 interval = session_df.iloc[i:i+intervallength].values.T
+                if fps < 100:
+                    interval = self.resample(
+                        interval=interval, fps=fps, style='mean')
                 # for labels use the 3 columns called UserAwkwardness, RobotMistake, InteractionRupture
                 labels = session_labels.iloc[i:i+intervallength][[
                     'UserAwkwardness', 'RobotMistake', 'InteractionRupture']].values.T
@@ -328,6 +331,9 @@ class DataLoader_HRI:
                     # TODO IMPLEMENT PADDING
                     break
                 interval = session_df.iloc[i:i+intervallength].values.T
+                if fps < 100:
+                    interval = self.resample(
+                        interval=interval, fps=fps, style='mean')
                 labels = session_labels.iloc[i:i+intervallength][[
                     'UserAwkwardness', 'RobotMistake', 'InteractionRupture']].values.T
                 majority_labels = []
@@ -346,6 +352,29 @@ class DataLoader_HRI:
             val_Y_TS_list[i] = np.array(val_Y_TS_list[i])
 
         return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS
+
+    def resample(self, interval, fps, style):
+        '''
+        Resample the interval to the desired fps. Original framerate is 100 fps'''
+
+        # resample the interval to the desired fps
+        if style not in ['mean', 'max', 'min']:
+            raise ValueError("Style must be one of 'mean', 'max', 'min'")
+        new_interval = []
+        for feature in interval:
+            new_feature = []
+            # downsample the array by a rate of 100/fps
+            if style == 'mean':
+                for i in range(0, len(feature), int(100/fps)):
+                    new_feature.append(np.mean(feature[i:i+int(100/fps)]))
+            elif style == 'max':
+                for i in range(0, len(feature), int(100/fps)):
+                    new_feature.append(np.max(feature[i:i+int(100/fps)]))
+            elif style == 'min':
+                for i in range(0, len(feature), int(100/fps)):
+                    new_feature.append(np.min(feature[i:i+int(100/fps)]))
+            new_interval.append(new_feature)
+        return new_interval
 
     def exclude_columns(self, columns):
         """

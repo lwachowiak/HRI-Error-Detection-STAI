@@ -4,7 +4,7 @@ from tsai.data.all import *
 from tsai.models.utils import *
 from tsai.all import my_setup
 import pandas as pd
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import optuna
 from optuna.integration import WeightsAndBiasesCallback
 import wandb
@@ -97,10 +97,12 @@ class TS_Model_Trainer:
         # parameters being optimized
         # data params
         intervallength = trial.suggest_int(
-            "intervallength", low=500, high=1500, step=50)
+            "intervallength", low=1000, high=1000, step=50)
         # stride must be leq than intervallength
         stride = trial.suggest_int(
-            "stride", low=500, high=intervallength, step=50)
+            "stride", low=1000, high=intervallength, step=50)
+        # [100, 50, 25, 10, 5, 1])
+        fps = trial.suggest_categorical("fps", [10])
 
         # model params
         max_dilations_per_kernel = trial.suggest_int(
@@ -112,7 +114,7 @@ class TS_Model_Trainer:
 
         # get timeseries format
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS = self.data.get_timeseries_format(
-            intervallength=intervallength, stride=stride, verbose=False)
+            intervallength=intervallength, stride=stride, verbose=False, fps=fps)
 
         train_Y_TS_task = train_Y_TS[:, self.task]
         # val_Y_TS_task = val_Y_TS[:, self.task]
