@@ -168,14 +168,20 @@ class DataLoader_HRI:
                         begin_frame = math.ceil(begin_time * rows_per_second)
                         end_frame = math.ceil(end_time * rows_per_second)
                         for i in range(begin_frame, end_frame):
-                            new_data[i] = {
-                                "frame": frame_counter,
-                                "Duration - ss.msec": 1 / rows_per_second,
-                                "Begin Time - ss.msec": i / rows_per_second,
-                                "UserAwkwardness": int(user_awkwardness),
-                                "RobotMistake": int(robot_mistake),
-                                "InteractionRupture": int(interaction_rupture)
-                            }
+                            new_data[i]["UserAwkwardness"] = int(max(
+                                new_data[i]["UserAwkwardness"], user_awkwardness))
+                            new_data[i]["RobotMistake"] = int(max(
+                                new_data[i]["RobotMistake"], robot_mistake))
+                            new_data[i]["InteractionRupture"] = int(max(
+                                new_data[i]["InteractionRupture"], interaction_rupture))
+                            # new_data[i] = {
+                            #    "frame": frame_counter,
+                            #    "Duration - ss.msec": 1 / rows_per_second,
+                            #    "Begin Time - ss.msec": i / rows_per_second,
+                            #    "UserAwkwardness": int(user_awkwardness),
+                            #    "RobotMistake": int(robot_mistake),
+                            #    "InteractionRupture": int(interaction_rupture)
+                            # }
                             frame_counter += 1
 
                     # for i in range(labels_needed):

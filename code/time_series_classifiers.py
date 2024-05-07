@@ -38,6 +38,7 @@ class TS_Model_Trainer:
         self.n_jobs = n_jobs
         self.objective_per_model = {
             "MiniRocket": self.optuna_objective_minirocket}
+        self.config = None
 
     def evaluate_model(self, preds, dataset="val", verbose=False):
         '''Evaluate model on self.data.val_X and self.data.val_Y. The final missing values in preds are filled with 0s.'''
@@ -96,19 +97,19 @@ class TS_Model_Trainer:
         '''Optuna objective function for MiniRocket model. Optimizes for accuracy and macro f1 score.'''
         # parameters being optimized
         # data params
+        params = self.config["mini_rocket_params"]
         intervallength = trial.suggest_int(
-            "intervallength", low=1000, high=1000, step=50)
+            "intervallength", low=params["intervallength"]["low"], high=params["intervallength"]["high"], step=params["intervallength"]["step"])
         # stride must be leq than intervallength
         stride = trial.suggest_int(
-            "stride", low=1000, high=intervallength, step=50)
-        # [100, 50, 25, 10, 5, 1])
-        fps = trial.suggest_categorical("fps", [10])
+            "stride", low=params["stride"]["low"], high=intervallength, step=params["intervallength"]["step"])
+        fps = trial.suggest_categorical("fps", params["fps"])
 
         # model params
         max_dilations_per_kernel = trial.suggest_int(
-            "max_dilations_per_kernel", low=4, high=256, step=8)
+            "max_dilations_per_kernel", low=params["max_dilations_per_kernel"]["low"], high=params["max_dilations_per_kernel"]["high"], step=params["max_dilations_per_kernel"]["step"])
         n_estimators = trial.suggest_int(
-            "n_estimators", low=1, high=1, step=2)
+            "n_estimators", low=params["n_estimators"]["low"], high=params["n_estimators"]["high"], step=params["n_estimators"]["step"])
         class_weight = trial.suggest_categorical(
             "class_weight", ["balanced", None])
 
@@ -117,7 +118,6 @@ class TS_Model_Trainer:
             intervallength=intervallength, stride=stride, verbose=False, fps=fps)
 
         train_Y_TS_task = train_Y_TS[:, self.task]
-        # val_Y_TS_task = val_Y_TS[:, self.task]
 
         model = MINIROCKET.MiniRocketVotingClassifier(
             n_estimators=n_estimators, n_jobs=self.n_jobs, max_dilations_per_kernel=max_dilations_per_kernel, class_weight=class_weight)
@@ -206,8 +206,7 @@ class TS_Model_Trainer:
             study, target=lambda t: t.values[target_index], target_name=target_name)
         wandb.log({"optuna_parallel_coordinate_"+target_name: fig})
 
-    @ staticmethod
-    def read_config(file_path):
+    def read_config(self, file_path):
         """Reads a JSON configuration file and returns the configuration as a dictionary."""
         try:
             with open(file_path, 'r') as file:
@@ -216,6 +215,7 @@ class TS_Model_Trainer:
                 print("\nConfiguration loaded successfully.")
                 for key, value in config.items():
                     print(f"{key}: {value}")
+                self.config = config
                 return config
         except FileNotFoundError:
             print("\nError: The configuration file was not found.")
@@ -231,55 +231,18 @@ if __name__ == '__main__':
     if "macOS" in platform.platform():
         n_jobs = 2
         pathprefix = ""
+        config_name = "config_mac.json"
     else:
         n_jobs = -1
         pathprefix = "HRI-Error-Detection-STAI/"
+        config_name = "config.json"
     print("n_jobs:", n_jobs)
 
-    config = TS_Model_Trainer.read_config(pathprefix+"code/config.json")
-
     trainer = TS_Model_Trainer(pathprefix+"data/", task=2, n_jobs=n_jobs)
+    config = trainer.read_config(pathprefix+"code/"+config_name)
 
     # trainer.data.limit_to_sessions(
     #    sessions_train=[0, 1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33], sessions_val=[0, 3, 4, 7, 8, 11, 12, 13])
 
     study = trainer.optuna_study(
         n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
-
-    if False:
-        for col in trainer.data.train_X.columns:
-            print(col)
-
-        print(len(trainer.data.train_X), len(trainer.data.val_X))
-
-        # print labels of val where "session" is 0
-        print(trainer.data.val_Y[trainer.data.val_Y['session'] == 0])
-        # print counts for "UserAwkwardness" in val where "session" is 0, from the first 100 rows
-        print(trainer.data.val_Y[trainer.data.val_Y['session'] == 0]
-              ['UserAwkwardness'].value_counts()[:1000])
-        print(trainer.data.val_Y[trainer.data.val_Y['session'] == 0]
-              ['RobotMistake'].value_counts()[:1000])
-
-        val_X_TS, val_Y_TS, train_X_TS, train_Y_TS = trainer.data.get_timeseries_format(
-            intervallength=1000, stride=1000, verbose=True)  # 1000 corresponds to 10 seconds(because 100fps)
-
-        print("Val shape", val_X_TS.shape, val_Y_TS.shape,
-              "Train shape", train_X_TS.shape, train_Y_TS.shape)
-        print(val_Y_TS)
-
-        # get first column of val_Y_TS
-        task = 2
-        train_Y_TS_task = train_Y_TS[:, task]
-        val_Y_TS_task = val_Y_TS[:, task]
-
-        # Train the model
-        print("Training model...")
-        model = MINIROCKET.MiniRocketVotingClassifier(n_estimators=4, n_jobs=4)
-        model.fit(train_X_TS, train_Y_TS_task)
-        test_acc = model.score(val_X_TS, val_Y_TS_task)
-        print("Test accuracy:", test_acc)
-        test_preds = model.predict(val_X_TS)
-        # print counts
-        print(pd.Series(test_preds).value_counts())
-        # confusion matrix from sklearn
-        print(confusion_matrix(val_Y_TS_task, test_preds))

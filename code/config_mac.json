@@ -1,24 +1,19 @@
 {
     "task": 2,
     "model_type": "MiniRocket",
-    "n_trials": 100,
+    "n_trials": 2,
     "mini_rocket_params": {
         "intervallength": {
-            "low": 500,
-            "high": 1500,
+            "low": 1000,
+            "high": 1000,
             "step": 100
         },
         "stride": {
-            "low": 500,
-            "step": 50
+            "low": 1000,
+            "step": 100
         },
         "fps": [
-            1,
-            5,
-            10,
-            25,
-            50,
-            100
+            10
         ],
         "max_dilations_per_kernel": {
             "low": 4,
@@ -26,9 +21,9 @@
             "step": 8
         },
         "n_estimators": {
-            "low": 2,
-            "high": 20,
-            "step": 2
+            "low": 1,
+            "high": 1,
+            "step": 1
         }
     }
 }
