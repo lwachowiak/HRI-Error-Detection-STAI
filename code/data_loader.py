@@ -9,6 +9,9 @@ import math
 # - make final val_Y evaluation independent from sampling rate --> one datastructrue that is independent
 # - remove unnecessary columns from TS format
 # - what to do with NANs?
+# - VALIDATION data should also get a stride! --> then reconstruct like in TAC(currently it is equal to intervallength)
+# - the validation stride is completly wrong rn
+# - summary statistics function
 
 
 class DataLoader_HRI:
@@ -132,38 +135,70 @@ class DataLoader_HRI:
         load the labels from the data_dir into a list of dataframes
         '''
         data_frames = []
+        print(sorted(os.listdir(data_dir), key=self.extract_file_number))
         for filename in sorted(os.listdir(data_dir), key=self.extract_file_number):
             if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
                 df = pd.read_csv(os.path.join(data_dir, filename))
                 # change being/end time to frame number, expanding one row to multiple rows based on the duration
                 if expand:
-                    new_data = []
+                    # create list of right length all 0s
+                    # then iterate over the rows and set the right value to 1 in the corresponding rows
                     frame_counter = 1
                     final_end_time = df['End Time - ss.msec'].iloc[-1]
                     labels_needed = math.ceil(final_end_time * rows_per_second)
+                    # 3 labels for labels_needed rows
+                    new_data = []
+                    for i in range(labels_needed):
+                        new_data.append({
+                            "frame": i,
+                            "Duration - ss.msec": 1 / rows_per_second,
+                            "Begin Time - ss.msec": i / rows_per_second,
+                            "UserAwkwardness": 0,
+                            "RobotMistake": 0,
+                            "InteractionRupture": 0
+                        })
                     print("labels needed for session",
                           filename, ":", labels_needed)
-                    for i in range(labels_needed):
-                        current_time = i / rows_per_second
-                        try:
-                            current_df_row = df[(df['Begin Time - ss.msec'] <= current_time) & (
-                                df['End Time - ss.msec'] >= current_time)]
-                            user_awkwardness = current_df_row['UserAwkwardness'].values[0]
-                            robot_mistake = current_df_row['RobotMistake'].values[0]
-                            interaction_rupture = current_df_row['InteractionRupture'].values[0]
-                        except:
-                            print("no row found for session",
-                                  filename, " at time: ", current_time)
-                            # continue
-                        new_data.append({
-                            "frame": frame_counter,
-                            "Duration - ss.msec": 1 / rows_per_second,
-                            "Begin Time - ss.msec": current_time,
-                            "UserAwkwardness": user_awkwardness,
-                            "RobotMistake": robot_mistake,
-                            "InteractionRupture": interaction_rupture
-                        })
-                        frame_counter += 1
+                    for _, row in df.iterrows():
+                        begin_time = row['Begin Time - ss.msec']
+                        end_time = row['End Time - ss.msec']
+                        user_awkwardness = row['UserAwkwardness']
+                        robot_mistake = row['RobotMistake']
+                        interaction_rupture = row['InteractionRupture']
+                        begin_frame = math.ceil(begin_time * rows_per_second)
+                        end_frame = math.ceil(end_time * rows_per_second)
+                        for i in range(begin_frame, end_frame):
+                            new_data[i] = {
+                                "frame": frame_counter,
+                                "Duration - ss.msec": 1 / rows_per_second,
+                                "Begin Time - ss.msec": i / rows_per_second,
+                                "UserAwkwardness": int(user_awkwardness),
+                                "RobotMistake": int(robot_mistake),
+                                "InteractionRupture": int(interaction_rupture)
+                            }
+                            frame_counter += 1
+
+                    # for i in range(labels_needed):
+                    #     current_time = i / rows_per_second
+                    #     try:
+                    #         current_df_row = df[(df['Begin Time - ss.msec'] <= current_time) & (
+                    #             df['End Time - ss.msec'] >= current_time)]
+                    #         user_awkwardness = current_df_row['UserAwkwardness'].values[0]
+                    #         robot_mistake = current_df_row['RobotMistake'].values[0]
+                    #         interaction_rupture = current_df_row['InteractionRupture'].values[0]
+                    #     except:
+                    #         print("no row found for session",
+                    #               filename, " at time: ", current_time)
+                    #         # continue
+                    #     new_data.append({
+                    #         "frame": frame_counter,
+                    #         "Duration - ss.msec": 1 / rows_per_second,
+                    #         "Begin Time - ss.msec": current_time,
+                    #         "UserAwkwardness": user_awkwardness,
+                    #         "RobotMistake": robot_mistake,
+                    #         "InteractionRupture": interaction_rupture
+                    #     })
+                    #     frame_counter += 1
                     df = pd.DataFrame(new_data)
                 data_frames.append((filename, df))
         return data_frames
@@ -240,7 +275,7 @@ class DataLoader_HRI:
 
         return merged_df.reset_index()
 
-    def get_timeseries_format(self, intervallength, stride, verbose=False):
+    def get_timeseries_format(self, intervallength, stride, fps=100, verbose=False):
         """
         Convert the data to timeseries form. Split the data from the dfs into intervals of length intervallength with stride stride.
         Split takes place of adjacent frames of the same session.

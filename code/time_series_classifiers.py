@@ -44,14 +44,14 @@ class TS_Model_Trainer:
         # compare length between preds and val_Y and append 0s to preds if necessary
 
         # TODO: remove
-        temp_val_session_ids = [0, 3, 4, 7, 8, 11, 12, 13]
+       # temp_val_session_ids = [0, 3, 4, 7, 8, 11, 12, 13]
         y_true = []
         # iterate over all preds (per session) and append 0s if necessary
         for i in range(len(preds)):
-            # TODO  change this to all sessions later
-            session_id = temp_val_session_ids[i]
+            session_id = i
             y_true.append(
                 self.data.val_Y[self.data.val_Y['session'] == session_id][self.TASK_TO_COLUMN[self.task]].values)
+            # append 0s to preds if necessary
             if len(preds[i]) < len(self.data.val_Y[self.data.val_Y['session'] == session_id]):
                 to_append = len(
                     self.data.val_Y[self.data.val_Y['session'] == session_id])-len(preds[i])
@@ -238,8 +238,8 @@ if __name__ == '__main__':
 
     trainer = TS_Model_Trainer(pathprefix+"data/", task=2, n_jobs=n_jobs)
 
-    trainer.data.limit_to_sessions(
-        sessions_train=[0, 1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33], sessions_val=[0, 3, 4, 7, 8, 11, 12, 13])
+    # trainer.data.limit_to_sessions(
+    #    sessions_train=[0, 1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33], sessions_val=[0, 3, 4, 7, 8, 11, 12, 13])
 
     study = trainer.optuna_study(
         n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
