@@ -4,12 +4,16 @@
     "n_trials": 100,
     "mini_rocket_params": {
         "intervallength": {
-            "low": 500,
+            "low": 400,
             "high": 1500,
             "step": 100
         },
-        "stride": {
-            "low": 500,
+        "stride_train": {
+            "low": 400,
+            "step": 50
+        },
+        "stride_eval": {
+            "low": 400,
             "step": 50
         },
         "fps": [

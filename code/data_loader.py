@@ -7,11 +7,10 @@ import math
 # TODO:
 # - upsampling/downsampling/SMOTE functionality
 # - make final val_Y evaluation independent from sampling rate --> one datastructrue that is independent
-# - remove unnecessary columns from TS format
 # - what to do with NANs?
 # - VALIDATION data should also get a stride! --> then reconstruct like in TAC(currently it is equal to intervallength)
-# - the validation stride is completly wrong rn
 # - summary statistics function
+# - check how X data is loaded an aligned. it does not seem to work correctly on the last view rows
 
 
 class DataLoader_HRI:
@@ -108,7 +107,9 @@ class DataLoader_HRI:
 
         # for X drop columns with names: 'person_id_openpose', 'week_id_openpose', 'robot_group_openpose', 'end_opensmile', 'start_opensmile'
         columns_to_drop = ['person_id_openpose', 'week_id_openpose', 'timestamp_openface',
-                           'robot_group_openpose', 'end_opensmile', 'start_opensmile']
+                           'robot_group_openpose', 'end_opensmile', 'start_opensmile',
+                           'vel_1_x_openpose', 'vel_1_y_openpose', 'vel_8_x_openpose', 'vel_8_y_openpose', 'dist_1_8_openpose', 'vel_dist_1_8_openpose', 'dist_7_0_openpose', 'dist_4_0_openpose', 'vel_7_x_openpose', 'vel_7_y_openpose', 'vel_4_x_openpose', 'vel_4_y_openpose', 'vel_dist_7_0_openpose', 'vel_dist_4_0_openpose',
+                           ]
         self.exclude_columns(columns_to_drop)
 
     @staticmethod
@@ -281,12 +282,13 @@ class DataLoader_HRI:
 
         return merged_df.reset_index()
 
-    def get_timeseries_format(self, intervallength, stride, fps=100, verbose=False):
+    def get_timeseries_format(self, intervallength, stride_train, stride_eval, fps=100, verbose=False):
         """
         Convert the data to timeseries form. Split the data from the dfs into intervals of length intervallength with stride stride.
         Split takes place of adjacent frames of the same session.
         :param intervallength: The length of the intervals
-        :param stride: The stride of the intervals
+        :param stride_train: The stride for the training data (oversampling technique)
+        :param stride_eval: The stride for the evaluation data (eval update frequency)
         :return: The data in timeseries format
         """
 
@@ -302,7 +304,7 @@ class DataLoader_HRI:
                 print("TS Processing for session: ", session)
             session_df = self.train_X[self.train_X['session'] == session]
             session_labels = self.train_Y[self.train_Y['session'] == session]
-            for i in range(0, len(session_df), stride):
+            for i in range(0, len(session_df), stride_train):
                 if i + intervallength > len(session_df):
                     # TODO IMPLEMENT PADDING
                     break
@@ -332,7 +334,7 @@ class DataLoader_HRI:
                 print("TS Processing for session: ", session)
             session_df = self.val_X[self.val_X['session'] == session]
             session_labels = self.val_Y[self.val_Y['session'] == session]
-            for i in range(0, len(session_df), intervallength):
+            for i in range(0, len(session_df), stride_eval):  # this was intervallength before
                 if i + intervallength > len(session_df):
                     # TODO IMPLEMENT PADDING
                     break

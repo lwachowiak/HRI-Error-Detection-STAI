@@ -4,16 +4,20 @@
     "n_trials": 2,
     "mini_rocket_params": {
         "intervallength": {
-            "low": 1000,
-            "high": 1000,
+            "low": 700,
+            "high": 700,
             "step": 100
         },
-        "stride": {
-            "low": 1000,
+        "stride_train": {
+            "low": 700,
+            "step": 100
+        },
+        "stride_eval": {
+            "low": 700,
             "step": 100
         },
         "fps": [
-            10
+            50
         ],
         "max_dilations_per_kernel": {
             "low": 4,
@@ -21,8 +25,8 @@
             "step": 8
         },
         "n_estimators": {
-            "low": 1,
-            "high": 1,
+            "low": 2,
+            "high": 2,
             "step": 1
         }
     }

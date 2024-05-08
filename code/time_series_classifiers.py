@@ -15,18 +15,12 @@ import numpy as np
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 # TODO:
-# - true eval on full lenght
 # - just train with some columns / column selection
 # - try different models
-# - more minirocket params
 # - https://www.sktime.net/en/stable/api_reference/annotation.html
 
 # Models to try: HydraMultiRocketPlus
 
-
-# def (data):
-#   # Preprocess the data
-#   return data
 
 class TS_Model_Trainer:
 
@@ -42,10 +36,6 @@ class TS_Model_Trainer:
 
     def evaluate_model(self, preds, dataset="val", verbose=False):
         '''Evaluate model on self.data.val_X and self.data.val_Y. The final missing values in preds are filled with 0s.'''
-        # compare length between preds and val_Y and append 0s to preds if necessary
-
-        # TODO: remove
-       # temp_val_session_ids = [0, 3, 4, 7, 8, 11, 12, 13]
         y_true = []
         # iterate over all preds (per session) and append 0s if necessary
         for i in range(len(preds)):
@@ -67,15 +57,6 @@ class TS_Model_Trainer:
         preds = np.concatenate(preds)
         y_true = np.concatenate(y_true)
         print("Final preds length", len(preds), len(y_true))
-        # TODO: THIS DOESNT MAKE SENSE!!!!! I NEED TO ADD 0s per SESSION, not for the whole dataset
-        # if len(preds) < len(self.data.val_Y):
-        #    to_append = len(self.data.val_Y)-len(preds)
-        #    preds = np.append(preds, [0]*(to_append))
-        #    if verbose:
-        #        print("Appended,", to_append, "0s to preds")
-        # get task column of val_Y_TS
-        # val_Y_task = self.data.val_Y[:, self.task]
-        # get eval scores
 
         eval_scores = {}
         eval_scores["accuracy"] = accuracy_score(y_true=y_true, y_pred=preds)
@@ -101,8 +82,10 @@ class TS_Model_Trainer:
         intervallength = trial.suggest_int(
             "intervallength", low=params["intervallength"]["low"], high=params["intervallength"]["high"], step=params["intervallength"]["step"])
         # stride must be leq than intervallength
-        stride = trial.suggest_int(
-            "stride", low=params["stride"]["low"], high=intervallength, step=params["intervallength"]["step"])
+        stride_train = trial.suggest_int(
+            "stride", low=params["stride_train"]["low"], high=intervallength, step=params["intervallength"]["step"])
+        stride_eval = trial.suggest_int(
+            "stride_eval", low=params["stride_eval"]["low"], high=intervallength, step=params["intervallength"]["step"])
         fps = trial.suggest_categorical("fps", params["fps"])
 
         # model params
@@ -115,7 +98,7 @@ class TS_Model_Trainer:
 
         # get timeseries format
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS = self.data.get_timeseries_format(
-            intervallength=intervallength, stride=stride, verbose=False, fps=fps)
+            intervallength=intervallength, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps)
 
         train_Y_TS_task = train_Y_TS[:, self.task]
 
@@ -123,12 +106,21 @@ class TS_Model_Trainer:
             n_estimators=n_estimators, n_jobs=self.n_jobs, max_dilations_per_kernel=max_dilations_per_kernel, class_weight=class_weight)
         model.fit(train_X_TS, train_Y_TS_task)
         test_preds = []
-        for val_X_TS in val_X_TS_list:
+        for val_X_TS in val_X_TS_list:  # per session
             pred = model.predict(val_X_TS)
-            pred = np.repeat(pred, intervallength)
-            test_preds.append(pred)
-        # test_preds = model.predict(val_X_TS)
-        # print(test_preds)
+            # for each sample in the session, repeat the prediction based on intervallength and stride_eval
+            processed_preds = []
+            for i, pr in enumerate(pred):
+                if i == 0:
+                    # first prediction, so append it intervallength times
+                    processed_preds.extend([pr]*intervallength)
+                else:
+                    # all other predictions are appended stride_eval times
+                    processed_preds.extend([pr]*stride_eval)
+            test_preds.append(processed_preds)
+            # TODO Remove: old version based on intervallength=stride_eval
+            # pred = np.repeat(pred, intervallength)
+            # test_preds.append(pred)
 
         # print("Original Test acc")  # TODO remove debugging
         # test_acc = model.score(val_X_TS, val_Y_TS_task)
@@ -142,17 +134,6 @@ class TS_Model_Trainer:
         eval_scores = self.evaluate_model(
             preds=test_preds, dataset="val", verbose=True)
         return eval_scores["accuracy"], eval_scores["macro f1"]
-
-        # test_acc = model.score(val_X_TS, val_Y_TS_task)
-        # print(confusion_matrix(val_Y_TS_task, test_preds))
-        # # f1, precision, recall
-        # f1 = f1_score(val_Y_TS_task, test_preds, average='macro')
-        # precision = precision_score(
-        #     val_Y_TS_task, test_preds, average='macro')
-        # recall = recall_score(val_Y_TS_task, test_preds, average='macro')
-        # print(
-        #     f"Test accuracy: {test_acc}, F1: {f1}, Precision: {precision}, Recall: {recall}")
-        # return test_acc, f1
 
     def optuna_study(self, n_trials, model_type, study_name, verbose=False):
         """Performs an Optuna study to optimize the hyperparameters of the model."""
