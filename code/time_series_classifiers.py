@@ -18,6 +18,7 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 # - just train with some columns / column selection
 # - try different models
 # - https://www.sktime.net/en/stable/api_reference/annotation.html
+# - how to give feedback on just the part of the stride that will be concatenated to full preds?
 
 # Models to try: HydraMultiRocketPlus
 

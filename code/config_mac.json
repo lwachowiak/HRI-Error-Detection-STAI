@@ -13,7 +13,7 @@
             "step": 100
         },
         "stride_eval": {
-            "low": 700,
+            "low": 400,
             "step": 100
         },
         "fps": [
@@ -25,8 +25,8 @@
             "step": 8
         },
         "n_estimators": {
-            "low": 2,
-            "high": 2,
+            "low": 1,
+            "high": 1,
             "step": 1
         }
     }
