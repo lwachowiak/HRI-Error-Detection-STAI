@@ -5,12 +5,10 @@ import re
 import math
 
 # TODO:
-# - upsampling/downsampling/SMOTE functionality
-# - make final val_Y evaluation independent from sampling rate --> one datastructrue that is independent
+# - Improve: downsampling
+# - Add: data augmentation (TSAI has methods for that)
 # - what to do with NANs?
-# - VALIDATION data should also get a stride! --> then reconstruct like in TAC(currently it is equal to intervallength)
-# - summary statistics function
-# - check how X data is loaded an aligned. it does not seem to work correctly on the last view rows
+# - IMPORTANT check how X data is loaded an aligned. it does not seem to work correctly on the last view rows
 
 
 class DataLoader_HRI:

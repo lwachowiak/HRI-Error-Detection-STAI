@@ -15,17 +15,23 @@ import numpy as np
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 # TODO:
-# - just train with some columns / column selection
-# - try different models
-# - https://www.sktime.net/en/stable/api_reference/annotation.html
-# - how to give feedback on just the part of the stride that will be concatenated to full preds?
-
-# Models to try: HydraMultiRocketPlus
+# - just train with some columns / column selection / feature importance
+# - investigate effect of label_creation parameter
+# Models:
+#   - try different models: TST, HydraMultiRocketPlus, RandomForrest, XGBoost
+#   - Try annotation/outlier processing: https://www.sktime.net/en/stable/api_reference/annotation.html
+#   - Try prediction/forcasting --> unlikely sequence --> outlier --> label 1
 
 
 class TS_Model_Trainer:
 
     def __init__(self, data_folder, task, n_jobs):
+        '''
+        Initialize the TS_Model_Trainer with the data folder and the task to be trained on.
+        :param data_folder: The folder containing the data.
+        :param task: The task to be trained on. 0: UserAwkwardness, 1: RobotMistake, 2: InteractionRupture
+        :param n_jobs: CPU usage parameter
+        '''
         self.data = DataLoader_HRI(data_folder)
         self.task = task
         self.TASK_TO_COLUMN = {0: "UserAwkwardness",
@@ -38,7 +44,11 @@ class TS_Model_Trainer:
         self.config = None
 
     def evaluate_model(self, preds, dataset="val", verbose=False):
-        '''Evaluate model on self.data.val_X and self.data.val_Y. The final missing values in preds are filled with 0s.'''
+        '''Evaluate model on self.data.val_X and self.data.val_Y. The final missing values in preds are filled with 0s.
+        :param preds: List of predictions per session. Per session there is one list of prediction labels.
+        :param dataset: The dataset to evaluate on (val or test)
+        :output eval_scores: Dictionary containing the evaluation scores (accuracy, macro f1, macro precision, macro recall)
+        '''
         y_true = []
         # iterate over all preds (per session) and append 0s if necessary
         for i in range(len(preds)):
@@ -84,7 +94,7 @@ class TS_Model_Trainer:
         data_params = self.config["data_params"]
         model_params = self.config["model_params"]
         intervallength = trial.suggest_int(
-            "intervallength", low=params["intervallength"]["low"], high=data_params["intervallength"]["high"], step=data_params["intervallength"]["step"])
+            "intervallength", low=data_params["intervallength"]["low"], high=data_params["intervallength"]["high"], step=data_params["intervallength"]["step"])
         # stride must be leq than intervallength
         stride_train = trial.suggest_int(
             "stride", low=data_params["stride_train"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
@@ -100,7 +110,7 @@ class TS_Model_Trainer:
         class_weight = trial.suggest_categorical(
             "class_weight", [None])  # ["balanced", None])
         label_creation = trial.suggest_categorical(
-            "label_creation", ["stride"])  # TODO add "full"
+            "label_creation", data_params["label_creation"])
 
         # get timeseries format
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS = self.data.get_timeseries_format(
@@ -152,6 +162,8 @@ class TS_Model_Trainer:
         stride_eval = trial.suggest_int(
             "stride_eval", low=data_params["stride_eval"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
         fps = trial.suggest_categorical("fps", data_params["fps"])
+        label_creation = trial.suggest_categorical(
+            "label_creation", data_params["label_creation"])
 
         # get timeseries format
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS = self.data.get_timeseries_format(
@@ -167,7 +179,10 @@ class TS_Model_Trainer:
         # learn=ts_learner(dls, model, metrics=[
 
     def optuna_study(self, n_trials, model_type, study_name, verbose=False):
-        """Performs an Optuna study to optimize the hyperparameters of the model."""
+        """Performs an Optuna study to optimize the hyperparameters of the model.
+        :param n_trials: The number of search trials to perform.
+        :param model_type: The type of model to optimize (MiniRocket, TST).
+        """
         wandb_kwargs = {"project": "HRI-Errors"}
         wandbc = WeightsAndBiasesCallback(
             metric_name=["accuracy", "macro f1"], wandb_kwargs=wandb_kwargs)

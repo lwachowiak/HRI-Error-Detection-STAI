@@ -4,25 +4,27 @@
     "n_trials": 2,
     "data_params": {
         "intervallength": {
-            "low": 400,
-            "high": 1500,
+            "low": 700,
+            "high": 1000,
             "step": 100
         },
         "stride_train": {
-            "low": 400,
+            "low": 700,
             "step": 50
         },
         "stride_eval": {
-            "low": 400,
+            "low": 700,
             "step": 50
         },
         "fps": [
-            2,
             5,
             10,
             25,
-            50,
-            100
+            50
+        ],
+        "label_creation": [
+            "full",
+            "stride"
         ]
     },
     "model_params": {
@@ -32,8 +34,8 @@
             "step": 8
         },
         "n_estimators": {
-            "low": 2,
-            "high": 20,
+            "low": 1,
+            "high": 1,
             "step": 2
         }
     }
