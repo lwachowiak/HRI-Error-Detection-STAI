@@ -60,7 +60,7 @@ class DataLoader_HRI:
 
         # merge data and add to train_X and val_X
         for filename, _ in openface_data:
-            merged_df = self.merge_data(
+            merged_df = self.merge_X_data(
                 openface_data, openpose_data, opensmile_data, filename)
             if filename.endswith("_train.csv"):
                 self.train_X.append(merged_df)
@@ -252,7 +252,7 @@ class DataLoader_HRI:
                 data_frames.append((filename, df))
         return data_frames
 
-    def merge_data(self, openface_data, openpose_data, opensmile_data, filename):
+    def merge_X_data(self, openface_data, openpose_data, opensmile_data, filename):
         """
         For a specific session (filename), merge the data from the three dataframes.
         """
