@@ -1,8 +1,8 @@
 {
     "task": 2,
-    "model_type": "MiniRocket",
-    "n_trials": 100,
-    "mini_rocket_params": {
+    "model_type": "TST",
+    "n_trials": 4,
+    "data_params": {
         "intervallength": {
             "low": 400,
             "high": 1500,
@@ -23,16 +23,7 @@
             25,
             50,
             100
-        ],
-        "max_dilations_per_kernel": {
-            "low": 4,
-            "high": 256,
-            "step": 8
-        },
-        "n_estimators": {
-            "low": 2,
-            "high": 20,
-            "step": 2
-        }
-    }
+        ]
+    },
+    "model_params": {}
 }

@@ -1,9 +1,9 @@
-from tsai.models import MINIROCKET
+from tsai.models import MINIROCKET, HydraMultiRocketPlus, TST
+from tsai.learner import ts_learner
 from data_loader import DataLoader_HRI
 from tsai.data.all import *
 from tsai.models.utils import *
 from tsai.all import my_setup
-import pandas as pd
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import optuna
 from optuna.integration import WeightsAndBiasesCallback
@@ -32,7 +32,9 @@ class TS_Model_Trainer:
                                1: "RobotMistake", 2: "InteractionRupture"}
         self.n_jobs = n_jobs
         self.objective_per_model = {
-            "MiniRocket": self.optuna_objective_minirocket}
+            "MiniRocket": self.optuna_objective_minirocket,
+            "TST": self.optuna_objective_tst
+        }
         self.config = None
 
     def evaluate_model(self, preds, dataset="val", verbose=False):
@@ -79,27 +81,30 @@ class TS_Model_Trainer:
         '''Optuna objective function for MiniRocket model. Optimizes for accuracy and macro f1 score.'''
         # parameters being optimized
         # data params
-        params = self.config["mini_rocket_params"]
+        data_params = self.config["data_params"]
+        model_params = self.config["model_params"]
         intervallength = trial.suggest_int(
-            "intervallength", low=params["intervallength"]["low"], high=params["intervallength"]["high"], step=params["intervallength"]["step"])
+            "intervallength", low=params["intervallength"]["low"], high=data_params["intervallength"]["high"], step=data_params["intervallength"]["step"])
         # stride must be leq than intervallength
         stride_train = trial.suggest_int(
-            "stride", low=params["stride_train"]["low"], high=intervallength, step=params["intervallength"]["step"])
+            "stride", low=data_params["stride_train"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
         stride_eval = trial.suggest_int(
-            "stride_eval", low=params["stride_eval"]["low"], high=intervallength, step=params["intervallength"]["step"])
-        fps = trial.suggest_categorical("fps", params["fps"])
+            "stride_eval", low=data_params["stride_eval"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
+        fps = trial.suggest_categorical("fps", data_params["fps"])
 
         # model params
         max_dilations_per_kernel = trial.suggest_int(
-            "max_dilations_per_kernel", low=params["max_dilations_per_kernel"]["low"], high=params["max_dilations_per_kernel"]["high"], step=params["max_dilations_per_kernel"]["step"])
+            "max_dilations_per_kernel", low=model_params["max_dilations_per_kernel"]["low"], high=model_params["max_dilations_per_kernel"]["high"], step=model_params["max_dilations_per_kernel"]["step"])
         n_estimators = trial.suggest_int(
-            "n_estimators", low=params["n_estimators"]["low"], high=params["n_estimators"]["high"], step=params["n_estimators"]["step"])
+            "n_estimators", low=model_params["n_estimators"]["low"], high=model_params["n_estimators"]["high"], step=model_params["n_estimators"]["step"])
         class_weight = trial.suggest_categorical(
-            "class_weight", ["balanced", None])
+            "class_weight", [None])  # ["balanced", None])
+        label_creation = trial.suggest_categorical(
+            "label_creation", ["stride"])  # TODO add "full"
 
         # get timeseries format
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS = self.data.get_timeseries_format(
-            intervallength=intervallength, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps)
+            intervallength=intervallength, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
 
         train_Y_TS_task = train_Y_TS[:, self.task]
 
@@ -129,12 +134,37 @@ class TS_Model_Trainer:
         # print(confusion_matrix(val_Y_TS_task, test_preds))
         # print("New Eval")
 
-        # expand test_preds to full length based on intervallength, i.e., each prediction is repeated intervallength times
-        # test_preds = np.repeat(test_preds, intervallength)
-        # print(test_preds, len(test_preds))
         eval_scores = self.evaluate_model(
             preds=test_preds, dataset="val", verbose=True)
         return eval_scores["accuracy"], eval_scores["macro f1"]
+
+    def optuna_objective_tst(self, trial: optuna.Trial):
+        '''Optuna objective function for TST model. Optimizes for accuracy and macro f1 score.'''
+        # parameters being optimized
+        # data params
+        data_params = self.config["data_params"]
+        model_params = self.config["model_params"]
+        intervallength = trial.suggest_int(
+            "intervallength", low=data_params["intervallength"]["low"], high=data_params["intervallength"]["high"], step=data_params["intervallength"]["step"])
+        # stride must be leq than intervallength
+        stride_train = trial.suggest_int(
+            "stride", low=data_params["stride_train"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
+        stride_eval = trial.suggest_int(
+            "stride_eval", low=data_params["stride_eval"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
+        fps = trial.suggest_categorical("fps", data_params["fps"])
+
+        # get timeseries format
+        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS = self.data.get_timeseries_format(
+            intervallength=intervallength, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
+
+        train_Y_TS_task = train_Y_TS[:, self.task]
+
+        # TODO:
+        # splits =
+        # dsets = TSDatasets()
+        # dls = TSDataLoaders.from_numpy(
+        # model=TST(dls.vars, dls.c, dls.len, dropout=0.3, fc_dropout=0.9)
+        # learn=ts_learner(dls, model, metrics=[
 
     def optuna_study(self, n_trials, model_type, study_name, verbose=False):
         """Performs an Optuna study to optimize the hyperparameters of the model."""
@@ -217,7 +247,7 @@ if __name__ == '__main__':
     else:
         n_jobs = -1
         pathprefix = "HRI-Error-Detection-STAI/"
-        config_name = "config.json"
+        config_name = "config_minirocket.json"
     print("n_jobs:", n_jobs)
 
     trainer = TS_Model_Trainer(pathprefix+"data/", task=2, n_jobs=n_jobs)

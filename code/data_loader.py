@@ -282,13 +282,16 @@ class DataLoader_HRI:
 
         return merged_df.reset_index()
 
-    def get_timeseries_format(self, intervallength, stride_train, stride_eval, fps=100, verbose=False):
+    def get_timeseries_format(self, intervallength, stride_train, stride_eval, fps=100, verbose=False, label_creation="full"):
         """
         Convert the data to timeseries form. Split the data from the dfs into intervals of length intervallength with stride stride.
         Split takes place of adjacent frames of the same session.
         :param intervallength: The length of the intervals
         :param stride_train: The stride for the training data (oversampling technique)
         :param stride_eval: The stride for the evaluation data (eval update frequency)
+        :param fps: The desired fps of the data. Original is 100 fps
+        :param verbose: Print debug information
+        :param eval: Either 'full' or 'stride'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
         :return: The data in timeseries format
         """
 
@@ -297,6 +300,10 @@ class DataLoader_HRI:
         val_X_TS_list = []
         train_Y_TS = []
         train_X_TS = []
+
+        if label_creation not in ['full', 'stride']:
+            raise ValueError(
+                "label_creation must be one of 'full' or 'stride'")
 
         # Split the data into intervals, if the session changes, start a new interval
         for session in self.train_X['session'].unique():
@@ -318,11 +325,13 @@ class DataLoader_HRI:
                 # get the 3 majority labels for the interval so it fits the shape
                 majority_labels = []
                 for label in labels:
-                    majority_labels.append(np.argmax(np.bincount(label)))
-                # print(interval.shape, labels.shape, majority_labels)
-                # print(interval)
-                # print("labels: ", labels)
-                # print("majority_labels: ", majority_labels)
+                    if label_creation == "full":
+                        # get the majority label for the whole interval
+                        majority_labels.append(np.argmax(np.bincount(label)))
+                    elif label_creation == "stride":
+                        # get the majority label just for the last stride elements of the interval
+                        majority_labels.append(
+                            np.argmax(np.bincount(label[-stride_train:])))  # TODO should i consider stride_eval here?
                 train_X_TS.append(interval)
                 train_Y_TS.append(majority_labels)
 
