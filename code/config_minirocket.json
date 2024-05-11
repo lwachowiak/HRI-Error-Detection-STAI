@@ -1,24 +1,24 @@
 {
     "task": 2,
     "model_type": "MiniRocket",
-    "n_trials": 100,
+    "n_trials": 150,
     "data_params": {
         "intervallength": {
-            "low": 300,
-            "high": 800,
+            "low": 400,
+            "high": 1000,
             "step": 100
         },
         "stride_train": {
-            "low": 200,
+            "low": 100,
             "step": 50
         },
         "stride_eval": {
-            "low": 200,
+            "low": 100,
             "step": 50
         },
         "fps": [
-            5,
             10,
+            20,
             25,
             50
         ],
@@ -29,7 +29,7 @@
     },
     "model_params": {
         "max_dilations_per_kernel": {
-            "low": 4,
+            "low": 8,
             "high": 256,
             "step": 32
         },

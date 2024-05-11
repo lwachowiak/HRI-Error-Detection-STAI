@@ -97,7 +97,7 @@ class TS_Model_Trainer:
             "intervallength", low=data_params["intervallength"]["low"], high=data_params["intervallength"]["high"], step=data_params["intervallength"]["step"])
         # stride must be leq than intervallength
         stride_train = trial.suggest_int(
-            "stride", low=data_params["stride_train"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
+            "stride_train", low=data_params["stride_train"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
         stride_eval = trial.suggest_int(
             "stride_eval", low=data_params["stride_eval"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
         fps = trial.suggest_categorical("fps", data_params["fps"])
@@ -158,7 +158,7 @@ class TS_Model_Trainer:
             "intervallength", low=data_params["intervallength"]["low"], high=data_params["intervallength"]["high"], step=data_params["intervallength"]["step"])
         # stride must be leq than intervallength
         stride_train = trial.suggest_int(
-            "stride", low=data_params["stride_train"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
+            "stride_train", low=data_params["stride_train"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
         stride_eval = trial.suggest_int(
             "stride_eval", low=data_params["stride_eval"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
         fps = trial.suggest_categorical("fps", data_params["fps"])
