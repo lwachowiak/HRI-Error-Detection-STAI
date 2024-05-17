@@ -1,4 +1,4 @@
-from xgboost import XGBRFClassifier
+from xgboost import XGBClassifier
 from data_loader import DataLoader_HRI as DL
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 import optuna
@@ -22,14 +22,16 @@ class XGBTrainer:
         self.Y_train = self.Y_train[:, self.task]
 
     def train(self, model_params: dict):
-        self.model = XGBRFClassifier(**model_params)
+        self.model = XGBClassifier(**model_params)
         self.model.fit(self.X_train, self.Y_train)
 
     def objective(self, trial: optuna.Trial):
         model_params = {
             'n_estimators': trial.suggest_int('n_estimators', 10, 500),
-            'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3),
             'max_depth': trial.suggest_int('max_depth', 5, 50),
+            'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3),
+            'booster': trial.suggest_categorical('booster', ['gbtree', 'gblinear', 'dart']),
+            'n_jobs': 6,
         }
         
         self.train(model_params)
