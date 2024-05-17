@@ -18,7 +18,7 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 # - just train with some columns / column selection / feature importance
 # - investigate effect of label_creation parameter
 # Models:
-#   - try different models: TST, HydraMultiRocketPlus, RandomForrest, XGBoost
+#   - try different models: TST, HydraMultiRocketPlus, RandomForest, XGBoost
 #   - Try annotation/outlier processing: https://www.sktime.net/en/stable/api_reference/annotation.html
 #   - Try prediction/forcasting --> unlikely sequence --> outlier --> label 1
 

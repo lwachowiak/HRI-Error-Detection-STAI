@@ -8,17 +8,17 @@ import math
 # - Improve: downsampling
 # - Add: data augmentation (TSAI has methods for that)
 # - what to do with NANs?
-# - IMPORTANT check how X data is loaded an aligned. it does not seem to work correctly on the last view rows
-
+# - IMPORTANT check how X data is loaded and aligned. it does not seem to work correctly on the last view rows
 
 class DataLoader_HRI:
     """
     Class for loading data from the data folder
     """
 
-    def __init__(self, data_dir="data/", verbose=False, sampling="Upsample"):
+    def __init__(self, data_dir: str="data/", verbose: bool=False):
 
         self.data_dir = data_dir
+        self.verbose = verbose
         self.val_X = []
         self.val_Y = []
         self.train_Y = []
@@ -43,7 +43,7 @@ class DataLoader_HRI:
             df.insert(1, 'session', int(filename.split('_')[0]))
 
         # print the head of the first three dataframes
-        if verbose:
+        if self.verbose:
             print(openface_data[0][0])
             print("\nOpenface data:")
             print(openface_data[0][1].head(3))
@@ -87,7 +87,7 @@ class DataLoader_HRI:
         print("\n\nNumber of rows in merged dataframes: Train_X:", len(
             self.train_X), "Train_Y:", len(self.train_Y), "Val_X:", len(self.val_X), "Val_Y:", len(self.val_Y))
 
-        if verbose:
+        if self.verbose:
             print("\nMerged data head:")
             print(self.train_X.head())
             print(self.val_X.head())
@@ -103,25 +103,45 @@ class DataLoader_HRI:
         self.train_Y.columns = self.train_Y.columns.str.strip()
         self.val_Y.columns = self.val_Y.columns.str.strip()
 
-        # for X drop columns with names: 'person_id_openpose', 'week_id_openpose', 'robot_group_openpose', 'end_opensmile', 'start_opensmile'
-        columns_to_drop = ['person_id_openpose', 'week_id_openpose', 'timestamp_openface',
-                           'robot_group_openpose', 'end_opensmile', 'start_opensmile',
-                           'vel_1_x_openpose', 'vel_1_y_openpose', 'vel_8_x_openpose', 'vel_8_y_openpose', 'dist_1_8_openpose', 'vel_dist_1_8_openpose', 'dist_7_0_openpose', 'dist_4_0_openpose', 'vel_7_x_openpose', 'vel_7_y_openpose', 'vel_4_x_openpose', 'vel_4_y_openpose', 'vel_dist_7_0_openpose', 'vel_dist_4_0_openpose',
+        # for X drop columns with names: 'person_id_openpose', 'week_id_openpose', 'robot_group_openpose', 'end_opensmile', 'start_opensmile' PT: week_id_openpose passes its presence check but fails the drop function, implying it's not in the dataframe
+        columns_to_drop = ['person_id_openpose',
+                            #'week_id_openpose', 
+                            'timestamp_openface',
+                            'robot_group_openpose',
+                            'end_opensmile', 
+                            'start_opensmile',
+                            'vel_1_x_openpose',
+                            'vel_1_y_openpose', 
+                            'vel_8_x_openpose', 
+                            'vel_8_y_openpose', 
+                            'dist_1_8_openpose', 
+                            'vel_dist_1_8_openpose', 
+                            'dist_7_0_openpose', 
+                            'dist_4_0_openpose', 
+                            'vel_7_x_openpose', 
+                            'vel_7_y_openpose', 
+                            'vel_4_x_openpose', 
+                            'vel_4_y_openpose', 
+                            'vel_dist_7_0_openpose', 
+                            'vel_dist_4_0_openpose',
                            ]
         self.exclude_columns(columns_to_drop)
 
     @staticmethod
-    def extract_file_number(filename):
+    def extract_file_number(filename: str) -> int:
         '''extract the number from the filename, e.g. 1 from 1_train.csv'''
         match = re.search(r'\d+', filename)
         return int(match.group()) if match else None
 
-    def load_data(self, data_dir):
+    def load_data(self, data_dir: str) -> list:
         '''
         load the data from the data_dir into a list of dataframes
+        param data_dir: the directory where the data is stored
+        return: a list of tuples with the filename and the dataframe
         '''
         data_frames = []
-        print(sorted(os.listdir(data_dir), key=self.extract_file_number))
+        print(sorted(os.listdir(data_dir), key=self.extract_file_number)) if self.verbose else None
+
         for filename in sorted(os.listdir(data_dir), key=self.extract_file_number):
             if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
                 df = pd.read_csv(os.path.join(data_dir, filename))
@@ -129,7 +149,7 @@ class DataLoader_HRI:
                 data_frames.append((filename, df))
         return data_frames
 
-    def load_labels(self, data_dir, expand, rows_per_second=100):
+    def load_labels(self, data_dir: str, expand: bool, rows_per_second: int=100) -> list:
         '''
         load the labels from the data_dir into a list of dataframes
         '''
@@ -280,6 +300,50 @@ class DataLoader_HRI:
 
         return merged_df.reset_index()
 
+    def get_summary_format(self, interval_length, stride_train, stride_eval, fps=100, label_creation="full", summary = 'mean'):
+        """
+        Convert the data to summary form. Split the data from the dfs into intervals of length interval_length with stride stride.
+        Split takes place of adjacent frames of the same session.
+        :param interval_length: The length of the intervals
+        :param stride_train: The stride for the training data (oversampling technique)
+        :param stride_eval: The stride for the evaluation data (eval update frequency)
+        :param fps: The desired fps of the data. Original is 100 fps
+        :param verbose: Print debug information
+        :param eval: Either 'full' or 'stride'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
+        :return: The data in summary format
+        """
+
+        val_X_TS, val_Y_summary_list, train_X_TS, train_Y_summary = self.get_timeseries_format(
+            interval_length, stride_train, stride_eval, fps, label_creation)
+        
+        if summary not in ['mean', 'max', 'min', 'median']:
+            raise ValueError("Summary must be one of 'mean', 'max', 'min', 'median'")
+        
+        elif summary == 'mean':
+            # squash the timeseries data into one row
+            train_X_summary = np.mean(train_X_TS, axis=2)
+            val_X_summary_list = [np.mean(val_X_TS[i], axis=2) for i in range(len(val_X_TS))]
+        
+        elif summary == 'max':
+            train_X_summary = np.max(train_X_TS, axis=2)
+            val_X_summary_list = [np.max(val_X_TS[i], axis=2) for i in range(len(val_X_TS))]
+
+        elif summary == 'min':
+            train_X_summary = np.min(train_X_TS, axis=2)
+            val_X_summary_list = [np.min(val_X_TS[i], axis=2) for i in range(len(val_X_TS))]
+
+        elif summary == 'median':
+            train_X_summary = np.median(train_X_TS, axis=2)
+            val_X_summary_list = [np.median(val_X_TS[i], axis=2) for i in range(len(val_X_TS))]
+
+        #replace NaNs with 0
+        train_X_summary = np.nan_to_num(train_X_summary)
+        for i in range(len(val_X_summary_list)):
+            val_X_summary_list[i] = np.nan_to_num(val_X_summary_list[i])
+        
+
+        return val_X_summary_list, val_Y_summary_list, train_X_summary, train_Y_summary
+        
     def get_timeseries_format(self, intervallength, stride_train, stride_eval, fps=100, verbose=False, label_creation="full"):
         """
         Convert the data to timeseries form. Split the data from the dfs into intervals of length intervallength with stride stride.
@@ -391,11 +455,15 @@ class DataLoader_HRI:
             new_interval.append(new_feature)
         return new_interval
 
-    def exclude_columns(self, columns):
+    def exclude_columns(self, columns: list):
         """
         Exclude columns from the data
         :param columns: The columns to exclude
         """
+        for col in columns:
+            if col not in self.train_X.columns:
+                print("Column", col, "not found in the data")
+                columns.remove(col)
         self.train_X = self.train_X.drop(columns=columns, axis=1)
         self.val_X = self.val_X.drop(columns=columns, axis=1)
 
@@ -415,9 +483,24 @@ class DataLoader_HRI:
 if __name__ == "__main__":
     data_loader = DataLoader_HRI(verbose=True)
     print("\n\n\nData Loaded")
-    print(data_loader.train_X.head(20))
-    print(data_loader.train_Y.head(110))
-    print(len(data_loader.train_X), len(data_loader.train_Y))
+    #print(data_loader.train_X.head(20))
+    #print(data_loader.train_Y.head(110))
+    #print(len(data_loader.train_X), len(data_loader.train_Y))
 
-    # for i in range(100):
-    #    print(int(i // (100 / 30)) + 1)
+
+    val_X_ts, val_Y_ts, train_X_ts, train_Y_ts = data_loader.get_timeseries_format(
+        intervallength=100, stride_train=100, stride_eval=100, fps=100, label_creation="full")
+    print("TS")
+    print(len(val_X_ts), len(val_Y_ts), len(train_X_ts), len(train_Y_ts))
+    print(train_X_ts.shape, train_Y_ts.shape)
+
+    X_val,Y_val,X_train,Y_train = data_loader.get_summary_format(interval_length=100, stride_train=100, stride_eval=100, fps=100, label_creation="full", summary='mean')
+
+    print("X")
+    print(len(X_val), len(Y_val), len(X_train), len(Y_train))
+    print(X_train.shape, Y_train.shape)
+
+    print(X_val[0].shape)
+    print(Y_val[0].shape)
+    print(X_val[0])
+
