@@ -61,7 +61,7 @@ class TS_Model_Trainer:
                     self.data.val_Y[self.data.val_Y['session'] == session_id])-len(preds[i])
                 preds[i] = np.append(preds[i], [0]*(to_append))
                 if verbose:
-                    print("Appended,", to_append,
+                    print("Appended", to_append,
                           "0s to preds for session", session_id, "resulting in", len(preds[i]), "predictions")
             if (len(preds[i]) != len(self.data.val_Y[self.data.val_Y['session'] == session_id])):
                 print("ERROR: Length of preds and val_Y do not match for session", session_id,

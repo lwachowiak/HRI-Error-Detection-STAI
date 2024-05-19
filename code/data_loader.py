@@ -10,12 +10,13 @@ import math
 # - what to do with NANs?
 # - IMPORTANT check how X data is loaded and aligned. it does not seem to work correctly on the last view rows
 
+
 class DataLoader_HRI:
     """
     Class for loading data from the data folder
     """
 
-    def __init__(self, data_dir: str="data/", verbose: bool=False):
+    def __init__(self, data_dir: str = "data/", verbose: bool = False):
 
         self.data_dir = data_dir
         self.verbose = verbose
@@ -105,25 +106,25 @@ class DataLoader_HRI:
 
         # for X drop columns with names: 'person_id_openpose', 'week_id_openpose', 'robot_group_openpose', 'end_opensmile', 'start_opensmile' PT: week_id_openpose passes its presence check but fails the drop function, implying it's not in the dataframe
         columns_to_drop = ['person_id_openpose',
-                            #'week_id_openpose', 
-                            'timestamp_openface',
-                            'robot_group_openpose',
-                            'end_opensmile', 
-                            'start_opensmile',
-                            'vel_1_x_openpose',
-                            'vel_1_y_openpose', 
-                            'vel_8_x_openpose', 
-                            'vel_8_y_openpose', 
-                            'dist_1_8_openpose', 
-                            'vel_dist_1_8_openpose', 
-                            'dist_7_0_openpose', 
-                            'dist_4_0_openpose', 
-                            'vel_7_x_openpose', 
-                            'vel_7_y_openpose', 
-                            'vel_4_x_openpose', 
-                            'vel_4_y_openpose', 
-                            'vel_dist_7_0_openpose', 
-                            'vel_dist_4_0_openpose',
+                           # 'week_id_openpose',
+                           'timestamp_openface',
+                           'robot_group_openpose',
+                           'end_opensmile',
+                           'start_opensmile',
+                           'vel_1_x_openpose',
+                           'vel_1_y_openpose',
+                           'vel_8_x_openpose',
+                           'vel_8_y_openpose',
+                           'dist_1_8_openpose',
+                           'vel_dist_1_8_openpose',
+                           'dist_7_0_openpose',
+                           'dist_4_0_openpose',
+                           'vel_7_x_openpose',
+                           'vel_7_y_openpose',
+                           'vel_4_x_openpose',
+                           'vel_4_y_openpose',
+                           'vel_dist_7_0_openpose',
+                           'vel_dist_4_0_openpose',
                            ]
         self.exclude_columns(columns_to_drop)
 
@@ -140,16 +141,20 @@ class DataLoader_HRI:
         return: a list of tuples with the filename and the dataframe
         '''
         data_frames = []
-        print(sorted(os.listdir(data_dir), key=self.extract_file_number)) if self.verbose else None
+        print(sorted(os.listdir(data_dir), key=self.extract_file_number)
+              ) if self.verbose else None
 
         for filename in sorted(os.listdir(data_dir), key=self.extract_file_number):
             if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
                 df = pd.read_csv(os.path.join(data_dir, filename))
+                # if column with name "file" exists, remove it
+                if 'file' in df.columns:    # TODO remove once the data is actually cleaned
+                    df.drop(columns=['file'], inplace=True)
                 # add session number and df
                 data_frames.append((filename, df))
         return data_frames
 
-    def load_labels(self, data_dir: str, expand: bool, rows_per_second: int=100) -> list:
+    def load_labels(self, data_dir: str, expand: bool, rows_per_second: int = 100) -> list:
         '''
         load the labels from the data_dir into a list of dataframes
         '''
@@ -300,7 +305,7 @@ class DataLoader_HRI:
 
         return merged_df.reset_index()
 
-    def get_summary_format(self, interval_length, stride_train, stride_eval, fps=100, label_creation="full", summary = 'mean'):
+    def get_summary_format(self, interval_length, stride_train, stride_eval, fps=100, label_creation="full", summary='mean'):
         """
         Convert the data to summary form. Split the data from the dfs into intervals of length interval_length with stride stride.
         Split takes place of adjacent frames of the same session.
@@ -315,35 +320,39 @@ class DataLoader_HRI:
 
         val_X_TS, val_Y_summary_list, train_X_TS, train_Y_summary = self.get_timeseries_format(
             interval_length, stride_train, stride_eval, fps, label_creation)
-        
+
         if summary not in ['mean', 'max', 'min', 'median']:
-            raise ValueError("Summary must be one of 'mean', 'max', 'min', 'median'")
-        
+            raise ValueError(
+                "Summary must be one of 'mean', 'max', 'min', 'median'")
+
         elif summary == 'mean':
             # squash the timeseries data into one row
             train_X_summary = np.mean(train_X_TS, axis=2)
-            val_X_summary_list = [np.mean(val_X_TS[i], axis=2) for i in range(len(val_X_TS))]
-        
+            val_X_summary_list = [np.mean(val_X_TS[i], axis=2)
+                                  for i in range(len(val_X_TS))]
+
         elif summary == 'max':
             train_X_summary = np.max(train_X_TS, axis=2)
-            val_X_summary_list = [np.max(val_X_TS[i], axis=2) for i in range(len(val_X_TS))]
+            val_X_summary_list = [np.max(val_X_TS[i], axis=2)
+                                  for i in range(len(val_X_TS))]
 
         elif summary == 'min':
             train_X_summary = np.min(train_X_TS, axis=2)
-            val_X_summary_list = [np.min(val_X_TS[i], axis=2) for i in range(len(val_X_TS))]
+            val_X_summary_list = [np.min(val_X_TS[i], axis=2)
+                                  for i in range(len(val_X_TS))]
 
         elif summary == 'median':
             train_X_summary = np.median(train_X_TS, axis=2)
-            val_X_summary_list = [np.median(val_X_TS[i], axis=2) for i in range(len(val_X_TS))]
+            val_X_summary_list = [
+                np.median(val_X_TS[i], axis=2) for i in range(len(val_X_TS))]
 
-        #replace NaNs with 0
+        # replace NaNs with 0
         train_X_summary = np.nan_to_num(train_X_summary)
         for i in range(len(val_X_summary_list)):
             val_X_summary_list[i] = np.nan_to_num(val_X_summary_list[i])
-        
 
         return val_X_summary_list, val_Y_summary_list, train_X_summary, train_Y_summary
-        
+
     def get_timeseries_format(self, intervallength, stride_train, stride_eval, fps=100, verbose=False, label_creation="full"):
         """
         Convert the data to timeseries form. Split the data from the dfs into intervals of length intervallength with stride stride.
@@ -436,6 +445,9 @@ class DataLoader_HRI:
         '''
         Resample the interval to the desired fps. Original framerate is 100 fps'''
 
+        # print("Resampling interval to", fps, "fps")
+        # print(interval)
+
         # resample the interval to the desired fps
         if style not in ['mean', 'max', 'min']:
             raise ValueError("Style must be one of 'mean', 'max', 'min'")
@@ -461,11 +473,23 @@ class DataLoader_HRI:
         :param columns: The columns to exclude
         """
         for col in columns:
-            if col not in self.train_X.columns:
-                print("Column", col, "not found in the data")
-                columns.remove(col)
-        self.train_X = self.train_X.drop(columns=columns, axis=1)
-        self.val_X = self.val_X.drop(columns=columns, axis=1)
+            try:
+                self.train_X = self.train_X.drop(columns=col, axis=1)
+            except:
+                print("Error excluding train column with name", col)
+            try:
+                self.val_X = self.val_X.drop(columns=col, axis=1)
+            except:
+                print("Error excluding val column with name", col)
+
+       #     if col not in self.train_X.columns:
+       #         print("Column", col, "not found in the data")
+       #         columns.remove(col)
+       # try:
+       #     self.train_X = self.train_X.drop(columns=columns, axis=1)
+       #     self.val_X = self.val_X.drop(columns=columns, axis=1)
+       # except:
+       #     print("Error excluding columns with names", columns)
 
     def limit_to_sessions(self, sessions_train, sessions_val):
         """
@@ -483,10 +507,9 @@ class DataLoader_HRI:
 if __name__ == "__main__":
     data_loader = DataLoader_HRI(verbose=True)
     print("\n\n\nData Loaded")
-    #print(data_loader.train_X.head(20))
-    #print(data_loader.train_Y.head(110))
-    #print(len(data_loader.train_X), len(data_loader.train_Y))
-
+    # print(data_loader.train_X.head(20))
+    # print(data_loader.train_Y.head(110))
+    # print(len(data_loader.train_X), len(data_loader.train_Y))
 
     val_X_ts, val_Y_ts, train_X_ts, train_Y_ts = data_loader.get_timeseries_format(
         intervallength=100, stride_train=100, stride_eval=100, fps=100, label_creation="full")
@@ -494,7 +517,8 @@ if __name__ == "__main__":
     print(len(val_X_ts), len(val_Y_ts), len(train_X_ts), len(train_Y_ts))
     print(train_X_ts.shape, train_Y_ts.shape)
 
-    X_val,Y_val,X_train,Y_train = data_loader.get_summary_format(interval_length=100, stride_train=100, stride_eval=100, fps=100, label_creation="full", summary='mean')
+    X_val, Y_val, X_train, Y_train = data_loader.get_summary_format(
+        interval_length=100, stride_train=100, stride_eval=100, fps=100, label_creation="full", summary='mean')
 
     print("X")
     print(len(X_val), len(Y_val), len(X_train), len(Y_train))
@@ -503,4 +527,3 @@ if __name__ == "__main__":
     print(X_val[0].shape)
     print(Y_val[0].shape)
     print(X_val[0])
-
