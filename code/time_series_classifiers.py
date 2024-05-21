@@ -13,6 +13,7 @@ import datetime
 import platform
 import numpy as np
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from get_metrics import get_metrics
 
 # TODO:
 # - just train with some columns / column selection / feature importance
@@ -43,7 +44,7 @@ class TS_Model_Trainer:
         }
         self.config = None
 
-    def evaluate_model(self, preds, dataset="val", verbose=False):
+    def evaluate_model(self, preds, dataset="val", verbose=False) -> dict:
         '''Evaluate model on self.data.val_X and self.data.val_Y. The final missing values in preds are filled with 0s.
         :param preds: List of predictions per session. Per session there is one list of prediction labels.
         :param dataset: The dataset to evaluate on (val or test)
@@ -178,7 +179,7 @@ class TS_Model_Trainer:
         # model=TST(dls.vars, dls.c, dls.len, dropout=0.3, fc_dropout=0.9)
         # learn=ts_learner(dls, model, metrics=[
 
-    def optuna_study(self, n_trials, model_type, study_name, verbose=False):
+    def optuna_study(self, n_trials, model_type, study_name, verbose=False) -> optuna.study.Study:
         """Performs an Optuna study to optimize the hyperparameters of the model.
         :param n_trials: The number of search trials to perform.
         :param model_type: The type of model to optimize (MiniRocket, TST).

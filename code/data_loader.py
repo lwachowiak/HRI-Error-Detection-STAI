@@ -28,7 +28,11 @@ class DataLoader_HRI:
         openface_data = self.load_data(data_dir+'openface/')
         openpose_data = self.load_data(data_dir+'openpose/')
         opensmile_data = self.load_data(data_dir+'opensmile/')
+        speaker_data = self.load_data(data_dir+'speaker_diarization/')
         label_data = self.load_labels(data_dir+'labels/', expand=True)
+
+        # for filename, df in speaker_data:
+        #   print(filename, len(df))
 
         # align datastructures
         for filename, df in openpose_data:
@@ -43,6 +47,10 @@ class DataLoader_HRI:
             # add column with session number
             df.insert(1, 'session', int(filename.split('_')[0]))
 
+        speaker_data = self.process_speaker_data(speaker_data, label_data)
+        for filename, df in speaker_data:
+            df["frame"] = (df.index // (100 / 30)).astype(int)+1
+
         # print the head of the first three dataframes
         if self.verbose:
             print(openface_data[0][0])
@@ -53,8 +61,11 @@ class DataLoader_HRI:
             print(openpose_data[0][1].head(3))
             print(len(openpose_data[0][1]))
             print("\nOpensmile data:")
-            print(opensmile_data[0][1].head(3))
+            print(opensmile_data[0][1].head(5))
             print(len(opensmile_data[0][1]))
+            print("\nSpeaker data:")
+            print(speaker_data[0][1].head(5))
+            print(len(speaker_data[0][1]))
             print("\nLabel data:")
             print(label_data[0][1].head(3))
             print(len(label_data[0][1]))
@@ -62,7 +73,7 @@ class DataLoader_HRI:
         # merge data and add to train_X and val_X
         for filename, _ in openface_data:
             merged_df = self.merge_X_data(
-                openface_data, openpose_data, opensmile_data, filename)
+                openface_data, openpose_data, opensmile_data, speaker_data, filename)
             if filename.endswith("_train.csv"):
                 self.train_X.append(merged_df)
             elif filename.endswith("_val.csv"):
@@ -88,16 +99,7 @@ class DataLoader_HRI:
         print("\n\nNumber of rows in merged dataframes: Train_X:", len(
             self.train_X), "Train_Y:", len(self.train_Y), "Val_X:", len(self.val_X), "Val_Y:", len(self.val_Y))
 
-        if self.verbose:
-            print("\nMerged data head:")
-            print(self.train_X.head())
-            print(self.val_X.head())
-            print("\nMerged data tail:")
-            print(self.train_X.tail())
-            print(self.val_X.tail())
-
         # COLUMN CLEANUP
-
         # remove trailing whitespace from column names
         self.train_X.columns = self.train_X.columns.str.strip()
         self.val_X.columns = self.val_X.columns.str.strip()
@@ -125,8 +127,18 @@ class DataLoader_HRI:
                            'vel_4_y_openpose',
                            'vel_dist_7_0_openpose',
                            'vel_dist_4_0_openpose',
+                           'Unnamed: 0_opensmile',
+                           'index'
                            ]
         self.exclude_columns(columns_to_drop)
+
+        if self.verbose:
+            print("\nMerged data head:")
+            print(self.train_X.head())
+            print(self.val_X.head())
+            print("\nMerged data tail:")
+            print(self.train_X.tail())
+            print(self.val_X.tail())
 
     @staticmethod
     def extract_file_number(filename: str) -> int:
@@ -148,10 +160,43 @@ class DataLoader_HRI:
             if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
                 df = pd.read_csv(os.path.join(data_dir, filename))
                 # if column with name "file" exists, remove it
-                if 'file' in df.columns:    # TODO remove once the data is actually cleaned
-                    df.drop(columns=['file'], inplace=True)
+                # if 'file' in df.columns:    # TODO remove once the data is actually cleaned
+                #    df.drop(columns=['file'], inplace=True)
                 # add session number and df
                 data_frames.append((filename, df))
+        return data_frames
+
+    def process_speaker_data(self, speaker_data: list, label_data: list, rows_per_second=100) -> list:
+        '''
+        similar to the labels, the speaker data is originally not presented frame by frame but as time intervals
+        '''
+        i = 0
+        data_frames = []
+        for filename, df in speaker_data:
+            label_df = label_data[i][1]
+            i += 1
+            frames_count = len(label_df)
+            # print(frames_count)
+            # TODO: this encoding becomes bad with averaging
+            speaker_match = {"robot": 2, "participant": 1, "pause": 0}
+            new_data = []
+            # initialize the data with speech pauses
+            for f in range(1, frames_count+1):
+                new_data.append({
+                    "frame": f,
+                    "Speaker": speaker_match["pause"]
+                })
+            # fill in the speaker when appropriate
+            for _, row in df.iterrows():
+                begin_time = row['start_turn']
+                end_time = row['end_turn']
+                begin_frame = math.ceil(begin_time * rows_per_second)
+                end_frame = math.ceil(end_time * rows_per_second)
+                speaker = row['speaker']
+                for j in range(begin_frame, end_frame):
+                    new_data[j]["Speaker"] = speaker_match[speaker]
+            df = pd.DataFrame(new_data)
+            data_frames.append((filename, df))
         return data_frames
 
     def load_labels(self, data_dir: str, expand: bool, rows_per_second: int = 100) -> list:
@@ -167,12 +212,11 @@ class DataLoader_HRI:
                 if expand:
                     # create list of right length all 0s
                     # then iterate over the rows and set the right value to 1 in the corresponding rows
-                    frame_counter = 1
                     final_end_time = df['End Time - ss.msec'].iloc[-1]
                     labels_needed = math.ceil(final_end_time * rows_per_second)
                     # 3 labels for labels_needed rows
                     new_data = []
-                    for i in range(labels_needed):
+                    for i in range(1, labels_needed+1):
                         new_data.append({
                             "frame": i,
                             "Duration - ss.msec": 1 / rows_per_second,
@@ -206,7 +250,7 @@ class DataLoader_HRI:
                             #    "RobotMistake": int(robot_mistake),
                             #    "InteractionRupture": int(interaction_rupture)
                             # }
-                            frame_counter += 1
+                            # frame_counter += 1
 
                     # for i in range(labels_needed):
                     #     current_time = i / rows_per_second
@@ -233,51 +277,7 @@ class DataLoader_HRI:
                 data_frames.append((filename, df))
         return data_frames
 
-    # TODO remove
-    def load_labels_old(self, data_dir, expand, rows_per_second=100):
-        '''
-        load the labels from the data_dir into a list of dataframes
-        '''
-        data_frames = []
-        for filename in sorted(os.listdir(data_dir), key=self.extract_file_number):
-            if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
-                df = pd.read_csv(os.path.join(data_dir, filename))
-                # print(filename, len(df))
-                # change being/end time to frame number, expanding one row to multiple rows based on the duration
-                if expand:
-                    new_data = []
-                    frame_counter = 1
-                    for _, row in df.iterrows():
-                        begin_time = row['Begin Time - ss.msec']
-                        end_time = row['End Time - ss.msec']
-                        total_intervals = math.ceil(
-                            (end_time - begin_time) * rows_per_second)  # this is the number of frames for the interval
-                        # print(filename, begin_time, end_time, total_intervals, _) # DEBUG, TODO
-
-                        # Generating new time intervals
-                        # Exclude the last point to avoid overlap
-                        # new_times = np.linspace(
-                        #    begin_time, end_time, total_intervals + 1)[:-1]
-                        # Creating new rows for each time interval
-                        for t in range(total_intervals):
-                            new_data.append({
-                                "frame": frame_counter,
-                                "Duration - ss.msec": 1 / rows_per_second,
-                                "Begin Time - ss.msec": begin_time + t / rows_per_second,
-                                "UserAwkwardness": int(row['UserAwkwardness']),
-                                "RobotMistake": int(row['RobotMistake']),
-                                "InteractionRupture": int(row['InteractionRupture'])
-                            })
-                            frame_counter += 1
-
-                    # Create DataFrame from the list of dictionaries
-                    df = pd.DataFrame(new_data)
-                    # print(len(df))
-                # add session number and df
-                data_frames.append((filename, df))
-        return data_frames
-
-    def merge_X_data(self, openface_data, openpose_data, opensmile_data, filename):
+    def merge_X_data(self, openface_data, openpose_data, opensmile_data, speaker_data, filename) -> pd.DataFrame:
         """
         For a specific session (filename), merge the data from the three dataframes.
         """
@@ -287,18 +287,43 @@ class DataLoader_HRI:
             df for fname, df in openpose_data if fname == filename)
         df_opensmile = next(
             df for fname, df in opensmile_data if fname == filename)
+        df_speaker = next(
+            df for fname, df in speaker_data if fname == filename)
 
         # Ensure all dataframes have 'frame' as the index
-        df_openface.set_index('frame', inplace=True)
-        df_openpose.set_index('frame', inplace=True)
-        df_opensmile.set_index('frame', inplace=True)
+        # df_openface.set_index('frame', inplace=True)
+        # df_openpose.set_index('frame', inplace=True)
+        # df_opensmile.set_index('frame', inplace=True)
+        # df_speaker.set_index('frame', inplace=True)
+
+        print(len(df_openface), len(df_openpose),
+              len(df_opensmile), len(df_speaker), filename)
 
         # Merge the dataframes
-        merged_df = df_openface.add_suffix('_openface').join(
-            df_openpose.add_suffix('_openpose'), how='outer'
-        ).join(
-            df_opensmile.add_suffix('_opensmile'), how='outer'
-        )
+        # merge df_speaker and df_opensmile based on index
+        merged_df = df_speaker.add_suffix("_speaker").join(
+            df_opensmile.add_suffix('_opensmile'), how='outer')
+        # merge with the rest based on the frame number
+        merged_df.set_index('frame_opensmile', inplace=True)
+        df_openpose.set_index('frame', inplace=True)
+        df_openface.set_index('frame', inplace=True)
+
+        merged_df = merged_df.join(df_openface.add_suffix('_openface'), how='outer').join(
+            df_openpose.add_suffix('_openpose'), how='outer')
+
+        #  drop multiple frame columns
+        columns_to_drop = ['frame_speaker', 'frame_id_openpose']
+        merged_df.drop(columns=columns_to_drop, inplace=True)
+
+        # merged_df = df_openface.add_suffix('_openface').join(
+        #    df_openpose.add_suffix('_openpose'), how='outer'
+        # ).join(
+        #    df_opensmile.add_suffix('_opensmile'), how='outer'
+        # ).join(
+        #    df_speaker.add_suffix('_speaker'), how='outer'
+        # )
+
+        print(len(merged_df), "after merge")
 
         # Add session number
         merged_df.insert(1, 'session', int(filename.split('_')[0]))
@@ -372,6 +397,8 @@ class DataLoader_HRI:
         train_Y_TS = []
         train_X_TS = []
 
+        cut_length = 10  # drop the last x rows to avoid NaNs TODO think about this
+
         if label_creation not in ['full', 'stride']:
             raise ValueError(
                 "label_creation must be one of 'full' or 'stride'")
@@ -381,10 +408,13 @@ class DataLoader_HRI:
             if verbose:
                 print("TS Processing for session: ", session)
             session_df = self.train_X[self.train_X['session'] == session]
+            # drop last 10 rows to avoid NaNs
+            if cut_length > 0:
+                session_df = session_df[:-cut_length]
             session_labels = self.train_Y[self.train_Y['session'] == session]
             for i in range(0, len(session_df), stride_train):
                 if i + intervallength > len(session_df):
-                    # TODO IMPLEMENT PADDING
+                    # TODO IMPLEMENT PADDING (right now padding is done in eval which might also be ok)
                     break
                 interval = session_df.iloc[i:i+intervallength].values.T
                 if fps < 100:
@@ -413,6 +443,9 @@ class DataLoader_HRI:
             if verbose:
                 print("TS Processing for session: ", session)
             session_df = self.val_X[self.val_X['session'] == session]
+            # drop last 10 rows to avoid NaNs
+            if cut_length > 0:
+                session_df = session_df[:-cut_length]
             session_labels = self.val_Y[self.val_Y['session'] == session]
             for i in range(0, len(session_df), stride_eval):  # this was intervallength before
                 if i + intervallength > len(session_df):
@@ -507,9 +540,6 @@ class DataLoader_HRI:
 if __name__ == "__main__":
     data_loader = DataLoader_HRI(verbose=True)
     print("\n\n\nData Loaded")
-    # print(data_loader.train_X.head(20))
-    # print(data_loader.train_Y.head(110))
-    # print(len(data_loader.train_X), len(data_loader.train_Y))
 
     val_X_ts, val_Y_ts, train_X_ts, train_Y_ts = data_loader.get_timeseries_format(
         intervallength=100, stride_train=100, stride_eval=100, fps=100, label_creation="full")
@@ -527,3 +557,47 @@ if __name__ == "__main__":
     print(X_val[0].shape)
     print(Y_val[0].shape)
     print(X_val[0])
+
+   # # TODO remove
+    # def load_labels_old(self, data_dir, expand, rows_per_second=100):
+    #     '''
+    #     load the labels from the data_dir into a list of dataframes
+    #     '''
+    #     data_frames = []
+    #     for filename in sorted(os.listdir(data_dir), key=self.extract_file_number):
+    #         if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
+    #             df = pd.read_csv(os.path.join(data_dir, filename))
+    #             # print(filename, len(df))
+    #             # change being/end time to frame number, expanding one row to multiple rows based on the duration
+    #             if expand:
+    #                 new_data = []
+    #                 frame_counter = 1
+    #                 for _, row in df.iterrows():
+    #                     begin_time = row['Begin Time - ss.msec']
+    #                     end_time = row['End Time - ss.msec']
+    #                     total_intervals = math.ceil(
+    #                         (end_time - begin_time) * rows_per_second)  # this is the number of frames for the interval
+    #                     # print(filename, begin_time, end_time, total_intervals, _) # DEBUG, TODO
+
+    #                     # Generating new time intervals
+    #                     # Exclude the last point to avoid overlap
+    #                     # new_times = np.linspace(
+    #                     #    begin_time, end_time, total_intervals + 1)[:-1]
+    #                     # Creating new rows for each time interval
+    #                     for t in range(total_intervals):
+    #                         new_data.append({
+    #                             "frame": frame_counter,
+    #                             "Duration - ss.msec": 1 / rows_per_second,
+    #                             "Begin Time - ss.msec": begin_time + t / rows_per_second,
+    #                             "UserAwkwardness": int(row['UserAwkwardness']),
+    #                             "RobotMistake": int(row['RobotMistake']),
+    #                             "InteractionRupture": int(row['InteractionRupture'])
+    #                         })
+    #                         frame_counter += 1
+
+    #                 # Create DataFrame from the list of dictionaries
+    #                 df = pd.DataFrame(new_data)
+    #                 # print(len(df))
+    #             # add session number and df
+    #             data_frames.append((filename, df))
+    #     return data_frames
