@@ -44,7 +44,29 @@ class TS_Model_Trainer:
         }
         self.config = None
 
-    def evaluate_model(self, preds, dataset="val", verbose=False) -> dict:
+    def get_full_test_preds(self, model, val_X_TS_list, intervallength, stride_eval):
+        '''Get full test predictions by repeating the predictions based on intervallength and stride_eval.
+        :param model: The model to evaluate.
+        :param val_X_TS_list: List of validation/test data per session.
+        :param intervallength: The length of the interval to predict.
+        :param stride_eval: The stride to evaluate the model.
+        '''
+        test_preds = []
+        for val_X_TS in val_X_TS_list:  # per session
+            pred = model.predict(val_X_TS)
+            # for each sample in the session, repeat the prediction based on intervallength and stride_eval
+            processed_preds = []
+            for i, pr in enumerate(pred):
+                if i == 0:
+                    # first prediction, so append it intervallength times
+                    processed_preds.extend([pr]*intervallength)
+                else:
+                    # all other predictions are appended stride_eval times
+                    processed_preds.extend([pr]*stride_eval)
+            test_preds.append(processed_preds)
+        return test_preds
+
+    def get_eval_metrics(self, preds, dataset="val", verbose=False) -> dict:
         '''Evaluate model on self.data.val_X and self.data.val_Y. The final missing values in preds are filled with 0s.
         :param preds: List of predictions per session. Per session there is one list of prediction labels.
         :param dataset: The dataset to evaluate on (val or test)
@@ -72,18 +94,20 @@ class TS_Model_Trainer:
         y_true = np.concatenate(y_true)
         print("Final preds length", len(preds), len(y_true))
 
-        eval_scores = {}
-        eval_scores["accuracy"] = accuracy_score(y_true=y_true, y_pred=preds)
-        eval_scores["macro f1"] = f1_score(
-            y_true=y_true, y_pred=preds, average='macro')
-        eval_scores["macro precision"] = precision_score(
-            y_true=y_true, y_pred=preds, average='macro')
-        eval_scores["macro recall"] = recall_score(
-            y_true=y_true, y_pred=preds, average='macro')
+        eval_scores = get_metrics(y_pred=preds, y_true=y_true, tolerance=50)
+        print(eval_scores)
+        # eval_scores = {}
+        # eval_scores["accuracy"] = accuracy_score(y_true=y_true, y_pred=preds)
+        # eval_scores["macro f1"] = f1_score(
+        #    y_true=y_true, y_pred=preds, average='macro')
+        # eval_scores["macro precision"] = precision_score(
+        #    y_true=y_true, y_pred=preds, average='macro')
+        # eval_scores["macro recall"] = recall_score(
+        #    y_true=y_true, y_pred=preds, average='macro')
 
         # print confusion matrix
         if verbose:
-            print(confusion_matrix(y_true, preds))
+            print(confusion_matrix(y_true, preds, normalize='all'))
             print(eval_scores)
 
         return eval_scores
@@ -135,19 +159,14 @@ class TS_Model_Trainer:
                     # all other predictions are appended stride_eval times
                     processed_preds.extend([pr]*stride_eval)
             test_preds.append(processed_preds)
+
             # TODO Remove: old version based on intervallength=stride_eval
             # pred = np.repeat(pred, intervallength)
             # test_preds.append(pred)
 
-        # print("Original Test acc")  # TODO remove debugging
-        # test_acc = model.score(val_X_TS, val_Y_TS_task)
-        # print(test_acc)
-        # print(confusion_matrix(val_Y_TS_task, test_preds))
-        # print("New Eval")
-
-        eval_scores = self.evaluate_model(
+        eval_scores = self.get_eval_metrics(
             preds=test_preds, dataset="val", verbose=True)
-        return eval_scores["accuracy"], eval_scores["macro f1"]
+        return eval_scores["accuracy"], eval_scores["f1"]
 
     def optuna_objective_tst(self, trial: optuna.Trial):
         '''Optuna objective function for TST model. Optimizes for accuracy and macro f1 score.'''
@@ -252,6 +271,47 @@ class TS_Model_Trainer:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 
+    def retrain_best_trial(self, study, model_type):
+        '''Retrain the best trial of a study.'''
+        best_trial = max(study.best_trials, key=lambda t: t.values[0])
+        print("Best trial:")
+        print("Values: ", best_trial.values, "Params: ", best_trial.params)
+        if model_type == "MiniRocket":
+            self.optuna_objective_minirocket(best_trial)
+        elif model_type == "TST":
+            self.optuna_objective_tst(best_trial)
+        else:
+            print("Model type not supported.")
+
+    def feature_importance(self):
+        '''Get feature importance values by leaving out one feature at a time and calculating the change in the performance'''
+        feature_importance = {}
+        model = MINIROCKET.MiniRocketVotingClassifier(
+            n_estimators=4, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
+        # per run: remove features ending on either: _opensmile, _speaker, _openpose, _openface
+        for removed_cols in ["opensmile", "speaker", "openpose", "openface"]:
+            intervallength = 900
+            stride_eval = 500
+            val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS = self.data.get_timeseries_format(
+                intervallength=intervallength, stride_train=500, stride_eval=stride_eval, verbose=False, fps=25, label_creation="stride")
+            columns = self.data.train_X.columns
+            # remove columns ending
+            columns = [col for col in columns if removed_cols not in col]
+            train_X_TS = train_X_TS[:, columns]
+            model.fit(train_X_TS, train_Y_TS[:, self.task])
+            # eval
+            test_preds = self.get_full_test_preds(
+                model, val_X_TS_list, intervallength, stride_eval)
+            eval_scores = self.get_eval_metrics(
+                preds=test_preds, dataset="val", verbose=False)
+            feature_importance[removed_cols] = eval_scores
+
+        print(feature_importance)
+
+    def learning_curve(self):
+        '''Get learning curve of model.'''
+        pass
+
 
 if __name__ == '__main__':
     my_setup(optuna)
@@ -269,8 +329,8 @@ if __name__ == '__main__':
     trainer = TS_Model_Trainer(pathprefix+"data/", task=2, n_jobs=n_jobs)
     config = trainer.read_config(pathprefix+"code/"+config_name)
 
-    # trainer.data.limit_to_sessions(
-    #    sessions_train=[0, 1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33], sessions_val=[0, 3, 4, 7, 8, 11, 12, 13])
-
     study = trainer.optuna_study(
         n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
+
+    # repeat best trial
+    # trainer.retrain_best_trial(study, config["model_type"])

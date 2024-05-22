@@ -178,13 +178,15 @@ class DataLoader_HRI:
             frames_count = len(label_df)
             # print(frames_count)
             # TODO: this encoding becomes bad with averaging
-            speaker_match = {"robot": 2, "participant": 1, "pause": 0}
+            # speaker_match = {"robot": 2, "participant": 1, "pause": 0}
             new_data = []
             # initialize the data with speech pauses
             for f in range(1, frames_count+1):
                 new_data.append({
                     "frame": f,
-                    "Speaker": speaker_match["pause"]
+                    "robot": 0,
+                    "participant": 0,
+                    "pause": 1
                 })
             # fill in the speaker when appropriate
             for _, row in df.iterrows():
@@ -194,7 +196,9 @@ class DataLoader_HRI:
                 end_frame = math.ceil(end_time * rows_per_second)
                 speaker = row['speaker']
                 for j in range(begin_frame, end_frame):
-                    new_data[j]["Speaker"] = speaker_match[speaker]
+                    new_data[j][speaker] = 1
+                    if speaker != "pause":
+                        new_data[j]["pause"] = 0
             df = pd.DataFrame(new_data)
             data_frames.append((filename, df))
         return data_frames
