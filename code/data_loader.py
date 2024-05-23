@@ -38,37 +38,38 @@ class DataLoader_HRI:
         for filename, df in openpose_data:
             df['frame'] = df['frame_id'].apply(
                 lambda x: int(x)+1)  # Convert frame_id to integer and add one
+            df.drop(columns=['frame_id'], inplace=True)
 
-        for filename, df in opensmile_data:
-            # Convert index to frame number
-            df['frame'] = (df.index // (100 / 30)).astype(int)+1
+        # for filename, df in opensmile_data:
+        #    # Convert index to frame number
+        #    df['frame'] = (df.index // (100 / 30)).astype(int)+1
 
         for filename, df in label_data:
             # add column with session number
             df.insert(1, 'session', int(filename.split('_')[0]))
 
         speaker_data = self.process_speaker_data(speaker_data, label_data)
-        for filename, df in speaker_data:
-            df["frame"] = (df.index // (100 / 30)).astype(int)+1
+        # for filename, df in speaker_data:
+        #    df["frame"] = (df.index // (100 / 30)).astype(int)+1
 
         # print the head of the first three dataframes
         if self.verbose:
-            print(openface_data[0][0])
+            inspect_session = 8
             print("\nOpenface data:")
-            print(openface_data[0][1].head(3))
-            print(len(openface_data[0][1]))
+            print(openface_data[inspect_session][1].head(3))
+            print(len(openface_data[inspect_session][1]))
             print("\nOpenpose data:")
-            print(openpose_data[0][1].head(3))
-            print(len(openpose_data[0][1]))
+            print(openpose_data[inspect_session][1].head(3))
+            print(len(openpose_data[inspect_session][1]))
             print("\nOpensmile data:")
-            print(opensmile_data[0][1].head(5))
-            print(len(opensmile_data[0][1]))
+            print(opensmile_data[inspect_session][1].head(5))
+            print(len(opensmile_data[inspect_session][1]))
             print("\nSpeaker data:")
-            print(speaker_data[0][1].head(5))
-            print(len(speaker_data[0][1]))
+            print(speaker_data[inspect_session][1].head(5))
+            print(len(speaker_data[inspect_session][1]))
             print("\nLabel data:")
-            print(label_data[0][1].head(3))
-            print(len(label_data[0][1]))
+            print(label_data[inspect_session][1].head(3))
+            print(len(label_data[inspect_session][1]))
 
         # merge data and add to train_X and val_X
         for filename, _ in openface_data:
@@ -183,7 +184,6 @@ class DataLoader_HRI:
             # initialize the data with speech pauses
             for f in range(1, frames_count+1):
                 new_data.append({
-                    "frame": f,
                     "robot": 0,
                     "participant": 0,
                     "pause": 1
@@ -304,11 +304,13 @@ class DataLoader_HRI:
               len(df_opensmile), len(df_speaker), filename)
 
         # Merge the dataframes
-        # merge df_speaker and df_opensmile based on index
+        # merge df_speaker and df_opensmile based on index, if one is longer than the other, the extra rows are dropped
         merged_df = df_speaker.add_suffix("_speaker").join(
-            df_opensmile.add_suffix('_opensmile'), how='outer')
+            df_opensmile.add_suffix('_opensmile'), how='inner')
+        merged_df["frame"] = (merged_df.index // (100 / 30)).astype(int)+1
         # merge with the rest based on the frame number
-        merged_df.set_index('frame_opensmile', inplace=True)
+        # merged_df.set_index('frame_opensmile', inplace=True)
+        merged_df.set_index('frame', inplace=True)
         df_openpose.set_index('frame', inplace=True)
         df_openface.set_index('frame', inplace=True)
 
@@ -316,8 +318,8 @@ class DataLoader_HRI:
             df_openpose.add_suffix('_openpose'), how='outer')
 
         #  drop multiple frame columns
-        columns_to_drop = ['frame_speaker', 'frame_id_openpose']
-        merged_df.drop(columns=columns_to_drop, inplace=True)
+        # columns_to_drop = ['frame_speaker', 'frame_id_openpose']
+        # merged_df.drop(columns=columns_to_drop, inplace=True)
 
         # merged_df = df_openface.add_suffix('_openface').join(
         #    df_openpose.add_suffix('_openpose'), how='outer'

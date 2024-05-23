@@ -328,7 +328,8 @@ class TS_Model_Trainer:
             feature_importance[name] = eval_scores
 
         for key, value in feature_importance.items():
-            print(key, value)
+            print("Removed:", key)
+            print(value["accuracy"], value["f1"], "\n")
 
     def learning_curve(self):
         '''Get learning curve of model.'''
