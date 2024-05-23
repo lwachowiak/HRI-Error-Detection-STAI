@@ -392,7 +392,7 @@ class DataLoader_HRI:
         :param fps: The desired fps of the data. Original is 100 fps
         :param verbose: Print debug information
         :param eval: Either 'full' or 'stride'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
-        :return: The data in timeseries format
+        :return: The data in timeseries format and the column order for feature importance analysis
         """
 
         num_features = self.train_X.shape[1]
@@ -412,6 +412,9 @@ class DataLoader_HRI:
             if verbose:
                 print("TS Processing for session: ", session)
             session_df = self.train_X[self.train_X['session'] == session]
+            # remove session column
+            session_df = session_df.drop(columns=['session'])
+            column_order = session_df.columns
             # drop last 10 rows to avoid NaNs
             if cut_length > 0:
                 session_df = session_df[:-cut_length]
@@ -447,6 +450,7 @@ class DataLoader_HRI:
             if verbose:
                 print("TS Processing for session: ", session)
             session_df = self.val_X[self.val_X['session'] == session]
+            session_df = session_df.drop(columns=['session'])
             # drop last 10 rows to avoid NaNs
             if cut_length > 0:
                 session_df = session_df[:-cut_length]
@@ -476,31 +480,28 @@ class DataLoader_HRI:
             val_X_TS_list[i] = np.array(val_X_TS_list[i])
             val_Y_TS_list[i] = np.array(val_Y_TS_list[i])
 
-        return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS
+        return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order
 
     def resample(self, interval, fps, style):
         '''
         Resample the interval to the desired fps. Original framerate is 100 fps'''
-
-        # print("Resampling interval to", fps, "fps")
-        # print(interval)
-
         # resample the interval to the desired fps
         if style not in ['mean', 'max', 'min']:
             raise ValueError("Style must be one of 'mean', 'max', 'min'")
         new_interval = []
+        step = int(100/fps)
         for feature in interval:
             new_feature = []
             # downsample the array by a rate of 100/fps
             if style == 'mean':
-                for i in range(0, len(feature), int(100/fps)):
-                    new_feature.append(np.mean(feature[i:i+int(100/fps)]))
+                for i in range(0, len(feature), step):
+                    new_feature.append(np.mean(feature[i:i+step]))
             elif style == 'max':
-                for i in range(0, len(feature), int(100/fps)):
-                    new_feature.append(np.max(feature[i:i+int(100/fps)]))
+                for i in range(0, len(feature), step):
+                    new_feature.append(np.max(feature[i:i+step]))
             elif style == 'min':
-                for i in range(0, len(feature), int(100/fps)):
-                    new_feature.append(np.min(feature[i:i+int(100/fps)]))
+                for i in range(0, len(feature), step):
+                    new_feature.append(np.min(feature[i:i+step]))
             new_interval.append(new_feature)
         return new_interval
 

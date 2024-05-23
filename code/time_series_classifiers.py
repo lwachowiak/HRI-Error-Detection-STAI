@@ -3,7 +3,7 @@ from tsai.learner import ts_learner
 from data_loader import DataLoader_HRI
 from tsai.data.all import *
 from tsai.models.utils import *
-from tsai.all import my_setup
+from tsai.all import my_setup, ShowGraphCallback2, LabelSmoothingCrossEntropyFlat, RocAucBinary, accuracy
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import optuna
 from optuna.integration import WeightsAndBiasesCallback
@@ -12,7 +12,6 @@ import json
 import datetime
 import platform
 import numpy as np
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from get_metrics import get_metrics
 
 # TODO:
@@ -138,7 +137,7 @@ class TS_Model_Trainer:
             "label_creation", data_params["label_creation"])
 
         # get timeseries format
-        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS = self.data.get_timeseries_format(
+        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, _ = self.data.get_timeseries_format(
             intervallength=intervallength, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
 
         train_Y_TS_task = train_Y_TS[:, self.task]
@@ -186,17 +185,27 @@ class TS_Model_Trainer:
             "label_creation", data_params["label_creation"])
 
         # get timeseries format
-        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS = self.data.get_timeseries_format(
+        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, _ = self.data.get_timeseries_format(
             intervallength=intervallength, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
 
         train_Y_TS_task = train_Y_TS[:, self.task]
 
         # TODO:
-        # splits =
-        # dsets = TSDatasets()
-        # dls = TSDataLoaders.from_numpy(
-        # model=TST(dls.vars, dls.c, dls.len, dropout=0.3, fc_dropout=0.9)
-        # learn=ts_learner(dls, model, metrics=[
+        all_X = train_X_TS
+        for val_X_TS in val_X_TS_list:
+            all_X = np.concatenate((all_X, val_X_TS), axis=0)
+        all_Y = train_Y_TS_task
+        for val_Y_TS in val_Y_TS_list:
+            all_Y = np.concatenate((all_Y, val_Y_TS), axis=0)
+        splits = [range(0, len(train_X_TS)), range(
+            len(train_X_TS), len(all_X))]
+        dsets = TSDatasets(all_X, all_Y, splits=splits, inplace=True)
+        dls = TSDataLoaders.from_numpy(
+            dsets.train.x, dsets.train.y, bs=64, val_bs=128)
+        model = TST(dls.vars, dls.c, dls.len, dropout=0.3, fc_dropout=0.9)
+        learn = ts_learner(dls, model, loss_func=LabelSmoothingCrossEntropyFlat(),
+                           metrics=[RocAucBinary(), accuracy],  cbs=ShowGraphCallback2())
+        learn.fit_one_cycle(100, 1e-4)
 
     def optuna_study(self, n_trials, model_type, study_name, verbose=False) -> optuna.study.Study:
         """Performs an Optuna study to optimize the hyperparameters of the model.
@@ -284,29 +293,42 @@ class TS_Model_Trainer:
             print("Model type not supported.")
 
     def feature_importance(self):
-        '''Get feature importance values by leaving out one feature at a time and calculating the change in the performance'''
+        '''Get feature importance values by leaving out the specified features and calculating the change in the performance'''
         feature_importance = {}
         model = MINIROCKET.MiniRocketVotingClassifier(
             n_estimators=4, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
-        # per run: remove features ending on either: _opensmile, _speaker, _openpose, _openface
-        for removed_cols in ["opensmile", "speaker", "openpose", "openface"]:
+        feature_search = [["opensmile"], ["speaker"], ["openpose"], ["openface"], [
+            "openpose", "speaker"], ["speaker", "openpose", "openface"]]
+        # per run, remove one or more columns
+        for removed_cols in feature_search:
             intervallength = 900
             stride_eval = 500
-            val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS = self.data.get_timeseries_format(
+            val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
                 intervallength=intervallength, stride_train=500, stride_eval=stride_eval, verbose=False, fps=25, label_creation="stride")
-            columns = self.data.train_X.columns
-            # remove columns ending
-            columns = [col for col in columns if removed_cols not in col]
-            train_X_TS = train_X_TS[:, columns]
+            # remove columns ending, columns are the 2nd dimension
+            train_X_TS = train_X_TS[:, [
+                i for i, col in enumerate(column_order) if not any(removed_col in col for removed_col in removed_cols)
+            ]]
+            # train_X_TS = train_X_TS[:, [
+            #    i for i, col in column_order if removed_cols not in col]]
+            print(train_X_TS.shape)
             model.fit(train_X_TS, train_Y_TS[:, self.task])
+            # val_X_TS_list_new = [val_X_TS[:, [i for i, col in enumerate(
+            #    column_order) if removed_cols not in col]] for val_X_TS in val_X_TS_list]
+            val_X_TS_list_new = [val_X_TS[:, [
+                i for i, col in enumerate(column_order)
+                if not any(removed_col in col for removed_col in removed_cols)
+            ]] for val_X_TS in val_X_TS_list]
             # eval
             test_preds = self.get_full_test_preds(
-                model, val_X_TS_list, intervallength, stride_eval)
+                model, val_X_TS_list_new, intervallength, stride_eval)
             eval_scores = self.get_eval_metrics(
                 preds=test_preds, dataset="val", verbose=False)
-            feature_importance[removed_cols] = eval_scores
+            name = " ".join(removed_cols)
+            feature_importance[name] = eval_scores
 
-        print(feature_importance)
+        for key, value in feature_importance.items():
+            print(key, value)
 
     def learning_curve(self):
         '''Get learning curve of model.'''
@@ -329,8 +351,11 @@ if __name__ == '__main__':
     trainer = TS_Model_Trainer(pathprefix+"data/", task=2, n_jobs=n_jobs)
     config = trainer.read_config(pathprefix+"code/"+config_name)
 
-    study = trainer.optuna_study(
-        n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
+    # study = trainer.optuna_study(
+    #    n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
 
     # repeat best trial
     # trainer.retrain_best_trial(study, config["model_type"])
+
+    # feature importance
+    trainer.feature_importance()
