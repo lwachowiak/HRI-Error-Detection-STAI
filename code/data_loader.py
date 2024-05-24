@@ -403,7 +403,7 @@ class DataLoader_HRI:
 
         cut_length = 10  # drop the last x rows to avoid NaNs TODO think about this
 
-        if label_creation not in ['full', 'stride']:
+        if label_creation not in ['full', 'stride_eval', 'stride_train']:
             raise ValueError(
                 "label_creation must be one of 'full' or 'stride'")
 
@@ -436,10 +436,14 @@ class DataLoader_HRI:
                     if label_creation == "full":
                         # get the majority label for the whole interval
                         majority_labels.append(np.argmax(np.bincount(label)))
-                    elif label_creation == "stride":
+                    # TODO should i consider stride_eval here?
+                    elif label_creation == "stride_train":
                         # get the majority label just for the last stride elements of the interval
                         majority_labels.append(
-                            np.argmax(np.bincount(label[-stride_train:])))  # TODO should i consider stride_eval here?
+                            np.argmax(np.bincount(label[-stride_train:])))
+                    elif label_creation == "stride_eval":
+                        majority_labels.append(
+                            np.argmax(np.bincount(label[-stride_eval:])))
                 train_X_TS.append(interval)
                 train_Y_TS.append(majority_labels)
 

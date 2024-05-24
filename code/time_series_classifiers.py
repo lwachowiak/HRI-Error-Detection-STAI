@@ -352,11 +352,11 @@ if __name__ == '__main__':
     trainer = TS_Model_Trainer(pathprefix+"data/", task=2, n_jobs=n_jobs)
     config = trainer.read_config(pathprefix+"code/"+config_name)
 
-    # study = trainer.optuna_study(
-    #    n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
+    study = trainer.optuna_study(
+        n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
 
     # repeat best trial
     # trainer.retrain_best_trial(study, config["model_type"])
 
     # feature importance
-    trainer.feature_importance()
+    # trainer.feature_importance()
