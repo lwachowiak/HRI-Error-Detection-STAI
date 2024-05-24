@@ -190,19 +190,19 @@ class TS_Model_Trainer:
 
         train_Y_TS_task = train_Y_TS[:, self.task]
 
-        # TODO:
         all_X = train_X_TS
         for val_X_TS in val_X_TS_list:
             all_X = np.concatenate((all_X, val_X_TS), axis=0)
         all_Y = train_Y_TS_task
         for val_Y_TS in val_Y_TS_list:
+            val_Y_TS = val_Y_TS[:, self.task]
             all_Y = np.concatenate((all_Y, val_Y_TS), axis=0)
         splits = [range(0, len(train_X_TS)), range(
             len(train_X_TS), len(all_X))]
         dsets = TSDatasets(all_X, all_Y, splits=splits, inplace=True)
-        dls = TSDataLoaders.from_numpy(
-            dsets.train.x, dsets.train.y, bs=64, val_bs=128)
-        model = TST(dls.vars, dls.c, dls.len, dropout=0.3, fc_dropout=0.9)
+        dls = TSDataLoaders.from_dsets(
+            dsets.train, dsets.valid, bs=8, batch_tfms=TSStandardize(by_var=True))
+        model = TST.TST(dls.vars, dls.c, dls.len, dropout=0.3, fc_dropout=0.9)
         learn = ts_learner(dls, model, loss_func=LabelSmoothingCrossEntropyFlat(),
                            metrics=[RocAucBinary(), accuracy],  cbs=ShowGraphCallback2())
         learn.fit_one_cycle(100, 1e-4)
@@ -296,9 +296,9 @@ class TS_Model_Trainer:
         '''Get feature importance values by leaving out the specified features and calculating the change in the performance'''
         feature_importance = {}
         model = MINIROCKET.MiniRocketVotingClassifier(
-            n_estimators=4, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
-        feature_search = [["opensmile"], ["speaker"], ["openpose"], ["openface"], [
-            "openpose", "speaker"], ["speaker", "openpose", "openface"]]
+            n_estimators=8, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
+        feature_search = [["REMOVE_NOTHING"], ["opensmile"], ["speaker"], ["openpose"], ["openface"], [
+            "openpose", "speaker"], ["speaker", "openpose", "openface"], ["opensmile", "speaker", "openpose"], ["opensmile", "openpose", "openface"], ["opensmile", "speaker", "openface"]]
         # per run, remove one or more columns
         for removed_cols in feature_search:
             intervallength = 900

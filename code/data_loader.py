@@ -229,8 +229,6 @@ class DataLoader_HRI:
                             "RobotMistake": 0,
                             "InteractionRupture": 0
                         })
-                    print("labels needed for session",
-                          filename, ":", labels_needed)
                     for _, row in df.iterrows():
                         begin_time = row['Begin Time - ss.msec']
                         end_time = row['End Time - ss.msec']

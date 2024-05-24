@@ -34,8 +34,8 @@
             "step": 32
         },
         "n_estimators": {
-            "low": 2,
-            "high": 10,
+            "low": 5,
+            "high": 5,
             "step": 2
         }
     }
