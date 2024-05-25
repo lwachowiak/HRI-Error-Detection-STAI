@@ -121,6 +121,8 @@ class TS_Model_Trainer:
                                                       data_params["columns_to_remove"])
         label_creation = trial.suggest_categorical(
             "label_creation", data_params["label_creation"])
+        nan_handling = trial.suggest_categorical(
+            "nan_handling", data_params["nan_handling"])
 
         # model params
         max_dilations_per_kernel = trial.suggest_int(
@@ -134,11 +136,11 @@ class TS_Model_Trainer:
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
             intervallength=intervallength, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
         # nan handling
-        if data_params["nan_handling"] == "zeros":
+        if nan_handling == "zeros":
             train_X_TS = np.nan_to_num(train_X_TS, nan=0)
             val_X_TS_list = [np.nan_to_num(val_X_TS, nan=0)
                              for val_X_TS in val_X_TS_list]
-        if data_params["nan_handling"] == "avg":
+        if nan_handling == "avg":
             train_X_TS = DataLoader_HRI.impute_nan_with_feature_mean(
                 train_X_TS)
             val_X_TS_list = [DataLoader_HRI.impute_nan_with_feature_mean(
