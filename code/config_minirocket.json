@@ -1,7 +1,7 @@
 {
     "task": 2,
     "model_type": "MiniRocket",
-    "n_trials": 20,
+    "n_trials": 30,
     "data_params": {
         "intervallength": {
             "low": 700,
@@ -23,20 +23,45 @@
             50
         ],
         "label_creation": [
-            "full",
             "stride_eval",
             "stride_train"
+        ],
+        "remove_columns": [
+            [
+                "REMOVE_NOTHING"
+            ],
+            [
+                "opensmile"
+            ],
+            [
+                "speaker"
+            ],
+            [
+                "openpose"
+            ],
+            [
+                "openface"
+            ],
+            [
+                "openpose",
+                "speaker"
+            ],
+            [
+                "speaker",
+                "openpose",
+                "openface"
+            ]
         ]
     },
     "model_params": {
         "max_dilations_per_kernel": {
-            "low": 8,
-            "high": 256,
-            "step": 32
+            "low": 32,
+            "high": 64,
+            "step": 8
         },
         "n_estimators": {
-            "low": 5,
-            "high": 5,
+            "low": 10,
+            "high": 10,
             "step": 2
         }
     }

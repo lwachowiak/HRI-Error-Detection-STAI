@@ -125,6 +125,8 @@ class TS_Model_Trainer:
         stride_eval = trial.suggest_int(
             "stride_eval", low=data_params["stride_eval"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
         fps = trial.suggest_categorical("fps", data_params["fps"])
+        columns_to_remove = trial.suggest_categorical(
+            data_params["columns_to_remove"])
 
         # model params
         max_dilations_per_kernel = trial.suggest_int(
@@ -139,6 +141,11 @@ class TS_Model_Trainer:
         # get timeseries format
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, _ = self.data.get_timeseries_format(
             intervallength=intervallength, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
+
+        train_X_TS = self.remove_columns(columns_to_remove=columns_to_remove,
+                                         data_X=train_X_TS, column_order=self.data.column_order)
+        val_X_TS_list = self.remove_columns(columns_to_remove=columns_to_remove,
+                                            data_X=val_X_TS_list, column_order=self.data.column_order)
 
         train_Y_TS_task = train_Y_TS[:, self.task]
 
@@ -292,33 +299,45 @@ class TS_Model_Trainer:
         else:
             print("Model type not supported.")
 
+    def remove_columns(self, columns_to_remove, data_X, column_order) -> np.array:
+        '''Remove columns from the data.
+        :param columns_to_remove: List of columns to remove.
+        :param data_X: The data to remove the columns from. Either a list of np.arrays or a np.array.
+        :param column_order: The order of the columns in the data.
+        :output new_data_X: The data with the specified columns removed.
+        '''
+        # depending on whether data_X is list or np.array
+        if isinstance(data_X, list):  # val/test
+            new_data_X = [val_X_TS[:, [
+                i for i, col in enumerate(column_order)
+                if not any(removed_col in col for removed_col in columns_to_remove)
+            ]] for val_X_TS in data_X]
+        else:  # train
+            new_data_X = data_X[:, [
+                i for i, col in enumerate(column_order) if not any(removed_col in col for removed_col in columns_to_remove)
+            ]]
+        return new_data_X
+
     def feature_importance(self):
         '''Get feature importance values by leaving out the specified features and calculating the change in the performance'''
         feature_importance = {}
         model = MINIROCKET.MiniRocketVotingClassifier(
-            n_estimators=8, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
-        feature_search = [["REMOVE_NOTHING"], ["opensmile"], ["speaker"], ["openpose"], ["openface"], [
-            "openpose", "speaker"], ["speaker", "openpose", "openface"], ["opensmile", "speaker", "openpose"], ["opensmile", "openpose", "openface"], ["opensmile", "speaker", "openface"]]
+            n_estimators=10, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
+        feature_search = [["REMOVE_NOTHING"], ["opensmile"],
+                          ["speaker"], ["openpose"], ["openface"]]  # , ["openpose", "speaker"], ["speaker", "openpose", "openface"], ["opensmile", "speaker", "openpose"], ["opensmile", "openpose", "openface"], ["opensmile", "speaker", "openface"]]
         # per run, remove one or more columns
         for removed_cols in feature_search:
             intervallength = 900
             stride_eval = 500
             val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
-                intervallength=intervallength, stride_train=500, stride_eval=stride_eval, verbose=False, fps=25, label_creation="stride")
+                intervallength=intervallength, stride_train=400, stride_eval=stride_eval, verbose=False, fps=50, label_creation="stride_eval")
             # remove columns ending, columns are the 2nd dimension
-            train_X_TS = train_X_TS[:, [
-                i for i, col in enumerate(column_order) if not any(removed_col in col for removed_col in removed_cols)
-            ]]
-            # train_X_TS = train_X_TS[:, [
-            #    i for i, col in column_order if removed_cols not in col]]
+            train_X_TS = self.remove_columns(
+                columns_to_remove=removed_cols, data_X=train_X_TS, column_order=column_order)
             print(train_X_TS.shape)
             model.fit(train_X_TS, train_Y_TS[:, self.task])
-            # val_X_TS_list_new = [val_X_TS[:, [i for i, col in enumerate(
-            #    column_order) if removed_cols not in col]] for val_X_TS in val_X_TS_list]
-            val_X_TS_list_new = [val_X_TS[:, [
-                i for i, col in enumerate(column_order)
-                if not any(removed_col in col for removed_col in removed_cols)
-            ]] for val_X_TS in val_X_TS_list]
+            val_X_TS_list_new = self.remove_columns(
+                columns_to_remove=removed_cols, data_X=val_X_TS_list, column_order=column_order)
             # eval
             test_preds = self.get_full_test_preds(
                 model, val_X_TS_list_new, intervallength, stride_eval)
@@ -352,11 +371,11 @@ if __name__ == '__main__':
     trainer = TS_Model_Trainer(pathprefix+"data/", task=2, n_jobs=n_jobs)
     config = trainer.read_config(pathprefix+"code/"+config_name)
 
-    study = trainer.optuna_study(
-        n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
+    # study = trainer.optuna_study(
+    #    n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
 
     # repeat best trial
     # trainer.retrain_best_trial(study, config["model_type"])
 
     # feature importance
-    # trainer.feature_importance()
+    trainer.feature_importance()
