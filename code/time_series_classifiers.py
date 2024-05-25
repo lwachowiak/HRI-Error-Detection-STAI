@@ -95,14 +95,6 @@ class TS_Model_Trainer:
 
         eval_scores = get_metrics(y_pred=preds, y_true=y_true, tolerance=50)
         print(eval_scores)
-        # eval_scores = {}
-        # eval_scores["accuracy"] = accuracy_score(y_true=y_true, y_pred=preds)
-        # eval_scores["macro f1"] = f1_score(
-        #    y_true=y_true, y_pred=preds, average='macro')
-        # eval_scores["macro precision"] = precision_score(
-        #    y_true=y_true, y_pred=preds, average='macro')
-        # eval_scores["macro recall"] = recall_score(
-        #    y_true=y_true, y_pred=preds, average='macro')
 
         # print confusion matrix
         if verbose:
@@ -125,8 +117,10 @@ class TS_Model_Trainer:
         stride_eval = trial.suggest_int(
             "stride_eval", low=data_params["stride_eval"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
         fps = trial.suggest_categorical("fps", data_params["fps"])
-        columns_to_remove = trial.suggest_categorical(
-            data_params["columns_to_remove"])
+        columns_to_remove = trial.suggest_categorical("columns_to_remove",
+                                                      data_params["columns_to_remove"])
+        label_creation = trial.suggest_categorical(
+            "label_creation", data_params["label_creation"])
 
         # model params
         max_dilations_per_kernel = trial.suggest_int(
@@ -135,17 +129,25 @@ class TS_Model_Trainer:
             "n_estimators", low=model_params["n_estimators"]["low"], high=model_params["n_estimators"]["high"], step=model_params["n_estimators"]["step"])
         class_weight = trial.suggest_categorical(
             "class_weight", [None])  # ["balanced", None])
-        label_creation = trial.suggest_categorical(
-            "label_creation", data_params["label_creation"])
 
         # get timeseries format
-        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, _ = self.data.get_timeseries_format(
+        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
             intervallength=intervallength, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
-
+        # nan handling
+        if data_params["nan_handling"] == "zeros":
+            train_X_TS = np.nan_to_num(train_X_TS, nan=0)
+            val_X_TS_list = [np.nan_to_num(val_X_TS, nan=0)
+                             for val_X_TS in val_X_TS_list]
+        if data_params["nan_handling"] == "avg":
+            train_X_TS = DataLoader_HRI.impute_nan_with_feature_mean(
+                train_X_TS)
+            val_X_TS_list = [DataLoader_HRI.impute_nan_with_feature_mean(
+                val_X_TS) for val_X_TS in val_X_TS_list]
+        # feature removal
         train_X_TS = self.remove_columns(columns_to_remove=columns_to_remove,
-                                         data_X=train_X_TS, column_order=self.data.column_order)
+                                         data_X=train_X_TS, column_order=column_order)
         val_X_TS_list = self.remove_columns(columns_to_remove=columns_to_remove,
-                                            data_X=val_X_TS_list, column_order=self.data.column_order)
+                                            data_X=val_X_TS_list, column_order=column_order)
 
         train_Y_TS_task = train_Y_TS[:, self.task]
 
@@ -371,11 +373,11 @@ if __name__ == '__main__':
     trainer = TS_Model_Trainer(pathprefix+"data/", task=2, n_jobs=n_jobs)
     config = trainer.read_config(pathprefix+"code/"+config_name)
 
-    # study = trainer.optuna_study(
-    #    n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
+    study = trainer.optuna_study(
+        n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
 
     # repeat best trial
     # trainer.retrain_best_trial(study, config["model_type"])
 
     # feature importance
-    trainer.feature_importance()
+    # trainer.feature_importance()

@@ -509,6 +509,17 @@ class DataLoader_HRI:
             new_interval.append(new_feature)
         return new_interval
 
+    @staticmethod
+    def impute_nan_with_feature_mean(data) -> np.array:
+        for i in range(data.shape[0]):  # Iterate over each sample
+            for j in range(data.shape[1]):  # Iterate over each feature
+                feature_values = data[i, j, :]
+                nan_mask = np.isnan(feature_values)
+                if nan_mask.any():
+                    feature_mean = np.nanmean(feature_values)
+                    feature_values[nan_mask] = feature_mean
+        return data
+
     def exclude_columns(self, columns: list):
         """
         Exclude columns from the data

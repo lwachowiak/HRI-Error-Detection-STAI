@@ -22,11 +22,16 @@
             25,
             50
         ],
+        "nan_handling": [
+            "standard",
+            "zeros",
+            "avg"
+        ],
         "label_creation": [
             "stride_eval",
             "stride_train"
         ],
-        "remove_columns": [
+        "columns_to_remove": [
             [
                 "REMOVE_NOTHING"
             ],
