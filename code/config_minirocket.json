@@ -32,41 +32,24 @@
             "stride_train"
         ],
         "columns_to_remove": [
-            [
-                "REMOVE_NOTHING"
-            ],
-            [
-                "opensmile"
-            ],
-            [
-                "speaker"
-            ],
-            [
-                "openpose"
-            ],
-            [
-                "openface"
-            ],
-            [
-                "openpose",
-                "speaker"
-            ],
-            [
-                "speaker",
-                "openpose",
-                "openface"
-            ]
+            "REMOVE_NOTHING",
+            "opensmile",
+            "speaker",
+            "openpose",
+            "openface",
+            "openpose, speaker",
+            "speaker, openpose, openface"
         ]
     },
     "model_params": {
         "max_dilations_per_kernel": {
             "low": 32,
-            "high": 64,
+            "high": 32,
             "step": 8
         },
         "n_estimators": {
-            "low": 10,
-            "high": 10,
+            "low": 12,
+            "high": 12,
             "step": 2
         }
     }

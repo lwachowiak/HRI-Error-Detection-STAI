@@ -42,6 +42,14 @@ class TS_Model_Trainer:
             "TST": self.optuna_objective_tst
         }
         self.config = None
+        self.column_removal_dict = {"REMOVE_NOTHING": ["REMOVE_NOTHING"],
+                                    "opensmile": ["opensmile"],
+                                    "speaker": ["speaker"],
+                                    "openpose": ["openpose"],
+                                    "openface": ["openface"],
+                                    "openpose, speaker": ["openpose", "speaker"],
+                                    "speaker, openpose, openface": ["speaker", "openpose", "openface"]
+                                    }
 
     def get_full_test_preds(self, model, val_X_TS_list, intervallength, stride_eval):
         '''Get full test predictions by repeating the predictions based on intervallength and stride_eval.
@@ -119,6 +127,7 @@ class TS_Model_Trainer:
         fps = trial.suggest_categorical("fps", data_params["fps"])
         columns_to_remove = trial.suggest_categorical("columns_to_remove",
                                                       data_params["columns_to_remove"])
+        columns_to_remove = self.column_removal_dict[columns_to_remove]
         label_creation = trial.suggest_categorical(
             "label_creation", data_params["label_creation"])
         nan_handling = trial.suggest_categorical(
@@ -328,7 +337,7 @@ class TS_Model_Trainer:
         model = MINIROCKET.MiniRocketVotingClassifier(
             n_estimators=10, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
         feature_search = [["REMOVE_NOTHING"], ["opensmile"],
-                          ["speaker"], ["openpose"], ["openface"]]  # , ["openpose", "speaker"], ["speaker", "openpose", "openface"], ["opensmile", "speaker", "openpose"], ["opensmile", "openpose", "openface"], ["opensmile", "speaker", "openface"]]
+                          ["speaker"], ["openpose"], ["openface"], ["openpose", "speaker"], ["speaker", "openpose", "openface"], ["opensmile", "speaker", "openpose"], ["opensmile", "openpose", "openface"], ["opensmile", "speaker", "openface"]]
         # per run, remove one or more columns
         for removed_cols in feature_search:
             intervallength = 900
