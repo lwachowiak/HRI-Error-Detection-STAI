@@ -9,11 +9,13 @@
             "step": 100
         },
         "stride_train": {
-            "low": 100,
+            "low": 50,
+            "high": 500,
             "step": 50
         },
         "stride_eval": {
-            "low": 100,
+            "low": 50,
+            "high": 500,
             "step": 50
         },
         "fps": [

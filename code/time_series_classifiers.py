@@ -1,5 +1,5 @@
 import optuna.study.study
-from tsai.models import MINIROCKET, HydraMultiRocketPlus, TST
+from tsai.models import MINIROCKET, HydraMultiRocketPlus, TST, MINIROCKET_Pytorch
 from tsai.learner import ts_learner
 from data_loader import DataLoader_HRI
 from tsai.data.all import *
@@ -40,7 +40,8 @@ class TS_Model_Trainer:
         self.n_jobs = n_jobs
         self.objective_per_model = {
             "MiniRocket": self.optuna_objective_minirocket,
-            "TST": self.optuna_objective_tst
+            "MiniRocketTorch": self.optuna_objective_minirocketTorch,
+            # "TST": self.optuna_objective_tst
         }
         self.config = None
         self.column_removal_dict = {"REMOVE_NOTHING": ["REMOVE_NOTHING"],
@@ -112,19 +113,21 @@ class TS_Model_Trainer:
 
         return eval_scores
 
-    def optuna_objective_minirocket(self, trial: optuna.Trial) -> tuple:
-        '''Optuna objective function for MiniRocket model. Optimizes for accuracy and macro f1 score.'''
-        # parameters being optimized
-        # data params
+    def data_from_config(self, config: dict, trial: optuna.Trial):
+        """
+        create the datasets for training based on the configuration and the trial parameters.
+        params: config: dict: The configuration dictionary.
+        params: trial: optuna.Trial: The trial object.
+        output: tuple: Tuple containing the validation and training datasets.
+        """
         data_params = self.config["data_params"]
-        model_params = self.config["model_params"]
         intervallength = trial.suggest_int(
             "intervallength", low=data_params["intervallength"]["low"], high=data_params["intervallength"]["high"], step=data_params["intervallength"]["step"])
         # stride must be leq than intervallength
         stride_train = trial.suggest_int(
-            "stride_train", low=data_params["stride_train"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
+            "stride_train", low=data_params["stride_train"]["low"], high=min(intervallength, data_params["stride_train"]["high"]), step=data_params["intervallength"]["step"])
         stride_eval = trial.suggest_int(
-            "stride_eval", low=data_params["stride_eval"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
+            "stride_eval", low=data_params["stride_eval"]["low"], high=min(intervallength, data_params["stride_eval"]["high"]), step=data_params["intervallength"]["step"])
         fps = trial.suggest_categorical("fps", data_params["fps"])
         columns_to_remove = trial.suggest_categorical("columns_to_remove",
                                                       data_params["columns_to_remove"])
@@ -133,14 +136,6 @@ class TS_Model_Trainer:
             "label_creation", data_params["label_creation"])
         nan_handling = trial.suggest_categorical(
             "nan_handling", data_params["nan_handling"])
-
-        # model params
-        max_dilations_per_kernel = trial.suggest_int(
-            "max_dilations_per_kernel", low=model_params["max_dilations_per_kernel"]["low"], high=model_params["max_dilations_per_kernel"]["high"], step=model_params["max_dilations_per_kernel"]["step"])
-        n_estimators = trial.suggest_int(
-            "n_estimators", low=model_params["n_estimators"]["low"], high=model_params["n_estimators"]["high"], step=model_params["n_estimators"]["step"])
-        class_weight = trial.suggest_categorical(
-            "class_weight", [None])  # ["balanced", None])
 
         # get timeseries format
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
@@ -163,34 +158,56 @@ class TS_Model_Trainer:
 
         train_Y_TS_task = train_Y_TS[:, self.task]
 
-        model = MINIROCKET.MiniRocketVotingClassifier(
-            n_estimators=n_estimators, n_jobs=self.n_jobs, max_dilations_per_kernel=max_dilations_per_kernel, class_weight=class_weight)
-        model.fit(train_X_TS, train_Y_TS_task)
-        test_preds = []
-        for val_X_TS in val_X_TS_list:  # per session
-            pred = model.predict(val_X_TS)
-            # for each sample in the session, repeat the prediction based on intervallength and stride_eval
-            processed_preds = []
-            for i, pr in enumerate(pred):
-                if i == 0:
-                    # first prediction, so append it intervallength times
-                    processed_preds.extend([pr]*intervallength)
-                else:
-                    # all other predictions are appended stride_eval times
-                    processed_preds.extend([pr]*stride_eval)
-            test_preds.append(processed_preds)
+        return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task
 
-            # TODO Remove: old version based on intervallength=stride_eval
-            # pred = np.repeat(pred, intervallength)
-            # test_preds.append(pred)
+    def merge_val_train(self, val_X_TS_list: list, val_Y_TS_list: list, train_X_TS: np.array, train_Y_TS_task: np.array) -> tuple:
+        """
+        Merge the training and all validation sets (per session) into one dataset so that the Torch models can be trained on it.
+        """
+        all_X = train_X_TS
+        for val_X_TS in val_X_TS_list:
+            # print(val_X_TS.shape, all_X.shape)
+            all_X = np.concatenate((all_X, val_X_TS), axis=0)
+        all_Y = train_Y_TS_task
+        for val_Y_TS in val_Y_TS_list:
+            val_Y_TS = val_Y_TS[:, 2]
+            all_Y = np.concatenate((all_Y, val_Y_TS), axis=0)
+        # print(all_X.shape, all_Y.shape)
+        splits = [range(0, len(train_X_TS)), range(
+            len(train_X_TS), len(all_X))]
+        return all_X, all_Y, splits
 
-        eval_scores = self.get_eval_metrics(
-            preds=test_preds, dataset="val", verbose=True)
-        return eval_scores["accuracy"], eval_scores["f1"]
+    def optuna_objective_minirocketTorch(self, trial: optuna.Trial) -> tuple:
+        model_params = self.config["model_params"]
+        # model params
+        max_dilations_per_kernel = trial.suggest_int(
+            "max_dilations_per_kernel", low=model_params["max_dilations_per_kernel"]["low"], high=model_params["max_dilations_per_kernel"]["high"], step=model_params["max_dilations_per_kernel"]["step"])
+        n_estimators = trial.suggest_int(
+            "n_estimators", low=model_params["n_estimators"]["low"], high=model_params["n_estimators"]["high"], step=model_params["n_estimators"]["step"])
+        class_weight = trial.suggest_categorical(
+            "class_weight", [None])  # ["balanced", None])
+        lr = trial.suggest_float("lr", low=1e-5, high=1e-1, log=True)
 
-    def optuna_objective_tst(self, trial: optuna.Trial) -> tuple:
-        '''Optuna objective function for TST model. Optimizes for accuracy and macro f1 score.'''
-        # parameters being optimized
+        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
+            self.config, trial)
+
+        all_X, all_Y, splits = self.merge_val_train(
+            val_X_TS_list=val_X_TS_list, val_Y_TS_list=val_Y_TS_list, train_X_TS=train_X_TS, train_Y_TS_task=train_Y_TS_task)
+        tfms = [None, TSClassification()]
+        batch_tfms = TSStandardize(by_sample=True)
+        dsets = TSDatasets(all_X, all_Y, splits=splits, inplace=True)
+        dls = TSDataLoaders.from_dsets(
+            dsets.train, dsets.valid, batch_tfms=batch_tfms, bs=8)
+        model = build_ts_model(MINIROCKET_Pytorch.MiniRocket, dls=dls)
+        learn = ts_learner(dls, model, metrics=accuracy, cbs=None)
+        learn.fit_one_cycle(10, lr)
+        # TODO eval
+
+    def optuna_objective_minirocket(self, trial: optuna.Trial) -> tuple:
+        '''Optuna objective function for MiniRocket model. Optimizes for accuracy and macro f1 score.
+        params: trial: optuna.Trial: The optuna trial runnning.
+        output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
+        '''
         # data params
         data_params = self.config["data_params"]
         model_params = self.config["model_params"]
@@ -198,35 +215,68 @@ class TS_Model_Trainer:
             "intervallength", low=data_params["intervallength"]["low"], high=data_params["intervallength"]["high"], step=data_params["intervallength"]["step"])
         # stride must be leq than intervallength
         stride_train = trial.suggest_int(
-            "stride_train", low=data_params["stride_train"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
+            "stride_train", low=data_params["stride_train"]["low"], high=min(intervallength, data_params["stride_train"]["high"]), step=data_params["intervallength"]["step"])
         stride_eval = trial.suggest_int(
-            "stride_eval", low=data_params["stride_eval"]["low"], high=intervallength, step=data_params["intervallength"]["step"])
+            "stride_eval", low=data_params["stride_eval"]["low"], high=min(intervallength, data_params["stride_eval"]["high"]), step=data_params["intervallength"]["step"])
         fps = trial.suggest_categorical("fps", data_params["fps"])
+        columns_to_remove = trial.suggest_categorical("columns_to_remove",
+                                                      data_params["columns_to_remove"])
+        columns_to_remove = self.column_removal_dict[columns_to_remove]
         label_creation = trial.suggest_categorical(
             "label_creation", data_params["label_creation"])
-
+        nan_handling = trial.suggest_categorical(
+            "nan_handling", data_params["nan_handling"])
         # get timeseries format
-        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, _ = self.data.get_timeseries_format(
+        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
             intervallength=intervallength, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
+        # nan handling
+        if nan_handling == "zeros":
+            train_X_TS = np.nan_to_num(train_X_TS, nan=0)
+            val_X_TS_list = [np.nan_to_num(val_X_TS, nan=0)
+                             for val_X_TS in val_X_TS_list]
+        if nan_handling == "avg":
+            train_X_TS = DataLoader_HRI.impute_nan_with_feature_mean(
+                train_X_TS)
+            val_X_TS_list = [DataLoader_HRI.impute_nan_with_feature_mean(
+                val_X_TS) for val_X_TS in val_X_TS_list]
+        # feature removal
+        train_X_TS = self.remove_columns(columns_to_remove=columns_to_remove,
+                                         data_X=train_X_TS, column_order=column_order)
+        val_X_TS_list = self.remove_columns(columns_to_remove=columns_to_remove,
+                                            data_X=val_X_TS_list, column_order=column_order)
 
         train_Y_TS_task = train_Y_TS[:, self.task]
 
-        all_X = train_X_TS
-        for val_X_TS in val_X_TS_list:
-            all_X = np.concatenate((all_X, val_X_TS), axis=0)
-        all_Y = train_Y_TS_task
-        for val_Y_TS in val_Y_TS_list:
-            val_Y_TS = val_Y_TS[:, self.task]
-            all_Y = np.concatenate((all_Y, val_Y_TS), axis=0)
-        splits = [range(0, len(train_X_TS)), range(
-            len(train_X_TS), len(all_X))]
-        dsets = TSDatasets(all_X, all_Y, splits=splits, inplace=True)
-        dls = TSDataLoaders.from_dsets(
-            dsets.train, dsets.valid, bs=8, batch_tfms=TSStandardize(by_var=True))
-        model = TST.TST(dls.vars, dls.c, dls.len, dropout=0.3, fc_dropout=0.9)
-        learn = ts_learner(dls, model, loss_func=LabelSmoothingCrossEntropyFlat(),
-                           metrics=[RocAucBinary(), accuracy],  cbs=ShowGraphCallback2())
-        learn.fit_one_cycle(100, 1e-4)
+        # model params
+        max_dilations_per_kernel = trial.suggest_int(
+            "max_dilations_per_kernel", low=model_params["max_dilations_per_kernel"]["low"], high=model_params["max_dilations_per_kernel"]["high"], step=model_params["max_dilations_per_kernel"]["step"])
+        n_estimators = trial.suggest_int(
+            "n_estimators", low=model_params["n_estimators"]["low"], high=model_params["n_estimators"]["high"], step=model_params["n_estimators"]["step"])
+        class_weight = trial.suggest_categorical(
+            "class_weight", [None])  # ["balanced", None])
+
+        model = MINIROCKET.MiniRocketVotingClassifier(
+            n_estimators=n_estimators, n_jobs=self.n_jobs, max_dilations_per_kernel=max_dilations_per_kernel, class_weight=class_weight)
+        model.fit(train_X_TS, train_Y_TS_task)
+        test_preds = self.get_full_test_preds(
+            model, val_X_TS_list, intervallength, stride_eval)
+        # test_preds = []
+        # for val_X_TS in val_X_TS_list:  # per session
+        #    pred = model.predict(val_X_TS)
+        # for each sample in the session, repeat the prediction based on intervallength and stride_eval
+       #     processed_preds = []
+       #     for i, pr in enumerate(pred):
+       #         if i == 0:
+        # first prediction, so append it intervallength times
+       #             processed_preds.extend([pr]*intervallength)
+       #         else:
+        # all other predictions are appended stride_eval times
+       #             processed_preds.extend([pr]*stride_eval)
+       #     test_preds.append(processed_preds)
+
+        eval_scores = self.get_eval_metrics(
+            preds=test_preds, dataset="val", verbose=True)
+        return eval_scores["accuracy"], eval_scores["f1"]
 
     def optuna_study(self, n_trials, model_type, study_name, verbose=False) -> optuna.study.Study:
         """Performs an Optuna study to optimize the hyperparameters of the model.
@@ -384,13 +434,16 @@ class TS_Model_Trainer:
             scores_iter = []
             self.data.limit_to_sessions(sessions_train=range(0, i))
             for j in range(iterations_per_samplesize):
+                # dataprep
                 val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
                     intervallength=intervallength, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
                 train_X_TS = self.remove_columns(
                     columns_to_remove=columns_to_remove, data_X=train_X_TS, column_order=column_order)
-                model.fit(train_X_TS, train_Y_TS[:, self.task])
                 val_X_TS_list_new = self.remove_columns(
                     columns_to_remove=columns_to_remove, data_X=val_X_TS_list, column_order=column_order)
+                # train
+                model.fit(train_X_TS, train_Y_TS[:, self.task])
+                # eval
                 test_preds = self.get_full_test_preds(
                     model, val_X_TS_list_new, intervallength, stride_eval)
                 eval_scores = self.get_eval_metrics(
@@ -420,20 +473,20 @@ if __name__ == '__main__':
     my_setup(optuna)
     print(platform.platform())
     if "macOS" in platform.platform():
-        n_jobs = 2
+        n_jobs = 4
         pathprefix = ""
-        config_name = "config_mac.json"
+        config_name = "configs/config_mac.json"
     else:
         n_jobs = -1
         pathprefix = "HRI-Error-Detection-STAI/"
-        config_name = "config_minirocket.json"
+        config_name = "configs/config_minirocket.json"
     print("n_jobs:", n_jobs)
 
     trainer = TS_Model_Trainer(pathprefix+"data/", task=2, n_jobs=n_jobs)
     config = trainer.read_config(pathprefix+"code/"+config_name)
 
-    # study = trainer.optuna_study(
-    #    n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
+    study = trainer.optuna_study(
+        n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
 
     # repeat best trial
     # trainer.retrain_best_trial(study, config["model_type"])
@@ -442,4 +495,4 @@ if __name__ == '__main__':
     # trainer.feature_importance()
 
     # learning curve
-    trainer.learning_curve(iterations_per_samplesize=5, stepsize=5)
+    # trainer.learning_curve(iterations_per_samplesize=5, stepsize=5)

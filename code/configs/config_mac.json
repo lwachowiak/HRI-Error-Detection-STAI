@@ -1,19 +1,21 @@
 {
     "task": 2,
     "model_type": "MiniRocket",
-    "n_trials": 6,
+    "n_trials": 3,
     "data_params": {
         "intervallength": {
-            "low": 900,
+            "low": 800,
             "high": 900,
             "step": 100
         },
         "stride_train": {
             "low": 500,
+            "high": 600,
             "step": 50
         },
         "stride_eval": {
             "low": 400,
+            "high": 500,
             "step": 50
         },
         "fps": [
@@ -29,9 +31,8 @@
             "stride_train"
         ],
         "columns_to_remove": [
-            [
-                "REMOVE_NOTHING"
-            ]
+            "speaker",
+            "openpose"
         ]
     },
     "model_params": {
