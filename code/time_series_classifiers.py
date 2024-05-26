@@ -473,6 +473,7 @@ class TS_Model_Trainer:
         plt.xlabel("Number of sessions in training data")
         plt.ylabel("Accuracy")
         plt.title("Learning curve")
+        plt.grid(alpha=0.2)
         # save as png in plots folder
         plt.savefig(save_to)
 
@@ -503,4 +504,4 @@ if __name__ == '__main__':
     # trainer.feature_importance()
 
     # learning curve
-    # trainer.learning_curve(iterations_per_samplesize=8, stepsize=3, save_to=pathprefix+"plots/learning_curve.png")
+    # trainer.learning_curve(iterations_per_samplesize=8, stepsize=3, save_to=pathprefix+"plots/learning_curve.pdf")
