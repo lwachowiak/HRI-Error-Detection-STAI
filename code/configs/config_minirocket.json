@@ -1,12 +1,12 @@
 {
     "task": 2,
     "model_type": "MiniRocket",
-    "n_trials": 20,
+    "n_trials": 50,
     "data_params": {
         "intervallength": {
             "low": 700,
             "high": 900,
-            "step": 100
+            "step": 50
         },
         "stride_train": {
             "low": 50,
@@ -35,7 +35,6 @@
         ],
         "columns_to_remove": [
             "REMOVE_NOTHING",
-            "opensmile",
             "speaker",
             "openpose",
             "openface",
