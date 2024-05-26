@@ -371,11 +371,11 @@ class TS_Model_Trainer:
         '''
         scores = []
         model = MINIROCKET.MiniRocketVotingClassifier(
-            n_estimators=1, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
+            n_estimators=5, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
         intervallength = 800
         stride_eval = 400
-        stride_train = 800
-        fps = 100
+        stride_train = 400
+        fps = 25
         label_creation = "stride_eval"
         columns_to_remove = ["openpose"]
         max_sessions = len(self.data.train_X["session"].unique())
@@ -442,4 +442,4 @@ if __name__ == '__main__':
     # trainer.feature_importance()
 
     # learning curve
-    trainer.learning_curve(iterations_per_samplesize=5, stepsize=1)
+    trainer.learning_curve(iterations_per_samplesize=5, stepsize=5)
