@@ -1,7 +1,7 @@
 {
     "task": 2,
     "model_type": "MiniRocket",
-    "n_trials": 30,
+    "n_trials": 20,
     "data_params": {
         "intervallength": {
             "low": 700,
@@ -22,11 +22,11 @@
             10,
             20,
             25,
-            50
+            50,
+            100
         ],
         "nan_handling": [
             "standard",
-            "zeros",
             "avg"
         ],
         "label_creation": [
@@ -39,8 +39,7 @@
             "speaker",
             "openpose",
             "openface",
-            "openpose, speaker",
-            "speaker, openpose, openface"
+            "openpose, speaker"
         ]
     },
     "model_params": {

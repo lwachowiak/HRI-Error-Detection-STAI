@@ -297,8 +297,9 @@ class DataLoader_HRI:
         # df_opensmile.set_index('frame', inplace=True)
         # df_speaker.set_index('frame', inplace=True)
 
-        print(len(df_openface), len(df_openpose),
-              len(df_opensmile), len(df_speaker), filename)
+        if self.verbose:
+            print(len(df_openface), len(df_openpose),
+                  len(df_opensmile), len(df_speaker), filename)
 
         # Merge the dataframes
         # merge df_speaker and df_opensmile based on index, if one is longer than the other, the extra rows are dropped
@@ -326,7 +327,8 @@ class DataLoader_HRI:
         #    df_speaker.add_suffix('_speaker'), how='outer'
         # )
 
-        print(len(merged_df), "after merge")
+        if self.verbose:
+            print(len(merged_df), "after merge")
 
         # Add session number
         merged_df.insert(1, 'session', int(filename.split('_')[0]))

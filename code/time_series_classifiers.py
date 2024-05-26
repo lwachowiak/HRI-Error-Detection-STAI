@@ -53,7 +53,7 @@ class TS_Model_Trainer:
                                     "speaker, openpose, openface": ["speaker", "openpose", "openface"]
                                     }
 
-    def get_full_test_preds(self, model, val_X_TS_list, intervallength, stride_eval) -> list:
+    def get_full_test_preds(self, model: object, val_X_TS_list: list, intervallength: int, stride_eval: int) -> list:
         '''Get full test predictions by repeating the predictions based on intervallength and stride_eval.
         :param model: The model to evaluate.
         :param val_X_TS_list: List of validation/test data per session.
@@ -75,7 +75,7 @@ class TS_Model_Trainer:
             test_preds.append(processed_preds)
         return test_preds
 
-    def get_eval_metrics(self, preds, dataset="val", verbose=False) -> dict:
+    def get_eval_metrics(self, preds: list, dataset="val", verbose=False) -> dict:
         '''Evaluate model on self.data.val_X and self.data.val_Y. The final missing values in preds are filled with 0s.
         :param preds: List of predictions per session. Per session there is one list of prediction labels.
         :param dataset: The dataset to evaluate on (val or test)
@@ -121,31 +121,33 @@ class TS_Model_Trainer:
         output: tuple: Tuple containing the validation and training datasets.
         """
         data_params = self.config["data_params"]
-        intervallength = trial.suggest_int(
+        data_values = {}
+        data_values["intervallength"] = trial.suggest_int(
             "intervallength", low=data_params["intervallength"]["low"], high=data_params["intervallength"]["high"], step=data_params["intervallength"]["step"])
-        # stride must be leq than intervallength
-        stride_train = trial.suggest_int(
-            "stride_train", low=data_params["stride_train"]["low"], high=min(intervallength, data_params["stride_train"]["high"]), step=data_params["intervallength"]["step"])
-        stride_eval = trial.suggest_int(
-            "stride_eval", low=data_params["stride_eval"]["low"], high=min(intervallength, data_params["stride_eval"]["high"]), step=data_params["intervallength"]["step"])
-        fps = trial.suggest_categorical("fps", data_params["fps"])
-        columns_to_remove = trial.suggest_categorical("columns_to_remove",
-                                                      data_params["columns_to_remove"])
-        columns_to_remove = self.column_removal_dict[columns_to_remove]
-        label_creation = trial.suggest_categorical(
+        # strides must be leq than intervallength
+        data_values["stride_train"] = trial.suggest_int(
+            "stride_train", low=data_params["stride_train"]["low"], high=min(data_values["intervallength"], data_params["stride_train"]["high"]), step=data_params["intervallength"]["step"])
+        data_values["stride_eval"] = trial.suggest_int(
+            "stride_eval", low=data_params["stride_eval"]["low"], high=min(data_values["intervallength"], data_params["stride_eval"]["high"]), step=data_params["intervallength"]["step"])
+        data_values["fps"] = trial.suggest_categorical(
+            "fps", data_params["fps"])
+        data_values["columns_to_remove"] = trial.suggest_categorical("columns_to_remove",
+                                                                     data_params["columns_to_remove"])
+        columns_to_remove = self.column_removal_dict[data_values["columns_to_remove"]]
+        data_values["label_creation"] = trial.suggest_categorical(
             "label_creation", data_params["label_creation"])
-        nan_handling = trial.suggest_categorical(
+        data_values["nan_handling"] = trial.suggest_categorical(
             "nan_handling", data_params["nan_handling"])
 
         # get timeseries format
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
-            intervallength=intervallength, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
+            intervallength=data_values["intervallength"], stride_train=data_values["stride_train"], stride_eval=data_values["stride_eval"], verbose=False, fps=data_values["fps"], label_creation=data_values["label_creation"])
         # nan handling
-        if nan_handling == "zeros":
+        if data_values["nan_handling"] == "zeros":
             train_X_TS = np.nan_to_num(train_X_TS, nan=0)
             val_X_TS_list = [np.nan_to_num(val_X_TS, nan=0)
                              for val_X_TS in val_X_TS_list]
-        if nan_handling == "avg":
+        if data_values["nan_handling"] == "avg":
             train_X_TS = DataLoader_HRI.impute_nan_with_feature_mean(
                 train_X_TS)
             val_X_TS_list = [DataLoader_HRI.impute_nan_with_feature_mean(
@@ -158,7 +160,7 @@ class TS_Model_Trainer:
 
         train_Y_TS_task = train_Y_TS[:, self.task]
 
-        return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task
+        return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values
 
     def merge_val_train(self, val_X_TS_list: list, val_Y_TS_list: list, train_X_TS: np.array, train_Y_TS_task: np.array) -> tuple:
         """
@@ -188,7 +190,7 @@ class TS_Model_Trainer:
             "class_weight", [None])  # ["balanced", None])
         lr = trial.suggest_float("lr", low=1e-5, high=1e-1, log=True)
 
-        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
+        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
             self.config, trial)
 
         all_X, all_Y, splits = self.merge_val_train(
@@ -201,51 +203,53 @@ class TS_Model_Trainer:
         model = build_ts_model(MINIROCKET_Pytorch.MiniRocket, dls=dls)
         learn = ts_learner(dls, model, metrics=accuracy, cbs=None)
         learn.fit_one_cycle(10, lr)
-        # TODO eval
 
     def optuna_objective_minirocket(self, trial: optuna.Trial) -> tuple:
         '''Optuna objective function for MiniRocket model. Optimizes for accuracy and macro f1 score.
         params: trial: optuna.Trial: The optuna trial runnning.
         output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
         '''
-        # data params
-        data_params = self.config["data_params"]
         model_params = self.config["model_params"]
-        intervallength = trial.suggest_int(
-            "intervallength", low=data_params["intervallength"]["low"], high=data_params["intervallength"]["high"], step=data_params["intervallength"]["step"])
-        # stride must be leq than intervallength
-        stride_train = trial.suggest_int(
-            "stride_train", low=data_params["stride_train"]["low"], high=min(intervallength, data_params["stride_train"]["high"]), step=data_params["intervallength"]["step"])
-        stride_eval = trial.suggest_int(
-            "stride_eval", low=data_params["stride_eval"]["low"], high=min(intervallength, data_params["stride_eval"]["high"]), step=data_params["intervallength"]["step"])
-        fps = trial.suggest_categorical("fps", data_params["fps"])
-        columns_to_remove = trial.suggest_categorical("columns_to_remove",
-                                                      data_params["columns_to_remove"])
-        columns_to_remove = self.column_removal_dict[columns_to_remove]
-        label_creation = trial.suggest_categorical(
-            "label_creation", data_params["label_creation"])
-        nan_handling = trial.suggest_categorical(
-            "nan_handling", data_params["nan_handling"])
-        # get timeseries format
-        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
-            intervallength=intervallength, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
-        # nan handling
-        if nan_handling == "zeros":
-            train_X_TS = np.nan_to_num(train_X_TS, nan=0)
-            val_X_TS_list = [np.nan_to_num(val_X_TS, nan=0)
-                             for val_X_TS in val_X_TS_list]
-        if nan_handling == "avg":
-            train_X_TS = DataLoader_HRI.impute_nan_with_feature_mean(
-                train_X_TS)
-            val_X_TS_list = [DataLoader_HRI.impute_nan_with_feature_mean(
-                val_X_TS) for val_X_TS in val_X_TS_list]
-        # feature removal
-        train_X_TS = self.remove_columns(columns_to_remove=columns_to_remove,
-                                         data_X=train_X_TS, column_order=column_order)
-        val_X_TS_list = self.remove_columns(columns_to_remove=columns_to_remove,
-                                            data_X=val_X_TS_list, column_order=column_order)
+        # # data params
+        # data_params = self.config["data_params"]
+        # intervallength = trial.suggest_int(
+        #     "intervallength", low=data_params["intervallength"]["low"], high=data_params["intervallength"]["high"], step=data_params["intervallength"]["step"])
+        # # stride must be leq than intervallength
+        # stride_train = trial.suggest_int(
+        #     "stride_train", low=data_params["stride_train"]["low"], high=min(intervallength, data_params["stride_train"]["high"]), step=data_params["intervallength"]["step"])
+        # stride_eval = trial.suggest_int(
+        #     "stride_eval", low=data_params["stride_eval"]["low"], high=min(intervallength, data_params["stride_eval"]["high"]), step=data_params["intervallength"]["step"])
+        # fps = trial.suggest_categorical("fps", data_params["fps"])
+        # columns_to_remove = trial.suggest_categorical("columns_to_remove",
+        #                                               data_params["columns_to_remove"])
+        # columns_to_remove = self.column_removal_dict[columns_to_remove]
+        # label_creation = trial.suggest_categorical(
+        #     "label_creation", data_params["label_creation"])
+        # nan_handling = trial.suggest_categorical(
+        #     "nan_handling", data_params["nan_handling"])
+        # # get timeseries format
+        # val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
+        #     intervallength=intervallength, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
+        # # nan handling
+        # if nan_handling == "zeros":
+        #     train_X_TS = np.nan_to_num(train_X_TS, nan=0)
+        #     val_X_TS_list = [np.nan_to_num(val_X_TS, nan=0)
+        #                      for val_X_TS in val_X_TS_list]
+        # if nan_handling == "avg":
+        #     train_X_TS = DataLoader_HRI.impute_nan_with_feature_mean(
+        #         train_X_TS)
+        #     val_X_TS_list = [DataLoader_HRI.impute_nan_with_feature_mean(
+        #         val_X_TS) for val_X_TS in val_X_TS_list]
+        # # feature removal
+        # train_X_TS = self.remove_columns(columns_to_remove=columns_to_remove,
+        #                                  data_X=train_X_TS, column_order=column_order)
+        # val_X_TS_list = self.remove_columns(columns_to_remove=columns_to_remove,
+        #                                     data_X=val_X_TS_list, column_order=column_order)
 
-        train_Y_TS_task = train_Y_TS[:, self.task]
+        # train_Y_TS_task = train_Y_TS[:, self.task]
+
+        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
+            self.config, trial)
 
         # model params
         max_dilations_per_kernel = trial.suggest_int(
@@ -259,7 +263,7 @@ class TS_Model_Trainer:
             n_estimators=n_estimators, n_jobs=self.n_jobs, max_dilations_per_kernel=max_dilations_per_kernel, class_weight=class_weight)
         model.fit(train_X_TS, train_Y_TS_task)
         test_preds = self.get_full_test_preds(
-            model, val_X_TS_list, intervallength, stride_eval)
+            model, val_X_TS_list, data_values["intervallength"], data_values["stride_eval"])
         # test_preds = []
         # for val_X_TS in val_X_TS_list:  # per session
         #    pred = model.predict(val_X_TS)
@@ -278,7 +282,7 @@ class TS_Model_Trainer:
             preds=test_preds, dataset="val", verbose=True)
         return eval_scores["accuracy"], eval_scores["f1"]
 
-    def optuna_study(self, n_trials, model_type, study_name, verbose=False) -> optuna.study.Study:
+    def optuna_study(self, n_trials: int, model_type: str, study_name: str, verbose=False) -> optuna.study.Study:
         """Performs an Optuna study to optimize the hyperparameters of the model.
         :param n_trials: The number of search trials to perform.
         :param model_type: The type of model to optimize (MiniRocket, TST).
@@ -318,11 +322,15 @@ class TS_Model_Trainer:
 
         return study
 
-    def get_trials_figures(self, study, target_index, target_name) -> None:
-        '''Get optuna visualization figures and log them to wandb. Summary visualizations for full search.'''
-        fig = optuna.visualization.plot_optimization_history(
-            study, target=lambda t: t.values[target_index], target_name=target_name)
-        wandb.log({"optuna_optimization_history_"+target_name: fig})
+    def get_trials_figures(self, study: optuna.study.Study, target_index: int, target_name: str) -> None:
+        '''Get optuna visualization figures and log them to wandb. Summary visualizations for full search.
+        params: study: optuna.study.Study: The optuna study object.
+        params: target_index: int: The index of the target value to plot, 0 for accuracy, 1 for macro f1.
+        params: target_name: str: The name of the target value to plot, used for the wandb log.
+        '''
+        # fig = optuna.visualization.plot_optimization_history(
+        #    study, target=lambda t: t.values[target_index], target_name=target_name)
+        # wandb.log({"optuna_optimization_history_"+target_name: fig})
         fig = optuna.visualization.plot_param_importances(
             study, target=lambda t: t.values[target_index], target_name=target_name)
         wandb.log({"optuna_param_importances_"+target_name: fig})
