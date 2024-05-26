@@ -1,3 +1,4 @@
+import optuna.study.study
 from tsai.models import MINIROCKET, HydraMultiRocketPlus, TST
 from tsai.learner import ts_learner
 from data_loader import DataLoader_HRI
@@ -13,10 +14,10 @@ import datetime
 import platform
 import numpy as np
 from get_metrics import get_metrics
+import matplotlib.pyplot as plt
 
 # TODO:
 # - just train with some columns / column selection / feature importance
-# - investigate effect of label_creation parameter
 # Models:
 #   - try different models: TST, HydraMultiRocketPlus, RandomForest, XGBoost
 #   - Try annotation/outlier processing: https://www.sktime.net/en/stable/api_reference/annotation.html
@@ -25,7 +26,7 @@ from get_metrics import get_metrics
 
 class TS_Model_Trainer:
 
-    def __init__(self, data_folder, task, n_jobs):
+    def __init__(self, data_folder: str, task: int, n_jobs: int):
         '''
         Initialize the TS_Model_Trainer with the data folder and the task to be trained on.
         :param data_folder: The folder containing the data.
@@ -51,7 +52,7 @@ class TS_Model_Trainer:
                                     "speaker, openpose, openface": ["speaker", "openpose", "openface"]
                                     }
 
-    def get_full_test_preds(self, model, val_X_TS_list, intervallength, stride_eval):
+    def get_full_test_preds(self, model, val_X_TS_list, intervallength, stride_eval) -> list:
         '''Get full test predictions by repeating the predictions based on intervallength and stride_eval.
         :param model: The model to evaluate.
         :param val_X_TS_list: List of validation/test data per session.
@@ -111,7 +112,7 @@ class TS_Model_Trainer:
 
         return eval_scores
 
-    def optuna_objective_minirocket(self, trial: optuna.Trial):
+    def optuna_objective_minirocket(self, trial: optuna.Trial) -> tuple:
         '''Optuna objective function for MiniRocket model. Optimizes for accuracy and macro f1 score.'''
         # parameters being optimized
         # data params
@@ -187,7 +188,7 @@ class TS_Model_Trainer:
             preds=test_preds, dataset="val", verbose=True)
         return eval_scores["accuracy"], eval_scores["f1"]
 
-    def optuna_objective_tst(self, trial: optuna.Trial):
+    def optuna_objective_tst(self, trial: optuna.Trial) -> tuple:
         '''Optuna objective function for TST model. Optimizes for accuracy and macro f1 score.'''
         # parameters being optimized
         # data params
@@ -267,7 +268,7 @@ class TS_Model_Trainer:
 
         return study
 
-    def get_trials_figures(self, study, target_index, target_name):
+    def get_trials_figures(self, study, target_index, target_name) -> None:
         '''Get optuna visualization figures and log them to wandb. Summary visualizations for full search.'''
         fig = optuna.visualization.plot_optimization_history(
             study, target=lambda t: t.values[target_index], target_name=target_name)
@@ -282,7 +283,7 @@ class TS_Model_Trainer:
             study, target=lambda t: t.values[target_index], target_name=target_name)
         wandb.log({"optuna_parallel_coordinate_"+target_name: fig})
 
-    def read_config(self, file_path):
+    def read_config(self, file_path: str) -> dict:
         """Reads a JSON configuration file and returns the configuration as a dictionary."""
         try:
             with open(file_path, 'r') as file:
@@ -300,7 +301,7 @@ class TS_Model_Trainer:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 
-    def retrain_best_trial(self, study, model_type):
+    def retrain_best_trial(self, study: optuna.study.Study, model_type: str) -> None:
         '''Retrain the best trial of a study.'''
         best_trial = max(study.best_trials, key=lambda t: t.values[0])
         print("Best trial:")
@@ -312,7 +313,7 @@ class TS_Model_Trainer:
         else:
             print("Model type not supported.")
 
-    def remove_columns(self, columns_to_remove, data_X, column_order) -> np.array:
+    def remove_columns(self, columns_to_remove: list, data_X: np.array, column_order: list) -> np.array:
         '''Remove columns from the data.
         :param columns_to_remove: List of columns to remove.
         :param data_X: The data to remove the columns from. Either a list of np.arrays or a np.array.
@@ -363,31 +364,56 @@ class TS_Model_Trainer:
             print("Removed:", key)
             print(value["accuracy"], value["f1"], "\n")
 
-    def learning_curve(self, iterations_per_samplesize):
-        '''Get learning curve of model.'''
+    def learning_curve(self, iterations_per_samplesize: int, stepsize: int) -> None:
+        '''Get learning curve of model.
+        :param iterations_per_samplesize: Number of iterations per sample size to create an average score.
+        :param stepsize: Step size for the sample sizes used for learning curve.
+        '''
         scores = []
         model = MINIROCKET.MiniRocketVotingClassifier(
-            n_estimators=10, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
+            n_estimators=1, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
         intervallength = 800
         stride_eval = 400
+        stride_train = 800
+        fps = 100
+        label_creation = "stride_eval"
+        columns_to_remove = ["openpose"]
+        max_sessions = len(self.data.train_X["session"].unique())
         # start with all training data and remove one session per iteration
-        for i in range(len(self.data.train_X), 0, -1):
+        for i in range(max_sessions, 0, -stepsize):
             scores_iter = []
             self.data.limit_to_sessions(sessions_train=range(0, i))
             for j in range(iterations_per_samplesize):
                 val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
-                    intervallength=intervallength, stride_train=400, stride_eval=stride_eval, verbose=False, fps=50, label_creation="stride_eval")
+                    intervallength=intervallength, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
                 train_X_TS = self.remove_columns(
-                    columns_to_remove=["openpose"], data_X=train_X_TS, column_order=column_order)
+                    columns_to_remove=columns_to_remove, data_X=train_X_TS, column_order=column_order)
                 model.fit(train_X_TS, train_Y_TS[:, self.task])
                 val_X_TS_list_new = self.remove_columns(
-                    columns_to_remove=["openpose"], data_X=val_X_TS_list, column_order=column_order)
+                    columns_to_remove=columns_to_remove, data_X=val_X_TS_list, column_order=column_order)
                 test_preds = self.get_full_test_preds(
                     model, val_X_TS_list_new, intervallength, stride_eval)
                 eval_scores = self.get_eval_metrics(
                     preds=test_preds, dataset="val", verbose=False)
                 scores_iter.append(eval_scores["accuracy"])
-            scores.append(np.mean(scores_iter))
+            scores.append(scores_iter)
+            print(scores)
+        # averaged scores
+        scores = np.array(scores)
+        # revert order of scores
+        scores = scores[::-1]
+        scores_mean = np.mean(scores, axis=1)
+        print(scores_mean)
+
+        # plot learning curve with standard deviation
+        plt.plot(range(0, max_sessions, stepsize), scores_mean)
+        plt.fill_between(range(0, max_sessions, stepsize), scores_mean -
+                         np.std(scores, axis=1), scores_mean + np.std(scores, axis=1), alpha=0.2)
+        plt.xlabel("Number of sessions in training data")
+        plt.ylabel("Accuracy")
+        plt.title("Learning curve")
+        # save as png in plots folder
+        plt.savefig("plots/learning_curve.png")
 
 
 if __name__ == '__main__':
@@ -406,8 +432,8 @@ if __name__ == '__main__':
     trainer = TS_Model_Trainer(pathprefix+"data/", task=2, n_jobs=n_jobs)
     config = trainer.read_config(pathprefix+"code/"+config_name)
 
-    study = trainer.optuna_study(
-        n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
+    # study = trainer.optuna_study(
+    #    n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
 
     # repeat best trial
     # trainer.retrain_best_trial(study, config["model_type"])
@@ -416,4 +442,4 @@ if __name__ == '__main__':
     # trainer.feature_importance()
 
     # learning curve
-    trainer.learning_curve(iterations_per_samplesize=5)
+    trainer.learning_curve(iterations_per_samplesize=5, stepsize=1)
