@@ -422,7 +422,7 @@ class TS_Model_Trainer:
             print("Removed:", key)
             print(value["accuracy"], value["f1"], "\n")
 
-    def learning_curve(self, iterations_per_samplesize: int, stepsize: int) -> None:
+    def learning_curve(self, iterations_per_samplesize: int, stepsize: int, save_to: str) -> None:
         '''Get learning curve of model.
         :param iterations_per_samplesize: Number of iterations per sample size to create an average score.
         :param stepsize: Step size for the sample sizes used for learning curve.
@@ -474,7 +474,7 @@ class TS_Model_Trainer:
         plt.ylabel("Accuracy")
         plt.title("Learning curve")
         # save as png in plots folder
-        plt.savefig("plots/learning_curve.png")
+        plt.savefig(save_to)
 
 
 if __name__ == '__main__':
@@ -503,4 +503,4 @@ if __name__ == '__main__':
     # trainer.feature_importance()
 
     # learning curve
-    # trainer.learning_curve(iterations_per_samplesize=5, stepsize=5)
+    # trainer.learning_curve(iterations_per_samplesize=8, stepsize=3, save_to=pathprefix+"plots/learning_curve.png")
