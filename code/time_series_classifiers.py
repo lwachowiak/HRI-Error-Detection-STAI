@@ -363,9 +363,31 @@ class TS_Model_Trainer:
             print("Removed:", key)
             print(value["accuracy"], value["f1"], "\n")
 
-    def learning_curve(self):
+    def learning_curve(self, iterations_per_samplesize):
         '''Get learning curve of model.'''
-        pass
+        scores = []
+        model = MINIROCKET.MiniRocketVotingClassifier(
+            n_estimators=10, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
+        intervallength = 800
+        stride_eval = 400
+        # start with all training data and remove one session per iteration
+        for i in range(len(self.data.train_X), 0, -1):
+            scores_iter = []
+            self.data.limit_to_sessions(sessions_train=range(0, i))
+            for j in range(iterations_per_samplesize):
+                val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
+                    intervallength=intervallength, stride_train=400, stride_eval=stride_eval, verbose=False, fps=50, label_creation="stride_eval")
+                train_X_TS = self.remove_columns(
+                    columns_to_remove=["openpose"], data_X=train_X_TS, column_order=column_order)
+                model.fit(train_X_TS, train_Y_TS[:, self.task])
+                val_X_TS_list_new = self.remove_columns(
+                    columns_to_remove=["openpose"], data_X=val_X_TS_list, column_order=column_order)
+                test_preds = self.get_full_test_preds(
+                    model, val_X_TS_list_new, intervallength, stride_eval)
+                eval_scores = self.get_eval_metrics(
+                    preds=test_preds, dataset="val", verbose=False)
+                scores_iter.append(eval_scores["accuracy"])
+            scores.append(np.mean(scores_iter))
 
 
 if __name__ == '__main__':
@@ -392,3 +414,6 @@ if __name__ == '__main__':
 
     # feature importance
     # trainer.feature_importance()
+
+    # learning curve
+    trainer.learning_curve(iterations_per_samplesize=5)

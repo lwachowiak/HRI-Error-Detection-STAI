@@ -7,7 +7,6 @@ import math
 # TODO:
 # - Improve: downsampling
 # - Add: data augmentation (TSAI has methods for that)
-# - what to do with NANs?
 # - IMPORTANT check how X data is loaded and aligned. it does not seem to work correctly on the last view rows
 
 
@@ -535,26 +534,20 @@ class DataLoader_HRI:
             except:
                 print("Error excluding val column with name", col)
 
-       #     if col not in self.train_X.columns:
-       #         print("Column", col, "not found in the data")
-       #         columns.remove(col)
-       # try:
-       #     self.train_X = self.train_X.drop(columns=columns, axis=1)
-       #     self.val_X = self.val_X.drop(columns=columns, axis=1)
-       # except:
-       #     print("Error excluding columns with names", columns)
-
-    def limit_to_sessions(self, sessions_train, sessions_val):
+    def limit_to_sessions(self, sessions_train=None, sessions_val=None):
         """
         Limit the data to the specified sessions
-        :param sessions: The sessions to keep
+        :param sessions_train: The sessions to include in the training data
+        :param sessions_val: The sessions to include in the validation data
         """
-        self.train_X = self.train_X[self.train_X['session'].isin(
-            sessions_train)]
-        self.val_X = self.val_X[self.val_X['session'].isin(sessions_val)]
-        self.train_Y = self.train_Y[self.train_Y['session'].isin(
-            sessions_train)]
-        self.val_Y = self.val_Y[self.val_Y['session'].isin(sessions_val)]
+        if sessions_train is not None:
+            self.train_X = self.train_X[self.train_X['session'].isin(
+                sessions_train)]
+            self.train_Y = self.train_Y[self.train_Y['session'].isin(
+                sessions_train)]
+        if sessions_val is not None:
+            self.val_X = self.val_X[self.val_X['session'].isin(sessions_val)]
+            self.val_Y = self.val_Y[self.val_Y['session'].isin(sessions_val)]
 
 
 if __name__ == "__main__":
