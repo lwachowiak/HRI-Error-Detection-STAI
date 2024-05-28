@@ -4,7 +4,7 @@ from tsai.learner import ts_learner
 from data_loader import DataLoader_HRI
 from tsai.data.all import *
 from tsai.models.utils import *
-from tsai.all import my_setup, ShowGraphCallback2, LabelSmoothingCrossEntropyFlat, RocAucBinary, accuracy
+from tsai.all import my_setup, ShowGraphCallback2, LabelSmoothingCrossEntropyFlat, RocAucBinary, accuracy, F1Score
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import optuna
 from optuna.integration import WeightsAndBiasesCallback
@@ -182,12 +182,8 @@ class TS_Model_Trainer:
     def optuna_objective_minirocketTorch(self, trial: optuna.Trial) -> tuple:
         model_params = self.config["model_params"]
         # model params
-        max_dilations_per_kernel = trial.suggest_int(
-            "max_dilations_per_kernel", low=model_params["max_dilations_per_kernel"]["low"], high=model_params["max_dilations_per_kernel"]["high"], step=model_params["max_dilations_per_kernel"]["step"])
-        n_estimators = trial.suggest_int(
-            "n_estimators", low=model_params["n_estimators"]["low"], high=model_params["n_estimators"]["high"], step=model_params["n_estimators"]["step"])
-        class_weight = trial.suggest_categorical(
-            "class_weight", [None])  # ["balanced", None])
+        bs = trial.suggest_int("bs", low=model_params["batch_size"]["low"],
+                               high=model_params["batch_size"]["high"], step=model_params["batch_size"]["step"])
         lr = trial.suggest_float("lr", low=1e-5, high=1e-1, log=True)
 
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
@@ -201,8 +197,10 @@ class TS_Model_Trainer:
         dls = TSDataLoaders.from_dsets(
             dsets.train, dsets.valid, batch_tfms=batch_tfms, bs=8)
         model = build_ts_model(MINIROCKET_Pytorch.MiniRocket, dls=dls)
-        learn = ts_learner(dls, model, metrics=accuracy, cbs=None)
+        learn = ts_learner(dls, model, metrics=[accuracy, F1Score()], cbs=None)
         learn.fit_one_cycle(10, lr)
+        acc, f1 = learn.recorder.values[-1][-2], learn.recorder.values[-1][-1]
+        return acc, f1
 
     def optuna_objective_minirocket(self, trial: optuna.Trial) -> tuple:
         '''Optuna objective function for MiniRocket model. Optimizes for accuracy and macro f1 score.
@@ -441,6 +439,7 @@ class TS_Model_Trainer:
         for i in range(max_sessions, 0, -stepsize):
             scores_iter = []
             self.data.limit_to_sessions(sessions_train=range(0, i))
+            print("Training on", i, "sessions...")
             for j in range(iterations_per_samplesize):
                 # dataprep
                 val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
@@ -458,16 +457,17 @@ class TS_Model_Trainer:
                     preds=test_preds, dataset="val", verbose=False)
                 scores_iter.append(eval_scores["accuracy"])
             scores.append(scores_iter)
-            print(scores)
+            print("\t", scores)
         # averaged scores
         scores = np.array(scores)
         # revert order of scores
         scores = scores[::-1]
         scores_mean = np.mean(scores, axis=1)
-        print(scores_mean)
+        print("\n\nMean Scores:", scores_mean)
 
         # plot learning curve with standard deviation
-        plt.plot(range(0, max_sessions, stepsize), scores_mean)
+        start_step = max_sessions % stepsize
+        plt.plot(range(start_step, max_sessions, stepsize), scores_mean)
         plt.fill_between(range(0, max_sessions, stepsize), scores_mean -
                          np.std(scores, axis=1), scores_mean + np.std(scores, axis=1), alpha=0.2)
         plt.xlabel("Number of sessions in training data")

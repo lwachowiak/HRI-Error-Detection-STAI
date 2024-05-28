@@ -1,0 +1,50 @@
+{
+    "task": 2,
+    "model_type": "MiniRocketTorch",
+    "n_trials": 50,
+    "data_params": {
+        "intervallength": {
+            "low": 600,
+            "high": 1100,
+            "step": 100
+        },
+        "stride_train": {
+            "low": 50,
+            "high": 500,
+            "step": 50
+        },
+        "stride_eval": {
+            "low": 50,
+            "high": 500,
+            "step": 50
+        },
+        "fps": [
+            10,
+            20,
+            25,
+            50,
+            100
+        ],
+        "nan_handling": [
+            "standard",
+            "avg"
+        ],
+        "label_creation": [
+            "stride_eval",
+            "stride_train"
+        ],
+        "columns_to_remove": [
+            "REMOVE_NOTHING",
+            "speaker",
+            "openpose",
+            "openpose, speaker"
+        ]
+    },
+    "model_params": {
+        "batch_size": {
+            "low": 8,
+            "high": 64,
+            "step": 8
+        }
+    }
+}
