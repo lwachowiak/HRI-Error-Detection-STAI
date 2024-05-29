@@ -425,6 +425,8 @@ class TS_Model_Trainer:
         :param iterations_per_samplesize: Number of iterations per sample size to create an average score.
         :param stepsize: Step size for the sample sizes used for learning curve.
         '''
+        print("Learning curve run started with stepsize", stepsize, "and",
+              iterations_per_samplesize, "iterations per sample size.")
         scores = []
         model = MINIROCKET.MiniRocketVotingClassifier(
             n_estimators=5, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
