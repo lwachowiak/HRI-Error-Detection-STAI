@@ -429,10 +429,10 @@ class TS_Model_Trainer:
               iterations_per_samplesize, "iterations per sample size.")
         scores = []
         model = MINIROCKET.MiniRocketVotingClassifier(
-            n_estimators=5, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
+            n_estimators=12, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
         intervallength = 800
-        stride_eval = 400
-        stride_train = 400
+        stride_eval = 300
+        stride_train = 300
         fps = 25
         label_creation = "stride_eval"
         columns_to_remove = ["openpose"]
