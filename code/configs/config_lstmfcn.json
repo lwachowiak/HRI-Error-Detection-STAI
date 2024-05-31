@@ -1,7 +1,7 @@
 {
     "task": 2,
-    "model_type": "MiniRocketTorch",
-    "n_trials": 50,
+    "model_type": "LSTM_FCN",
+    "n_trials": 2,
     "data_params": {
         "intervallength": {
             "low": 600,
@@ -10,12 +10,12 @@
         },
         "stride_train": {
             "low": 50,
-            "high": 500,
+            "high": 1000,
             "step": 50
         },
         "stride_eval": {
             "low": 50,
-            "high": 500,
+            "high": 1000,
             "step": 50
         },
         "fps": [
@@ -26,7 +26,7 @@
             100
         ],
         "nan_handling": [
-            "standard",
+            "zeros",
             "avg"
         ],
         "label_creation": [
@@ -42,17 +42,41 @@
     },
     "model_params": {
         "batch_size": {
-            "low": 8,
-            "high": 64,
-            "step": 8
+            "low": 64,
+            "high": 128,
+            "step": 64
         },
         "loss": [
-            "FocalLoss",
-            "LabelSmoothingCrossEntropyFlat"
+            "FocalLossFlat",
+            "CrossEntropyLossFlat"
         ],
         "lr": {
             "low": 1e-8,
             "high": 1e-2
-        }
+        },
+        "fc_dropout": {
+            "low": 0.0,
+            "high": 0.6,
+            "step": 0.1
+        },
+        "rnn_dropout": {
+            "low": 0.0,
+            "high": 0.8,
+            "step": 0.1
+        },
+        "hidden_size": {
+            "low": 32,
+            "high": 512,
+            "step": 32
+        },
+        "rnn_layers": {
+            "low": 1,
+            "high": 3,
+            "step": 1
+        },
+        "bidirectional": [
+            true,
+            false
+        ]
     }
 }

@@ -487,27 +487,36 @@ class DataLoader_HRI:
 
         return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order
 
-    def resample(self, interval, fps, style):
+    def resample(self, interval: list, fps: int, style: str) -> list:
         '''
-        Resample the interval to the desired fps. Original framerate is 100 fps'''
-        # resample the interval to the desired fps
+        Resample the interval to the desired fps. Original framerate is 100 fps
+        :param interval: The interval to downsample
+        :param fps: The desired fps
+        :param style: The style of resampling. One of 'mean', 'max', 'min'
+        :return: The downsampled interval
+        '''
+        # Validate style
         if style not in ['mean', 'max', 'min']:
             raise ValueError("Style must be one of 'mean', 'max', 'min'")
+        step = int(100 / fps)
         new_interval = []
-        step = int(100/fps)
+        # Iterate over each feature in the interval
         for feature in interval:
-            new_feature = []
-            # downsample the array by a rate of 100/fps
+            # Convert feature to a NumPy array for vectorized operations
+            feature = np.array(feature)
+            # Determine the shape of the new downsampled feature
+            new_length = len(feature) // step
+            reshaped_feature = feature[:new_length * step].reshape(-1, step)
+            # Apply the selected downsampling style
             if style == 'mean':
-                for i in range(0, len(feature), step):
-                    new_feature.append(np.mean(feature[i:i+step]))
+                new_feature = np.mean(reshaped_feature, axis=1)
             elif style == 'max':
-                for i in range(0, len(feature), step):
-                    new_feature.append(np.max(feature[i:i+step]))
+                new_feature = np.max(reshaped_feature, axis=1)
             elif style == 'min':
-                for i in range(0, len(feature), step):
-                    new_feature.append(np.min(feature[i:i+step]))
-            new_interval.append(new_feature)
+                new_feature = np.min(reshaped_feature, axis=1)
+            # Append the downsampled feature to new_interval
+            new_interval.append(new_feature.tolist())
+
         return new_interval
 
     @staticmethod
@@ -574,6 +583,7 @@ if __name__ == "__main__":
     print(X_val[0])
 
    # # TODO remove
+
     # def load_labels_old(self, data_dir, expand, rows_per_second=100):
     #     '''
     #     load the labels from the data_dir into a list of dataframes
@@ -616,3 +626,26 @@ if __name__ == "__main__":
     #             # add session number and df
     #             data_frames.append((filename, df))
     #     return data_frames
+
+    # def resample_old(self, interval, fps, style):
+    #     '''
+    #     Resample the interval to the desired fps. Original framerate is 100 fps'''
+    #     # resample the interval to the desired fps
+    #     if style not in ['mean', 'max', 'min']:
+    #         raise ValueError("Style must be one of 'mean', 'max', 'min'")
+    #     new_interval = []
+    #     step = int(100/fps)
+    #     for feature in interval:
+    #         new_feature = []
+    #         # downsample the array by a rate of 100/fps
+    #         if style == 'mean':
+    #             for i in range(0, len(feature), step):
+    #                 new_feature.append(np.mean(feature[i:i+step]))
+    #         elif style == 'max':
+    #             for i in range(0, len(feature), step):
+    #                 new_feature.append(np.max(feature[i:i+step]))
+    #         elif style == 'min':
+    #             for i in range(0, len(feature), step):
+    #                 new_feature.append(np.min(feature[i:i+step]))
+    #         new_interval.append(new_feature)
+    #     return new_interval
