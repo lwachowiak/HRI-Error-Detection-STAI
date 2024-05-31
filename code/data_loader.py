@@ -348,7 +348,7 @@ class DataLoader_HRI:
         :return: The data in summary format
         """
 
-        val_X_TS, val_Y_summary_list, train_X_TS, train_Y_summary = self.get_timeseries_format(
+        val_X_TS, val_Y_summary_list, train_X_TS, train_Y_summary, column_order = self.get_timeseries_format(
             interval_length, stride_train, stride_eval, fps, label_creation)
 
         if summary not in ['mean', 'max', 'min', 'median']:
@@ -381,7 +381,7 @@ class DataLoader_HRI:
         for i in range(len(val_X_summary_list)):
             val_X_summary_list[i] = np.nan_to_num(val_X_summary_list[i])
 
-        return val_X_summary_list, val_Y_summary_list, train_X_summary, train_Y_summary
+        return val_X_summary_list, val_Y_summary_list, train_X_summary, train_Y_summary, column_order
 
     def get_timeseries_format(self, intervallength, stride_train, stride_eval, fps=100, verbose=False, label_creation="full"):
         """
