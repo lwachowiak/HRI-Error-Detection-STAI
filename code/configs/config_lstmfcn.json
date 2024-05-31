@@ -68,6 +68,15 @@
             "low": 32,
             "high": 512,
             "step": 32
-        }
+        },
+        "rnn_layers": {
+            "low": 1,
+            "high": 3,
+            "step": 1
+        },
+        "bidirectional": [
+            true,
+            false
+        ]
     }
 }

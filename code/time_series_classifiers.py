@@ -451,8 +451,13 @@ class TS_Model_Trainer:
                                           high=model_params["rnn_dropout"]["high"], step=model_params["rnn_dropout"]["step"])
         hidden_size = trial.suggest_int("hidden_size", low=model_params["hidden_size"]["low"],
                                         high=model_params["hidden_size"]["high"], step=model_params["hidden_size"]["step"])
+        rnn_layers = trial.suggest_int("rnn_layers", low=model_params["rnn_layers"]["low"],
+                                       high=model_params["rnn_layers"]["high"], step=model_params["rnn_layers"]["step"])
+        bidirectional = trial.suggest_categorical(
+            "bidirectional", model_params["bidirectional"])
+
         model = LSTM_FCN(dls.vars, dls.c, dls.len,
-                         fc_dropout=fc_dropout, rnn_dropout=rnn_dropout, hidden_size=hidden_size)
+                         fc_dropout=fc_dropout, rnn_dropout=rnn_dropout, hidden_size=hidden_size, rnn_layers=rnn_layers, bidirectional=bidirectional)
         loss_func = trial.suggest_categorical("loss", model_params["loss"])
         loss_func = self.loss_dict[loss_func]
         learn = Learner(dls, model, metrics=[
