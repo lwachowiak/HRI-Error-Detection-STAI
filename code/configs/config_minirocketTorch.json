@@ -45,6 +45,14 @@
             "low": 8,
             "high": 64,
             "step": 8
+        },
+        "loss": [
+            "FocalLoss",
+            "LabelSmoothingCrossEntropyFlat"
+        ],
+        "lr": {
+            "low": 1e-8,
+            "high": 1e-2
         }
     }
 }

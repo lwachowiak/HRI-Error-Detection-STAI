@@ -1,10 +1,9 @@
 import optuna.study.study
 from tsai.models import MINIROCKET, HydraMultiRocketPlus, TST, MINIROCKET_Pytorch
-from tsai.learner import ts_learner
 from data_loader import DataLoader_HRI
 from tsai.data.all import *
 from tsai.models.utils import *
-from tsai.all import my_setup, ShowGraphCallback2, LabelSmoothingCrossEntropyFlat, RocAucBinary, accuracy, F1Score
+from tsai.all import my_setup, ShowGraphCallback2, LabelSmoothingCrossEntropyFlat, RocAucBinary, accuracy, F1Score, FocalLoss, FocalLossFlat, Learner
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import optuna
 from optuna.integration import WeightsAndBiasesCallback
@@ -52,8 +51,10 @@ class TS_Model_Trainer:
                                     "openpose, speaker": ["openpose", "speaker"],
                                     "speaker, openpose, openface": ["speaker", "openpose", "openface"]
                                     }
+        self.loss_dict = {"LabelSmoothingCrossEntropyFlat": LabelSmoothingCrossEntropyFlat(),
+                          "FocalLoss": FocalLoss()}
 
-    def get_full_test_preds(self, model: object, val_X_TS_list: list, intervallength: int, stride_eval: int) -> list:
+    def get_full_test_preds(self, model: object, val_X_TS_list: list, intervallength: int, stride_eval: int, model_type: str, batch_tfms: list = None) -> list:
         '''Get full test predictions by repeating the predictions based on intervallength and stride_eval.
         :param model: The model to evaluate.
         :param val_X_TS_list: List of validation/test data per session.
@@ -62,7 +63,15 @@ class TS_Model_Trainer:
         '''
         test_preds = []
         for val_X_TS in val_X_TS_list:  # per session
-            pred = model.predict(val_X_TS)
+            if model_type == "MiniRocket":
+                pred = model.predict(val_X_TS)
+            elif model_type == "TSAI":
+                for tfm in batch_tfms:
+                    val_X_TS = tfm(val_X_TS)
+                valid_probas, valid_targets = model.get_X_preds(
+                    X=val_X_TS, y=None, with_decoded=False)  # don't use the automatic decoding, there is a bug in the tsai library
+                pred = [model.dls.vocab[p]
+                        for p in np.argmax(valid_probas, axis=1)]
             # for each sample in the session, repeat the prediction based on intervallength and stride_eval
             processed_preds = []
             for i, pr in enumerate(pred):
@@ -184,7 +193,10 @@ class TS_Model_Trainer:
         # model params
         bs = trial.suggest_int("bs", low=model_params["batch_size"]["low"],
                                high=model_params["batch_size"]["high"], step=model_params["batch_size"]["step"])
-        lr = trial.suggest_float("lr", low=1e-5, high=1e-1, log=True)
+        lr = trial.suggest_float("lr", low=model_params["lr"]["low"],
+                                 high=model_params["lr"]["high"], log=True)
+        loss = trial.suggest_categorical("loss", model_params["loss"])
+        loss = self.loss_dict[loss]
 
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
             self.config, trial)
@@ -197,8 +209,8 @@ class TS_Model_Trainer:
         dls = TSDataLoaders.from_dsets(
             dsets.train, dsets.valid, batch_tfms=batch_tfms, bs=8)
         model = build_ts_model(MINIROCKET_Pytorch.MiniRocket, dls=dls)
-        learn = ts_learner(dls, model, metrics=[accuracy, F1Score()], cbs=None)
-        learn.fit_one_cycle(10, lr)
+        learn = Learner(dls, model, metrics=[accuracy, F1Score()], cbs=None)
+        learn.fit_one_cycle(50, lr)
         acc, f1 = learn.recorder.values[-1][-2], learn.recorder.values[-1][-1]
         return acc, f1
 
