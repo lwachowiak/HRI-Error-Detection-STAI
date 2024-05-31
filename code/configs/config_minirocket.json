@@ -1,22 +1,22 @@
 {
     "task": 2,
     "model_type": "MiniRocket",
-    "n_trials": 50,
+    "n_trials": 150,
     "data_params": {
         "intervallength": {
             "low": 700,
-            "high": 900,
+            "high": 1100,
             "step": 50
         },
         "stride_train": {
-            "low": 50,
+            "low": 25,
             "high": 500,
-            "step": 50
+            "step": 25
         },
         "stride_eval": {
-            "low": 50,
+            "low": 25,
             "high": 500,
-            "step": 50
+            "step": 25
         },
         "fps": [
             10,
@@ -35,9 +35,7 @@
         ],
         "columns_to_remove": [
             "REMOVE_NOTHING",
-            "speaker",
             "openpose",
-            "openface",
             "openpose, speaker"
         ]
     },
@@ -49,8 +47,8 @@
         },
         "n_estimators": {
             "low": 12,
-            "high": 12,
-            "step": 2
+            "high": 72,
+            "step": 12
         }
     }
 }

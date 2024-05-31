@@ -17,9 +17,11 @@ import matplotlib.pyplot as plt
 
 # TODO:
 # - just train with some columns / column selection / feature importance
+# - merge objective functions for all TSAI models
 # Models:
 #   - Try annotation/outlier processing: https://www.sktime.net/en/stable/api_reference/annotation.html
 #   - Try prediction/forcasting --> unlikely sequence --> outlier --> label 1
+#   - Foundation Models
 
 
 class TS_Model_Trainer:
@@ -437,10 +439,10 @@ class TS_Model_Trainer:
         tfms = [None, TSClassification()]
         dsets = TSDatasets(all_X, all_Y, splits=splits,
                            inplace=False, tfms=tfms)
-        batch_tfms = [TSStandardize(by_sample=True)]
 
         ### MODEL SPECIFICATION ###
         model_params = self.config["model_params"]
+        batch_tfms = [TSStandardize(by_sample=True)]
         bs = trial.suggest_int("bs", low=model_params["batch_size"]["low"],
                                high=model_params["batch_size"]["high"], step=model_params["batch_size"]["step"])
         dls = TSDataLoaders.from_dsets(
@@ -478,7 +480,49 @@ class TS_Model_Trainer:
         params: trial: optuna.Trial: The optuna trial runnning.
         output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
         '''
-        pass
+       ### DATA PRE-PROCESSING ###
+        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
+            self.config, trial)
+        all_X, all_Y, splits = self.merge_val_train(
+            val_X_TS_list=val_X_TS_list, val_Y_TS_list=val_Y_TS_list, train_X_TS=train_X_TS, train_Y_TS_task=train_Y_TS_task)
+        tfms = [None, TSClassification()]
+        dsets = TSDatasets(all_X, all_Y, splits=splits,
+                           inplace=False, tfms=tfms)
+
+        ### MODEL SPECIFICATION ###
+        model_params = self.config["model_params"]
+        batch_tfms = [TSStandardize(by_sample=True)]
+        bs = trial.suggest_int("bs", low=model_params["batch_size"]["low"],
+                               high=model_params["batch_size"]["high"], step=model_params["batch_size"]["step"])
+        dls = TSDataLoaders.from_dsets(
+            dsets.train, dsets.valid, bs=bs, batch_tfms=batch_tfms)
+
+        dropout = trial.suggest_float("dropout", low=model_params["dropout"]["low"],
+                                      high=model_params["dropout"]["high"], step=model_params["dropout"]["step"])
+        fc_dropout = trial.suggest_float("fc_dropout", low=model_params["fc_dropout"]["low"],
+                                         high=model_params["fc_dropout"]["high"], step=model_params["fc_dropout"]["step"])
+        n_layers = trial.suggest_int("n_layers", low=model_params["n_layers"]["low"],
+                                     high=model_params["n_layers"]["high"], step=model_params["n_layers"]["step"])
+        n_heads = trial.suggest_int("n_heads", low=model_params["n_heads"]["low"],
+                                    high=model_params["n_heads"]["high"], step=model_params["n_heads"]["step"])
+        d_model = trial.suggest_int("d_model", low=model_params["d_model"]["low"],
+                                    high=model_params["d_model"]["high"], step=model_params["d_model"]["step"])
+        model = TST(dls.vars, dls.c, dls.len, n_layers=n_layers, n_heads=n_heads,
+                    d_model=d_model, fc_dropout=fc_dropout, dropout=dropout)
+        loss_func = trial.suggest_categorical("loss", model_params["loss"])
+        loss_func = self.loss_dict[loss_func]
+        learn = Learner(dls, model, metrics=[
+                        accuracy, F1Score()], cbs=[], loss_func=loss_func)
+        lr = trial.suggest_float("lr", low=model_params["lr"]["low"],
+                                 high=model_params["lr"]["high"], log=True)
+        # with early stopping
+        # [EarlyStoppingCallback(monitor="accuracy", min_delta=0.01, patience=3)])
+        learn.fit_one_cycle(10, lr, cbs=[])
+        preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, intervallength=data_values[
+            "intervallength"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms)
+        outcomes = self.get_eval_metrics(
+            preds=preds, dataset="val", verbose=False)
+        return outcomes["accuracy"], outcomes["f1"]
 
     def optuna_objective_minirocket(self, trial: optuna.Trial) -> tuple:
         '''Optuna objective function for MiniRocket model. Optimizes for accuracy and macro f1 score.
@@ -522,7 +566,7 @@ if __name__ == '__main__':
     else:
         n_jobs = -1
         pathprefix = "HRI-Error-Detection-STAI/"
-        config_name = "configs/config_lstmfcn.json"
+        config_name = "configs/config_tst.json"
     print("n_jobs:", n_jobs)
 
     trainer = TS_Model_Trainer(pathprefix+"data/", task=2, n_jobs=n_jobs)
