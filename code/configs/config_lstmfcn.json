@@ -1,7 +1,7 @@
 {
     "task": 2,
     "model_type": "LSTM_FCN",
-    "n_trials": 2,
+    "n_trials": 100,
     "data_params": {
         "intervallength": {
             "low": 600,

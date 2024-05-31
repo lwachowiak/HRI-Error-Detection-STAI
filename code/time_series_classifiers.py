@@ -522,7 +522,7 @@ if __name__ == '__main__':
     else:
         n_jobs = -1
         pathprefix = "HRI-Error-Detection-STAI/"
-        config_name = "configs/config_lstmfcn.json"
+        config_name = "configs/config_minirocket.json"
     print("n_jobs:", n_jobs)
 
     trainer = TS_Model_Trainer(pathprefix+"data/", task=2, n_jobs=n_jobs)
