@@ -10,12 +10,12 @@
         },
         "stride_train": {
             "low": 50,
-            "high": 1000,
+            "high": 750,
             "step": 50
         },
         "stride_eval": {
             "low": 50,
-            "high": 1000,
+            "high": 750,
             "step": 50
         },
         "fps": [
@@ -51,8 +51,8 @@
             "CrossEntropyLossFlat"
         ],
         "lr": {
-            "low": 1e-8,
-            "high": 1e-2
+            "low": 1e-6,
+            "high": 1e-1
         },
         "fc_dropout": {
             "low": 0.0,
@@ -71,7 +71,7 @@
         },
         "rnn_layers": {
             "low": 1,
-            "high": 3,
+            "high": 10,
             "step": 1
         },
         "bidirectional": [
