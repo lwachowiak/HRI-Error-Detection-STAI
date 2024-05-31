@@ -1,0 +1,76 @@
+{
+    "task": 2,
+    "model_type": "RandomForest",
+    "n_trials": 50,
+    "data_params": {
+        "interval_length": {
+            "low": 700,
+            "high": 900,
+            "step": 50
+        },
+        "stride_train": {
+            "low": 250,
+            "high": 500,
+            "step": 50
+        },
+        "stride_eval": {
+            "low": 250,
+            "high": 500,
+            "step": 50
+        },
+        "fps": [
+            10,
+            20,
+            50
+        ],
+        "nan_handling": [
+            "standard",
+            "zeros"
+        ],
+        "label_creation": [
+            "full",
+            "stride_eval",
+            "stride_train"
+        ],
+        "columns_to_remove": [
+            "REMOVE_NOTHING",
+            "speaker",
+            "openpose",
+            "openface",
+            "openpose, speaker"
+        ],
+        "summary": [
+            "mean",
+            "median",
+            "max",
+            "min"
+        ] 
+    },
+
+    "model_params": {
+        "n_estimators": {
+            "low": 10,
+            "high": 100,
+            "step": 10
+        },
+        "max_depth": {
+            "low": 5,
+            "high": 50,
+            "step": 5
+        },
+        "random_state": {
+            "low": 0,
+            "high": 10,
+            "step": 1
+        },
+        "criterion": [
+            "gini",
+            "entropy"
+        ],
+        "max_features": [
+            "auto",
+            "sqrt",
+            "log2"
+        ]
+    }
+}
