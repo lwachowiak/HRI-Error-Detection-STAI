@@ -51,8 +51,8 @@ class TS_Model_Trainer:
                                     "openpose, speaker": ["openpose", "speaker"],
                                     "speaker, openpose, openface": ["speaker", "openpose", "openface"]
                                     }
-        self.loss_dict = {"LabelSmoothingCrossEntropyFlat": LabelSmoothingCrossEntropyFlat(),
-                          "FocalLoss": FocalLoss()}
+        self.loss_dict = {"CrossEntropyLossFlat": CrossEntropyLossFlat(),
+                          "FocalLossFlat": FocalLossFlat()}
 
     def get_full_test_preds(self, model: object, val_X_TS_list: list, intervallength: int, stride_eval: int, model_type: str, batch_tfms: list = None) -> list:
         '''Get full test predictions by repeating the predictions based on intervallength and stride_eval.
@@ -60,7 +60,12 @@ class TS_Model_Trainer:
         :param val_X_TS_list: List of validation/test data per session.
         :param intervallength: The length of the interval to predict.
         :param stride_eval: The stride to evaluate the model.
+        :param model_type: Either "MiniRocket" or "TSAI", which have different API calls
+        :param batch_tfms: List of batch transformations to apply, if any
         '''
+        if model_type not in ["MiniRocket", "TSAI"]:
+            raise ValueError(
+                "Model type not supported. Parameter model_type must be either 'MiniRocket' or 'TSAI'.")
         test_preds = []
         for val_X_TS in val_X_TS_list:  # per session
             if model_type == "MiniRocket":
@@ -265,17 +270,17 @@ class TS_Model_Trainer:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 
-    def retrain_best_trial(self, study: optuna.study.Study, model_type: str) -> None:
-        '''Retrain the best trial of a study.'''
-        best_trial = max(study.best_trials, key=lambda t: t.values[0])
-        print("Best trial:")
-        print("Values: ", best_trial.values, "Params: ", best_trial.params)
-        if model_type == "MiniRocket":
-            self.optuna_objective_minirocket(best_trial)
-        elif model_type == "TST":
-            self.optuna_objective_tst(best_trial)
-        else:
-            print("Model type not supported.")
+    # def retrain_best_trial(self, study: optuna.study.Study, model_type: str) -> None:
+    #     '''Retrain the best trial of a study.'''
+    #     best_trial = max(study.best_trials, key=lambda t: t.values[0])
+    #     print("Best trial:")
+    #     print("Values: ", best_trial.values, "Params: ", best_trial.params)
+    #     if model_type == "MiniRocket":
+    #         self.optuna_objective_minirocket(best_trial)
+    #     elif model_type == "TST":
+    #         self.optuna_objective_tst(best_trial)
+    #     else:
+    #         print("Model type not supported.")
 
     def remove_columns(self, columns_to_remove: list, data_X: np.array, column_order: list) -> np.array:
         '''Remove columns from the data.
@@ -424,7 +429,44 @@ class TS_Model_Trainer:
         params: trial: optuna.Trial: The optuna trial runnning.
         output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
         """
-        pass
+       ### DATA PRE-PROCESSING ###
+        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
+            self.config, trial)
+        all_X, all_Y, splits = self.merge_val_train(
+            val_X_TS_list=val_X_TS_list, val_Y_TS_list=val_Y_TS_list, train_X_TS=train_X_TS, train_Y_TS_task=train_Y_TS_task)
+        tfms = [None, TSClassification()]
+        dsets = TSDatasets(all_X, all_Y, splits=splits,
+                           inplace=False, tfms=tfms)
+        batch_tfms = [TSStandardize(by_sample=True)]
+
+        ### MODEL SPECIFICATION ###
+        model_params = self.config["model_params"]
+        bs = trial.suggest_int("bs", low=model_params["batch_size"]["low"],
+                               high=model_params["batch_size"]["high"], step=model_params["batch_size"]["step"])
+        dls = TSDataLoaders.from_dsets(
+            dsets.train, dsets.valid, bs=bs, batch_tfms=batch_tfms)
+        fc_dropout = trial.suggest_float("fc_dropout", low=model_params["fc_dropout"]["low"],
+                                         high=model_params["fc_dropout"]["high"], step=model_params["fc_dropout"]["step"])
+        rnn_dropout = trial.suggest_float("rnn_dropout", low=model_params["rnn_dropout"]["low"],
+                                          high=model_params["rnn_dropout"]["high"], step=model_params["rnn_dropout"]["step"])
+        hidden_size = trial.suggest_int("hidden_size", low=model_params["hidden_size"]["low"],
+                                        high=model_params["hidden_size"]["high"], step=model_params["hidden_size"]["step"])
+        model = LSTM_FCN(dls.vars, dls.c, dls.len,
+                         fc_dropout=fc_dropout, rnn_dropout=rnn_dropout, hidden_size=hidden_size)
+        loss_func = trial.suggest_categorical("loss", model_params["loss"])
+        loss_func = self.loss_dict[loss_func]
+        learn = Learner(dls, model, metrics=[
+                        accuracy, F1Score()], cbs=[], loss_func=loss_func)
+        lr = trial.suggest_float("lr", low=model_params["lr"]["low"],
+                                 high=model_params["lr"]["high"], log=True)
+        # with early stopping
+        # [EarlyStoppingCallback(monitor="accuracy", min_delta=0.01, patience=3)])
+        learn.fit_one_cycle(10, lr, cbs=[])
+        preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, intervallength=data_values[
+            "intervallength"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms)
+        outcomes = self.get_eval_metrics(
+            preds=preds, dataset="val", verbose=False)
+        return outcomes["accuracy"], outcomes["f1"]
 
     def optuna_objective_tst(self, trial: optuna.Trial) -> tuple:
         '''Optuna objective function for TST model. Optimizes for accuracy and macro f1 score.
@@ -459,7 +501,7 @@ class TS_Model_Trainer:
 
         ### EVAL ###
         test_preds = self.get_full_test_preds(
-            model, val_X_TS_list, data_values["intervallength"], data_values["stride_eval"])
+            model, val_X_TS_list, data_values["intervallength"], data_values["stride_eval"], model_type="MiniRocket")
         eval_scores = self.get_eval_metrics(
             preds=test_preds, dataset="val", verbose=True)
         return eval_scores["accuracy"], eval_scores["f1"]
@@ -471,7 +513,7 @@ if __name__ == '__main__':
     if "macOS" in platform.platform():
         n_jobs = 4
         pathprefix = ""
-        config_name = "configs/config_mac.json"
+        config_name = "configs/config_lstmfcn.json"
     else:
         n_jobs = -1
         pathprefix = "HRI-Error-Detection-STAI/"
@@ -483,9 +525,6 @@ if __name__ == '__main__':
 
     study = trainer.optuna_study(
         n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
-
-    # repeat best trial
-    # trainer.retrain_best_trial(study, config["model_type"])
 
     # feature importance
     # trainer.feature_importance()

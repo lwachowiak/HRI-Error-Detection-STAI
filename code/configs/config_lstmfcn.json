@@ -1,7 +1,7 @@
 {
     "task": 2,
     "model_type": "LSTM_FCN",
-    "n_trials": 50,
+    "n_trials": 2,
     "data_params": {
         "intervallength": {
             "low": 600,
@@ -42,9 +42,9 @@
     },
     "model_params": {
         "batch_size": {
-            "low": 8,
-            "high": 64,
-            "step": 8
+            "low": 64,
+            "high": 128,
+            "step": 64
         },
         "loss": [
             "FocalLossFlat",
@@ -53,6 +53,21 @@
         "lr": {
             "low": 1e-8,
             "high": 1e-2
+        },
+        "fc_dropout": {
+            "low": 0.0,
+            "high": 0.6,
+            "step": 0.1
+        },
+        "rnn_dropout": {
+            "low": 0.0,
+            "high": 0.8,
+            "step": 0.1
+        },
+        "hidden_size": {
+            "low": 32,
+            "high": 512,
+            "step": 32
         }
     }
 }

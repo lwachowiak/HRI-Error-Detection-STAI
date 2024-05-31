@@ -19,14 +19,13 @@
             "step": 50
         },
         "fps": [
-            25
+            100
         ],
         "nan_handling": [
             "standard"
         ],
         "label_creation": [
-            "stride_eval",
-            "stride_train"
+            "stride_eval"
         ],
         "columns_to_remove": [
             "openpose"
