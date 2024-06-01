@@ -14,7 +14,7 @@ import os
 folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'configs')
 class RFTrainer:
     def __init__(self, config):
-        self.data_loader = DL()
+        self.data_loader = DL("HRI-Error-Detection-STAI/data/")
         self.verbose = True
         self.config = self.read_config(os.path.join(folder, config))
         self.task = self.config["task"]
@@ -169,9 +169,12 @@ class RFTrainer:
     def hyperparam_search(self):
         
         wandb_kwargs = {"project": "HRI-Errors"}
-        #wandbc = WeightsAndBiasesCallback(
-            #metric_name=["accuracy", "macro f1"], 
-            #wandb_kwargs=wandb_kwargs)
+        if True:
+            wandbc = WeightsAndBiasesCallback(
+                metric_name=["accuracy", "macro f1"], 
+                wandb_kwargs=wandb_kwargs)
+        else:
+            wandbc = None
 
         date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -179,7 +182,7 @@ class RFTrainer:
             directions=["maximize", "maximize"], study_name=date + "_" + "RF")
         print(f"Sampler is {study.sampler.__class__.__name__}")
 
-        study.optimize(self.objective, n_trials=self.config["n_trials"])
+        study.optimize(self.objective, n_trials=self.config["n_trials"], callbacks=[wandbc])
 
         trial_with_highest_accuracy = max(
             study.best_trials, key=lambda t: t.values[0])
