@@ -3,7 +3,8 @@ from tsai.models import MINIROCKET, HydraMultiRocketPlus, MINIROCKET_Pytorch
 from data_loader import DataLoader_HRI
 from tsai.data.all import *
 from tsai.models.utils import *
-from tsai.all import my_setup, ShowGraphCallback2, LabelSmoothingCrossEntropyFlat, accuracy, F1Score, CrossEntropyLossFlat, FocalLossFlat, Learner, TST, LSTM_FCN
+from tsai.all import my_setup, LabelSmoothingCrossEntropyFlat, accuracy, F1Score, CrossEntropyLossFlat, FocalLossFlat, Learner, TST, LSTM_FCN
+from fastai.callback.all import EarlyStoppingCallback
 from sklearn.metrics import confusion_matrix
 import optuna
 from optuna.integration import WeightsAndBiasesCallback
@@ -14,10 +15,12 @@ import platform
 import numpy as np
 from get_metrics import get_metrics
 import matplotlib.pyplot as plt
+import torch
 
 # TODO:
 # - just train with some columns / column selection / feature importance
 # - merge objective functions for all TSAI models
+# - add early stopping
 # Models:
 #   - Try annotation/outlier processing: https://www.sktime.net/en/stable/api_reference/annotation.html
 #   - Try prediction/forcasting --> unlikely sequence --> outlier --> label 1
@@ -40,9 +43,9 @@ class TS_Model_Trainer:
         self.n_jobs = n_jobs
         self.objective_per_model = {
             "MiniRocket": self.optuna_objective_minirocket,
-            "MiniRocketTorch": self.optuna_objective_minirocketTorch,
-            "TST": self.optuna_objective_tst,
-            "LSTM_FCN": self.optuna_objective_lstm_fcn
+            "MiniRocketTorch": self.optuna_objective_tsai,
+            "TST": self.optuna_objective_tsai,
+            "LSTM_FCN": self.optuna_objective_tsai
         }
         self.config = None
         self.column_removal_dict = {"REMOVE_NOTHING": ["REMOVE_NOTHING"],
@@ -272,18 +275,6 @@ class TS_Model_Trainer:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 
-    # def retrain_best_trial(self, study: optuna.study.Study, model_type: str) -> None:
-    #     '''Retrain the best trial of a study.'''
-    #     best_trial = max(study.best_trials, key=lambda t: t.values[0])
-    #     print("Best trial:")
-    #     print("Values: ", best_trial.values, "Params: ", best_trial.params)
-    #     if model_type == "MiniRocket":
-    #         self.optuna_objective_minirocket(best_trial)
-    #     elif model_type == "TST":
-    #         self.optuna_objective_tst(best_trial)
-    #     else:
-    #         print("Model type not supported.")
-
     def remove_columns(self, columns_to_remove: list, data_X: np.array, column_order: list) -> np.array:
         '''Remove columns from the data.
         :param columns_to_remove: List of columns to remove.
@@ -394,44 +385,57 @@ class TS_Model_Trainer:
         # save as png in plots folder
         plt.savefig(save_to)
 
-    def optuna_objective_minirocketTorch(self, trial: optuna.Trial) -> tuple:
-        '''Optuna objective function for torch version of MiniRocket model. Optimizes for accuracy and macro f1 score.
+    def get_tsai_learner(self, dls: object, trial: optuna.Trial, config: dict) -> object:
+        """Get a tsai learner based on the configuration and the trial parameters.
+        params: dls: object: The dataloaders object passed to the model and learner.
+        params: trial: optuna.Trial: The trial object.
+        params: config: dict: The configuration dictionary from which to get the model parameters.
+        output: object: The tsai learner object to use for training.
+        """
+        model_params = config["model_params"]
+        if config["model_type"] == "TST":
+            dropout = trial.suggest_float("dropout", low=model_params["dropout"]["low"],
+                                          high=model_params["dropout"]["high"], step=model_params["dropout"]["step"])
+            fc_dropout = trial.suggest_float("fc_dropout", low=model_params["fc_dropout"]["low"],
+                                             high=model_params["fc_dropout"]["high"], step=model_params["fc_dropout"]["step"])
+            n_layers = trial.suggest_int("n_layers", low=model_params["n_layers"]["low"],
+                                         high=model_params["n_layers"]["high"], step=model_params["n_layers"]["step"])
+            n_heads = trial.suggest_int("n_heads", low=model_params["n_heads"]["low"],
+                                        high=model_params["n_heads"]["high"], step=model_params["n_heads"]["step"])
+            d_model = trial.suggest_int("d_model", low=model_params["d_model"]["low"],
+                                        high=model_params["d_model"]["high"], step=model_params["d_model"]["step"])
+
+            model = TST(dls.vars, dls.c, dls.len, n_layers=n_layers, n_heads=n_heads,
+                        d_model=d_model, fc_dropout=fc_dropout, dropout=dropout)
+        elif config["model_type"] == "LSTM_FCN":
+            fc_dropout = trial.suggest_float("fc_dropout", low=model_params["fc_dropout"]["low"],
+                                             high=model_params["fc_dropout"]["high"], step=model_params["fc_dropout"]["step"])
+            rnn_dropout = trial.suggest_float("rnn_dropout", low=model_params["rnn_dropout"]["low"],
+                                              high=model_params["rnn_dropout"]["high"], step=model_params["rnn_dropout"]["step"])
+            hidden_size = trial.suggest_int("hidden_size", low=model_params["hidden_size"]["low"],
+                                            high=model_params["hidden_size"]["high"], step=model_params["hidden_size"]["step"])
+            rnn_layers = trial.suggest_int("rnn_layers", low=model_params["rnn_layers"]["low"],
+                                           high=model_params["rnn_layers"]["high"], step=model_params["rnn_layers"]["step"])
+            bidirectional = trial.suggest_categorical(
+                "bidirectional", model_params["bidirectional"])
+
+            model = LSTM_FCN(dls.vars, dls.c, dls.len,
+                             fc_dropout=fc_dropout, rnn_dropout=rnn_dropout, hidden_size=hidden_size, rnn_layers=rnn_layers, bidirectional=bidirectional)
+
+        loss_func = trial.suggest_categorical("loss", model_params["loss"])
+        loss_func = self.loss_dict[loss_func]
+        cbs = [EarlyStoppingCallback(monitor="accuracy", patience=3)]
+        learn = Learner(dls, model, metrics=[
+            accuracy, F1Score()], cbs=cbs, loss_func=loss_func)
+        return learn
+
+    def optuna_objective_tsai(self, trial: optuna.Trial) -> tuple:
+        '''Optuna objective function for all tsai style models. Optimizes for accuracy and macro f1 score.
         params: trial: optuna.Trial: The optuna trial runnning.
         output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
         '''
         ### DATA PRE-PROCESSING ###
-        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
-            self.config, trial)
-
-        all_X, all_Y, splits = self.merge_val_train(
-            val_X_TS_list=val_X_TS_list, val_Y_TS_list=val_Y_TS_list, train_X_TS=train_X_TS, train_Y_TS_task=train_Y_TS_task)
-        tfms = [None, TSClassification()]
-        batch_tfms = TSStandardize(by_sample=True)
-        dsets = TSDatasets(all_X, all_Y, splits=splits, inplace=True)
-
         model_params = self.config["model_params"]
-        bs = trial.suggest_int("bs", low=model_params["batch_size"]["low"],
-                               high=model_params["batch_size"]["high"], step=model_params["batch_size"]["step"])
-        dls = TSDataLoaders.from_dsets(
-            dsets.train, dsets.valid, batch_tfms=batch_tfms, bs=bs)
-        lr = trial.suggest_float("lr", low=model_params["lr"]["low"],
-                                 high=model_params["lr"]["high"], log=True)
-        loss = trial.suggest_categorical("loss", model_params["loss"])
-        loss = self.loss_dict[loss]
-
-        model = build_ts_model(MINIROCKET_Pytorch.MiniRocket, dls=dls)
-        learn = Learner(dls, model, metrics=[accuracy, F1Score()], cbs=None)
-        learn.fit_one_cycle(50, lr)
-        acc, f1 = learn.recorder.values[-1][-2], learn.recorder.values[-1][-1]
-        # TODO actual eval
-        return acc, f1
-
-    def optuna_objective_lstm_fcn(self, trial: optuna.Trial) -> tuple:
-        """ Optuna objective function for LSTM-FCN model. Optimizes for accuracy and macro f1 score.
-        params: trial: optuna.Trial: The optuna trial runnning.
-        output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
-        """
-       ### DATA PRE-PROCESSING ###
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
             self.config, trial)
         all_X, all_Y, splits = self.merge_val_train(
@@ -439,85 +443,21 @@ class TS_Model_Trainer:
         tfms = [None, TSClassification()]
         dsets = TSDatasets(all_X, all_Y, splits=splits,
                            inplace=False, tfms=tfms)
-
-        ### MODEL SPECIFICATION ###
-        model_params = self.config["model_params"]
-        batch_tfms = [TSStandardize(by_sample=True)]
-        bs = trial.suggest_int("bs", low=model_params["batch_size"]["low"],
-                               high=model_params["batch_size"]["high"], step=model_params["batch_size"]["step"])
-        dls = TSDataLoaders.from_dsets(
-            dsets.train, dsets.valid, bs=bs, batch_tfms=batch_tfms)
-        fc_dropout = trial.suggest_float("fc_dropout", low=model_params["fc_dropout"]["low"],
-                                         high=model_params["fc_dropout"]["high"], step=model_params["fc_dropout"]["step"])
-        rnn_dropout = trial.suggest_float("rnn_dropout", low=model_params["rnn_dropout"]["low"],
-                                          high=model_params["rnn_dropout"]["high"], step=model_params["rnn_dropout"]["step"])
-        hidden_size = trial.suggest_int("hidden_size", low=model_params["hidden_size"]["low"],
-                                        high=model_params["hidden_size"]["high"], step=model_params["hidden_size"]["step"])
-        rnn_layers = trial.suggest_int("rnn_layers", low=model_params["rnn_layers"]["low"],
-                                       high=model_params["rnn_layers"]["high"], step=model_params["rnn_layers"]["step"])
-        bidirectional = trial.suggest_categorical(
-            "bidirectional", model_params["bidirectional"])
-
-        model = LSTM_FCN(dls.vars, dls.c, dls.len,
-                         fc_dropout=fc_dropout, rnn_dropout=rnn_dropout, hidden_size=hidden_size, rnn_layers=rnn_layers, bidirectional=bidirectional)
-        loss_func = trial.suggest_categorical("loss", model_params["loss"])
-        loss_func = self.loss_dict[loss_func]
-        learn = Learner(dls, model, metrics=[
-                        accuracy, F1Score()], cbs=[], loss_func=loss_func)
-        lr = trial.suggest_float("lr", low=model_params["lr"]["low"],
-                                 high=model_params["lr"]["high"], log=True)
-        # with early stopping
-        # [EarlyStoppingCallback(monitor="accuracy", min_delta=0.01, patience=3)])
-        learn.fit_one_cycle(10, lr, cbs=[])
-        preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, intervallength=data_values[
-            "intervallength"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms)
-        outcomes = self.get_eval_metrics(
-            preds=preds, dataset="val", verbose=False)
-        return outcomes["accuracy"], outcomes["f1"]
-
-    def optuna_objective_tst(self, trial: optuna.Trial) -> tuple:
-        '''Optuna objective function for TST model. Optimizes for accuracy and macro f1 score.
-        params: trial: optuna.Trial: The optuna trial runnning.
-        output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
-        '''
-       ### DATA PRE-PROCESSING ###
-        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
-            self.config, trial)
-        all_X, all_Y, splits = self.merge_val_train(
-            val_X_TS_list=val_X_TS_list, val_Y_TS_list=val_Y_TS_list, train_X_TS=train_X_TS, train_Y_TS_task=train_Y_TS_task)
-        tfms = [None, TSClassification()]
-        dsets = TSDatasets(all_X, all_Y, splits=splits,
-                           inplace=False, tfms=tfms)
-
-        ### MODEL SPECIFICATION ###
-        model_params = self.config["model_params"]
         batch_tfms = [TSStandardize(by_sample=True)]
         bs = trial.suggest_int("bs", low=model_params["batch_size"]["low"],
                                high=model_params["batch_size"]["high"], step=model_params["batch_size"]["step"])
         dls = TSDataLoaders.from_dsets(
             dsets.train, dsets.valid, bs=bs, batch_tfms=batch_tfms)
 
-        dropout = trial.suggest_float("dropout", low=model_params["dropout"]["low"],
-                                      high=model_params["dropout"]["high"], step=model_params["dropout"]["step"])
-        fc_dropout = trial.suggest_float("fc_dropout", low=model_params["fc_dropout"]["low"],
-                                         high=model_params["fc_dropout"]["high"], step=model_params["fc_dropout"]["step"])
-        n_layers = trial.suggest_int("n_layers", low=model_params["n_layers"]["low"],
-                                     high=model_params["n_layers"]["high"], step=model_params["n_layers"]["step"])
-        n_heads = trial.suggest_int("n_heads", low=model_params["n_heads"]["low"],
-                                    high=model_params["n_heads"]["high"], step=model_params["n_heads"]["step"])
-        d_model = trial.suggest_int("d_model", low=model_params["d_model"]["low"],
-                                    high=model_params["d_model"]["high"], step=model_params["d_model"]["step"])
-        model = TST(dls.vars, dls.c, dls.len, n_layers=n_layers, n_heads=n_heads,
-                    d_model=d_model, fc_dropout=fc_dropout, dropout=dropout)
-        loss_func = trial.suggest_categorical("loss", model_params["loss"])
-        loss_func = self.loss_dict[loss_func]
-        learn = Learner(dls, model, metrics=[
-                        accuracy, F1Score()], cbs=[], loss_func=loss_func)
+        ### MODEL SPECIFICATION ###
+        torch.cuda.empty_cache()
+        learn = self.get_tsai_learner(
+            dls=dls, trial=trial, config=self.config)
         lr = trial.suggest_float("lr", low=model_params["lr"]["low"],
                                  high=model_params["lr"]["high"], log=True)
-        # with early stopping
-        # [EarlyStoppingCallback(monitor="accuracy", min_delta=0.01, patience=3)])
-        learn.fit_one_cycle(10, lr, cbs=[])
+        learn.fit_one_cycle(20, lr)
+
+        ### EVALUATION ###
         preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, intervallength=data_values[
             "intervallength"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms)
         outcomes = self.get_eval_metrics(
@@ -560,7 +500,7 @@ if __name__ == '__main__':
     my_setup(optuna)
     print(platform.platform())
     if "macOS" in platform.platform():
-        n_jobs = 4
+        n_jobs = 2
         pathprefix = ""
         config_name = "configs/config_lstmfcn.json"
     else:
@@ -580,3 +520,103 @@ if __name__ == '__main__':
 
     # learning curve
     # trainer.learning_curve(iterations_per_samplesize=8, stepsize=3, save_to=pathprefix+"plots/learning_curve.pdf")
+
+    # def optuna_objective_lstm_fcn(self, trial: optuna.Trial) -> tuple:
+    #     """ Optuna objective function for LSTM-FCN model. Optimizes for accuracy and macro f1 score.
+    #     params: trial: optuna.Trial: The optuna trial runnning.
+    #     output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
+    #     """
+    #    ### DATA PRE-PROCESSING ###
+    #     val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
+    #         self.config, trial)
+    #     all_X, all_Y, splits = self.merge_val_train(
+    #         val_X_TS_list=val_X_TS_list, val_Y_TS_list=val_Y_TS_list, train_X_TS=train_X_TS, train_Y_TS_task=train_Y_TS_task)
+    #     tfms = [None, TSClassification()]
+    #     dsets = TSDatasets(all_X, all_Y, splits=splits,
+    #                        inplace=False, tfms=tfms)
+
+    #     ### MODEL SPECIFICATION ###
+    #     model_params = self.config["model_params"]
+    #     batch_tfms = [TSStandardize(by_sample=True)]
+    #     bs = trial.suggest_int("bs", low=model_params["batch_size"]["low"],
+    #                            high=model_params["batch_size"]["high"], step=model_params["batch_size"]["step"])
+    #     dls = TSDataLoaders.from_dsets(
+    #         dsets.train, dsets.valid, bs=bs, batch_tfms=batch_tfms)
+    #     fc_dropout = trial.suggest_float("fc_dropout", low=model_params["fc_dropout"]["low"],
+    #                                      high=model_params["fc_dropout"]["high"], step=model_params["fc_dropout"]["step"])
+    #     rnn_dropout = trial.suggest_float("rnn_dropout", low=model_params["rnn_dropout"]["low"],
+    #                                       high=model_params["rnn_dropout"]["high"], step=model_params["rnn_dropout"]["step"])
+    #     hidden_size = trial.suggest_int("hidden_size", low=model_params["hidden_size"]["low"],
+    #                                     high=model_params["hidden_size"]["high"], step=model_params["hidden_size"]["step"])
+    #     rnn_layers = trial.suggest_int("rnn_layers", low=model_params["rnn_layers"]["low"],
+    #                                    high=model_params["rnn_layers"]["high"], step=model_params["rnn_layers"]["step"])
+    #     bidirectional = trial.suggest_categorical(
+    #         "bidirectional", model_params["bidirectional"])
+
+    #     model = LSTM_FCN(dls.vars, dls.c, dls.len,
+    #                      fc_dropout=fc_dropout, rnn_dropout=rnn_dropout, hidden_size=hidden_size, rnn_layers=rnn_layers, bidirectional=bidirectional)
+    #     loss_func = trial.suggest_categorical("loss", model_params["loss"])
+    #     loss_func = self.loss_dict[loss_func]
+    #     learn = Learner(dls, model, metrics=[
+    #                     accuracy, F1Score()], cbs=[], loss_func=loss_func)
+    #     lr = trial.suggest_float("lr", low=model_params["lr"]["low"],
+    #                              high=model_params["lr"]["high"], log=True)
+    #     # with early stopping
+    #     learn.fit_one_cycle(20, lr)
+    #     preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, intervallength=data_values[
+    #         "intervallength"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms)
+    #     outcomes = self.get_eval_metrics(
+    #         preds=preds, dataset="val", verbose=False)
+    #     return outcomes["accuracy"], outcomes["f1"]
+
+    # def optuna_objective_tst(self, trial: optuna.Trial) -> tuple:
+    #     '''Optuna objective function for TST model. Optimizes for accuracy and macro f1 score.
+    #     params: trial: optuna.Trial: The optuna trial runnning.
+    #     output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
+    #     '''
+    #    ### DATA PRE-PROCESSING ###
+    #     val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
+    #         self.config, trial)
+    #     all_X, all_Y, splits = self.merge_val_train(
+    #         val_X_TS_list=val_X_TS_list, val_Y_TS_list=val_Y_TS_list, train_X_TS=train_X_TS, train_Y_TS_task=train_Y_TS_task)
+    #     tfms = [None, TSClassification()]
+    #     dsets = TSDatasets(all_X, all_Y, splits=splits,
+    #                        inplace=False, tfms=tfms)
+
+    #     ### MODEL SPECIFICATION ###
+    #     model_params = self.config["model_params"]
+    #     batch_tfms = [TSStandardize(by_sample=True)]
+    #     bs = trial.suggest_int("bs", low=model_params["batch_size"]["low"],
+    #                            high=model_params["batch_size"]["high"], step=model_params["batch_size"]["step"])
+    #     dls = TSDataLoaders.from_dsets(
+    #         dsets.train, dsets.valid, bs=bs, batch_tfms=batch_tfms)
+
+    #     dropout = trial.suggest_float("dropout", low=model_params["dropout"]["low"],
+    #                                   high=model_params["dropout"]["high"], step=model_params["dropout"]["step"])
+    #     fc_dropout = trial.suggest_float("fc_dropout", low=model_params["fc_dropout"]["low"],
+    #                                      high=model_params["fc_dropout"]["high"], step=model_params["fc_dropout"]["step"])
+    #     n_layers = trial.suggest_int("n_layers", low=model_params["n_layers"]["low"],
+    #                                  high=model_params["n_layers"]["high"], step=model_params["n_layers"]["step"])
+    #     n_heads = trial.suggest_int("n_heads", low=model_params["n_heads"]["low"],
+    #                                 high=model_params["n_heads"]["high"], step=model_params["n_heads"]["step"])
+    #     d_model = trial.suggest_int("d_model", low=model_params["d_model"]["low"],
+    #                                 high=model_params["d_model"]["high"], step=model_params["d_model"]["step"])
+
+    #     # torch cleanup to prevent memory leaks
+    #     torch.cuda.empty_cache()
+    #     model = TST(dls.vars, dls.c, dls.len, n_layers=n_layers, n_heads=n_heads,
+    #                 d_model=d_model, fc_dropout=fc_dropout, dropout=dropout)
+    #     loss_func = trial.suggest_categorical("loss", model_params["loss"])
+    #     loss_func = self.loss_dict[loss_func]
+    #     learn = Learner(dls, model, metrics=[
+    #                     accuracy, F1Score()], cbs=[], loss_func=loss_func)
+    #     lr = trial.suggest_float("lr", low=model_params["lr"]["low"],
+    #                              high=model_params["lr"]["high"], log=True)
+    #     # with early stopping
+    #     cbs = [EarlyStoppingCallback(monitor="accuracy", patience=3)]
+    #     learn.fit_one_cycle(20, lr, cbs=cbs)
+    #     preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, intervallength=data_values[
+    #         "intervallength"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms)
+    #     outcomes = self.get_eval_metrics(
+    #         preds=preds, dataset="val", verbose=False)
+    #     return outcomes["accuracy"], outcomes["f1"]
