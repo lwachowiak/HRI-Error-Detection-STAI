@@ -9,9 +9,9 @@
             "step": 50
         },
         "stride_train": {
-            "low": 25,
+            "low": 100,
             "high": 500,
-            "step": 25
+            "step": 50
         },
         "stride_eval": {
             "low": 25,
@@ -47,7 +47,7 @@
         },
         "n_estimators": {
             "low": 12,
-            "high": 72,
+            "high": 60,
             "step": 12
         }
     }
