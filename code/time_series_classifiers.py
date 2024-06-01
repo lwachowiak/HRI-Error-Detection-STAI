@@ -29,15 +29,14 @@ import torch
 
 class TS_Model_Trainer:
 
-    def __init__(self, data_folder: str, task: int, n_jobs: int):
+    def __init__(self, data_folder: str, n_jobs: int):
         '''
         Initialize the TS_Model_Trainer with the data folder and the task to be trained on.
         :param data_folder: The folder containing the data.
-        :param task: The task to be trained on. 0: UserAwkwardness, 1: RobotMistake, 2: InteractionRupture
         :param n_jobs: CPU usage parameter
         '''
         self.data = DataLoader_HRI(data_folder)
-        self.task = task
+        self.task = None
         self.TASK_TO_COLUMN = {0: "UserAwkwardness",
                                1: "RobotMistake", 2: "InteractionRupture"}
         self.n_jobs = n_jobs
@@ -58,6 +57,25 @@ class TS_Model_Trainer:
                                     }
         self.loss_dict = {"CrossEntropyLossFlat": CrossEntropyLossFlat(),
                           "FocalLossFlat": FocalLossFlat()}
+
+    def read_config(self, file_path: str) -> dict:
+        """Reads a JSON configuration file and returns the configuration as a dictionary."""
+        try:
+            with open(file_path, 'r') as file:
+                config = json.load(file)
+                # print config
+                print("\nConfiguration loaded successfully.")
+                for key, value in config.items():
+                    print(f"{key}: {value}")
+                self.config = config
+                self.task = config["task"]
+                return config
+        except FileNotFoundError:
+            print("\nError: The configuration file was not found.")
+        except json.JSONDecodeError:
+            print("\nError: The configuration file is not in proper JSON format.")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
 
     def get_full_test_preds(self, model: object, val_X_TS_list: list, intervallength: int, stride_eval: int, model_type: str, batch_tfms: list = None) -> list:
         '''Get full test predictions by repeating the predictions based on intervallength and stride_eval.
@@ -256,24 +274,6 @@ class TS_Model_Trainer:
         fig = optuna.visualization.plot_parallel_coordinate(
             study, target=lambda t: t.values[target_index], target_name=target_name)
         wandb.log({"optuna_parallel_coordinate_"+target_name: fig})
-
-    def read_config(self, file_path: str) -> dict:
-        """Reads a JSON configuration file and returns the configuration as a dictionary."""
-        try:
-            with open(file_path, 'r') as file:
-                config = json.load(file)
-                # print config
-                print("\nConfiguration loaded successfully.")
-                for key, value in config.items():
-                    print(f"{key}: {value}")
-                self.config = config
-                return config
-        except FileNotFoundError:
-            print("\nError: The configuration file was not found.")
-        except json.JSONDecodeError:
-            print("\nError: The configuration file is not in proper JSON format.")
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
 
     def remove_columns(self, columns_to_remove: list, data_X: np.array, column_order: list) -> np.array:
         '''Remove columns from the data.
@@ -506,10 +506,10 @@ if __name__ == '__main__':
     else:
         n_jobs = -1
         pathprefix = "HRI-Error-Detection-STAI/"
-        config_name = "configs/config_tst.json"
+        config_name = "configs/config_minirocket.json"
     print("n_jobs:", n_jobs)
 
-    trainer = TS_Model_Trainer(pathprefix+"data/", task=2, n_jobs=n_jobs)
+    trainer = TS_Model_Trainer(pathprefix+"data/", n_jobs=n_jobs)
     config = trainer.read_config(pathprefix+"code/"+config_name)
 
     study = trainer.optuna_study(
