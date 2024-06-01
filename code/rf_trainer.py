@@ -196,13 +196,14 @@ class RFTrainer:
 
         
         f = "best_{}".format
-        #for param_name, param_value in trial_with_highest_accuracy.params.items():
-            #wandb.run.summary[f(param_name)] = param_value
 
-        #wandb.run.summary["best accuracy"] = trial_with_highest_accuracy.values[0]
-        #wandb.run.summary["best macro f1"] = trial_with_highest_accuracy.values[1]
+        for param_name, param_value in trial_with_highest_accuracy.params.items():
+            wandb.run.summary[f(param_name)] = param_value
 
-        #wandb.finish()
+        wandb.run.summary["best accuracy"] = trial_with_highest_accuracy.values[0]
+        wandb.run.summary["best macro f1"] = trial_with_highest_accuracy.values[1]
+
+        wandb.finish()
 
         return study
     

@@ -15,7 +15,7 @@ folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'configs')
 
 class XGBTrainer:
     def __init__(self, config: str):
-        self.data_loader = DL()
+        self.data_loader = DL("HRI-Error-Detection-STAI/data/")
         self.verbose = True
         self.config = self.read_config(os.path.join(folder, config))
         self.task = self.config["task"]
@@ -169,9 +169,9 @@ class XGBTrainer:
     def hyperparam_search(self):
         
         wandb_kwargs = {"project": "HRI-Errors"}
-        #wandbc = WeightsAndBiasesCallback(
-            #metric_name=["accuracy", "macro f1"], 
-            #wandb_kwargs=wandb_kwargs)
+        wandbc = WeightsAndBiasesCallback(
+            metric_name=["accuracy", "macro f1"], 
+            wandb_kwargs=wandb_kwargs)
 
         date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -179,7 +179,7 @@ class XGBTrainer:
             directions=["maximize", "maximize"], study_name=date + "_" + "RF")
         print(f"Sampler is {study.sampler.__class__.__name__}")
 
-        study.optimize(self.objective, n_trials=self.config["n_trials"])
+        study.optimize(self.objective, n_trials=self.config["n_trials"], callbacks=[wandbc])
 
         trial_with_highest_accuracy = max(
             study.best_trials, key=lambda t: t.values[0])
@@ -193,13 +193,13 @@ class XGBTrainer:
 
         
         f = "best_{}".format
-        #for param_name, param_value in trial_with_highest_accuracy.params.items():
-            #wandb.run.summary[f(param_name)] = param_value
+        for param_name, param_value in trial_with_highest_accuracy.params.items():
+            wandb.run.summary[f(param_name)] = param_value
 
-        #wandb.run.summary["best accuracy"] = trial_with_highest_accuracy.values[0]
-        #wandb.run.summary["best macro f1"] = trial_with_highest_accuracy.values[1]
+        wandb.run.summary["best accuracy"] = trial_with_highest_accuracy.values[0]
+        wandb.run.summary["best macro f1"] = trial_with_highest_accuracy.values[1]
 
-        #wandb.finish()
+        wandb.finish()
 
         return study
     
