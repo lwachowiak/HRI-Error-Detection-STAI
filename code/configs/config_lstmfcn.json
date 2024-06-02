@@ -3,7 +3,7 @@
     "model_type": "LSTM_FCN",
     "n_trials": 200,
     "data_params": {
-        "intervallength": {
+        "interval_length": {
             "low": 400,
             "high": 1200,
             "step": 100

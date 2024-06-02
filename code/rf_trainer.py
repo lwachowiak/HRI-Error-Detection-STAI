@@ -10,8 +10,10 @@ import numpy as np
 from get_metrics import get_metrics
 import os
 
-#find path to config files
+# find path to config files
 folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'configs')
+
+
 class RFTrainer:
     def __init__(self, config):
         self.data_loader = DL("HRI-Error-Detection-STAI/data/")
@@ -28,7 +30,7 @@ class RFTrainer:
                                     }
         self.TASK_TO_COLUMN = {0: "UserAwkwardness",
                                1: "RobotMistake", 2: "InteractionRupture"}
-    
+
     def remove_columns(self, columns_to_remove: list, data_X: np.array, column_order: list) -> np.array:
         '''Remove columns from the data.
         :param columns_to_remove: List of columns to remove.
@@ -47,7 +49,7 @@ class RFTrainer:
                 i for i, col in enumerate(column_order) if not any(removed_col in col for removed_col in columns_to_remove)
             ]]
         return new_data_X
-    
+
     def data_from_config(self, config: dict, trial: optuna.Trial):
         """
         create the datasets for training based on the configuration and the trial parameters.
@@ -56,45 +58,50 @@ class RFTrainer:
         output: tuple: Tuple containing the validation and training datasets.
         """
         data_values = {}
-        data_values["interval_length"] = trial.suggest_int("interval_length", **config["interval_length"])
+        data_values["interval_length"] = trial.suggest_int(
+            "interval_length", **config["interval_length"])
         # strides must be leq than intervallength
-        data_values["stride_train"] = trial.suggest_int("stride_train", **config["stride_train"])
-        data_values["stride_eval"] = trial.suggest_int("stride_eval", **config["stride_eval"])
+        data_values["stride_train"] = trial.suggest_int(
+            "stride_train", **config["stride_train"])
+        data_values["stride_eval"] = trial.suggest_int(
+            "stride_eval", **config["stride_eval"])
         data_values["fps"] = trial.suggest_categorical("fps", config["fps"])
-        data_values["columns_to_remove"] = trial.suggest_categorical("columns_to_remove", config["columns_to_remove"])
+        data_values["columns_to_remove"] = trial.suggest_categorical(
+            "columns_to_remove", config["columns_to_remove"])
         columns_to_remove = self.column_removal_dict[data_values["columns_to_remove"]]
         data_values["label_creation"] = trial.suggest_categorical(
             "label_creation", config["label_creation"])
         data_values["nan_handling"] = trial.suggest_categorical(
             "nan_handling", config["nan_handling"])
-        data_values["summary"]= trial.suggest_categorical("summary", config["summary"])
+        data_values["summary"] = trial.suggest_categorical(
+            "summary", config["summary"])
 
         # get timeseries format
         val_X_summary_list, val_Y_summary_list, train_X_summary, train_Y_summary, column_order = self.data_loader.get_summary_format(
-            interval_length=data_values["interval_length"], 
-            stride_train=data_values["stride_train"], 
-            stride_eval=data_values["stride_eval"], 
-            fps=data_values["fps"], 
+            interval_length=data_values["interval_length"],
+            stride_train=data_values["stride_train"],
+            stride_eval=data_values["stride_eval"],
+            fps=data_values["fps"],
             label_creation=data_values["label_creation"],
             summary=data_values["summary"]
-            )
-        
+        )
+
         # nan handling
         if data_values["nan_handling"] == "zeros":
             train_X_summary = np.nan_to_num(train_X_summary, nan=0)
             val_X_summary_list = [np.nan_to_num(val_X, nan=0)
-                             for val_X in val_X_summary_list]
+                                  for val_X in val_X_summary_list]
         if data_values["nan_handling"] == "avg":
             train_X_summary = DL.impute_nan_with_feature_mean(
                 train_X_summary)
             val_X_summary_list = [DL.impute_nan_with_feature_mean(
                 val_X) for val_X in val_X_summary_list]
-            
+
         # feature removal
         train_X_summary = self.remove_columns(columns_to_remove=columns_to_remove,
-                                         data_X=train_X_summary, column_order=column_order)
+                                              data_X=train_X_summary, column_order=column_order)
         val_X_summary_list = self.remove_columns(columns_to_remove=columns_to_remove,
-                                            data_X=val_X_summary_list, column_order=column_order)
+                                                 data_X=val_X_summary_list, column_order=column_order)
 
         train_Y_summary_task = train_Y_summary[:, self.task]
 
@@ -128,23 +135,27 @@ class RFTrainer:
 
         val_X_summary_list, val_Y_summary_list, train_X_summary, train_Y_summary, column_order, train_Y_summary_task, data_values = self.data_from_config(
             data_params, trial)
-        
+
         model_trial_params = {}
-        model_trial_params["n_estimators"] = trial.suggest_int("n_estimators", **model_params["n_estimators"])
-        model_trial_params["max_depth"] = trial.suggest_int("max_depth", **model_params["max_depth"])
-        model_trial_params["random_state"] = trial.suggest_int("random_state", **model_params["random_state"])
+        model_trial_params["n_estimators"] = trial.suggest_int(
+            "n_estimators", **model_params["n_estimators"])
+        model_trial_params["max_depth"] = trial.suggest_int(
+            "max_depth", **model_params["max_depth"])
+        model_trial_params["random_state"] = trial.suggest_int(
+            "random_state", **model_params["random_state"])
         model_trial_params["criterion"] = trial.suggest_categorical(
             "criterion", model_params["criterion"])
         model_trial_params["max_features"] = trial.suggest_categorical(
             "max_features", model_params["max_features"])
-        
+
         model = RandomForestClassifier(**model_trial_params)
         model.fit(train_X_summary, train_Y_summary_task)
 
         val_preds = self.get_full_test_preds(
             model, val_X_summary_list, data_values["interval_length"], data_values["stride_eval"])
-        
-        eval_scores = self.get_eval_metrics(val_preds, dataset="val", verbose=False)
+
+        eval_scores = self.get_eval_metrics(
+            val_preds, dataset="val", verbose=False)
 
         return eval_scores["accuracy"], eval_scores["f1"]
 
@@ -157,7 +168,7 @@ class RFTrainer:
                 print("\nConfiguration loaded successfully.")
                 for key, value in config.items():
                     print(f"{key}: {value}")
-                
+
                 return config
         except FileNotFoundError:
             print("\nError: The configuration file was not found.")
@@ -167,11 +178,11 @@ class RFTrainer:
             print(f"An unexpected error occurred: {e}")
 
     def hyperparam_search(self):
-        
+
         wandb_kwargs = {"project": "HRI-Errors"}
         if True:
             wandbc = WeightsAndBiasesCallback(
-                metric_name=["accuracy", "macro f1"], 
+                metric_name=["accuracy", "macro f1"],
                 wandb_kwargs=wandb_kwargs)
         else:
             wandbc = None
@@ -182,11 +193,12 @@ class RFTrainer:
             directions=["maximize", "maximize"], study_name=date + "_" + "RF")
         print(f"Sampler is {study.sampler.__class__.__name__}")
 
-        study.optimize(self.objective, n_trials=self.config["n_trials"], callbacks=[wandbc])
+        study.optimize(
+            self.objective, n_trials=self.config["n_trials"], callbacks=[wandbc])
 
         trial_with_highest_accuracy = max(
             study.best_trials, key=lambda t: t.values[0])
-        
+
         if self.verbose:
             print("Best trial Accuracy:")
             print(
@@ -194,7 +206,6 @@ class RFTrainer:
             for key, value in trial_with_highest_accuracy.params.items():
                 print(f"    {key}: {value}")
 
-        
         f = "best_{}".format
 
         for param_name, param_value in trial_with_highest_accuracy.params.items():
@@ -206,7 +217,7 @@ class RFTrainer:
         wandb.finish()
 
         return study
-    
+
     def get_eval_metrics(self, preds: list, dataset="val", verbose=False) -> dict:
         '''Evaluate model on self.data.val_X and self.data.val_Y. The final missing values in preds are filled with 0s.
         :param preds: List of predictions per session. Per session there is one list of prediction labels.
@@ -244,6 +255,7 @@ class RFTrainer:
             print(eval_scores)
 
         return eval_scores
+
 
 if __name__ == '__main__':
     trainer = RFTrainer('config_rf.json')

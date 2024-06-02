@@ -17,6 +17,8 @@ from get_metrics import get_metrics
 import matplotlib.pyplot as plt
 import torch
 import argparse
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 
 # TODO:
 # - just train with some columns / column selection / feature importance
@@ -41,11 +43,11 @@ class TS_Model_Trainer:
                                1: "RobotMistake", 2: "InteractionRupture"}
         self.n_jobs = n_jobs
         self.objective_per_model = {
-            "MiniRocket": self.optuna_objective_minirocket,
+            "MiniRocket": self.optuna_objective_classic,
             "MiniRocketTorch": self.optuna_objective_tsai,
             "TST": self.optuna_objective_tsai,
             "LSTM_FCN": self.optuna_objective_tsai,
-            "RF": self.optuna_objective_classic,
+            "RandomForest": self.optuna_objective_classic,
             "XGBoost": self.optuna_objective_classic
         }
         self.config = None
@@ -85,15 +87,15 @@ class TS_Model_Trainer:
         :param val_X_TS_list: List of validation/test data per session.
         :param intervallength: The length of the interval to predict.
         :param stride_eval: The stride to evaluate the model.
-        :param model_type: Either "MiniRocket" or "TSAI", which have different API calls
+        :param model_type: Either "Classic" or "TSAI", which have different API calls
         :param batch_tfms: List of batch transformations to apply, if any
         '''
-        if model_type not in ["MiniRocket", "TSAI"]:
+        if model_type not in ["Classic", "TSAI"]:
             raise ValueError(
-                "Model type not supported. Parameter model_type must be either 'MiniRocket' or 'TSAI'.")
+                "Model type not supported. Parameter model_type must be either 'Classic' or 'TSAI'.")
         test_preds = []
         for val_X_TS in val_X_TS_list:  # per session
-            if model_type == "MiniRocket":
+            if model_type == "Classic":
                 pred = model.predict(val_X_TS)
             elif model_type == "TSAI":
                 for tfm in batch_tfms:
@@ -152,22 +154,23 @@ class TS_Model_Trainer:
 
         return eval_scores
 
-    def data_from_config(self, config: dict, trial: optuna.Trial):
+    def data_from_config(self, config: dict, trial: optuna.Trial, format: str = "timeseries") -> tuple:
         """
         create the datasets for training based on the configuration and the trial parameters.
         params: config: dict: The configuration dictionary.
         params: trial: optuna.Trial: The trial object.
+        params: format: str: The format of the data to return. Either "timeseries" or "classic".
         output: tuple: Tuple containing the validation and training datasets.
         """
         data_params = self.config["data_params"]
         data_values = {}
-        data_values["intervallength"] = trial.suggest_int(
-            "intervallength", low=data_params["intervallength"]["low"], high=data_params["intervallength"]["high"], step=data_params["intervallength"]["step"])
+        data_values["interval_length"] = trial.suggest_int(
+            "interval_length", low=data_params["interval_length"]["low"], high=data_params["interval_length"]["high"], step=data_params["interval_length"]["step"])
         # strides must be leq than intervallength
         data_values["stride_train"] = trial.suggest_int(
-            "stride_train", low=data_params["stride_train"]["low"], high=min(data_values["intervallength"], data_params["stride_train"]["high"]), step=data_params["intervallength"]["step"])
+            "stride_train", low=data_params["stride_train"]["low"], high=min(data_values["interval_length"], data_params["stride_train"]["high"]), step=data_params["interval_length"]["step"])
         data_values["stride_eval"] = trial.suggest_int(
-            "stride_eval", low=data_params["stride_eval"]["low"], high=min(data_values["intervallength"], data_params["stride_eval"]["high"]), step=data_params["intervallength"]["step"])
+            "stride_eval", low=data_params["stride_eval"]["low"], high=min(data_values["interval_length"], data_params["stride_eval"]["high"]), step=data_params["interval_length"]["step"])
         data_values["fps"] = trial.suggest_categorical(
             "fps", data_params["fps"])
         data_values["columns_to_remove"] = trial.suggest_categorical("columns_to_remove",
@@ -178,9 +181,26 @@ class TS_Model_Trainer:
         data_values["nan_handling"] = trial.suggest_categorical(
             "nan_handling", data_params["nan_handling"])
 
-        # get timeseries format
-        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
-            intervallength=data_values["intervallength"], stride_train=data_values["stride_train"], stride_eval=data_values["stride_eval"], verbose=False, fps=data_values["fps"], label_creation=data_values["label_creation"])
+        # TODO change variable names from TS to sth generic
+        if format == "classic":
+            val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_summary_format(
+                interval_length=data_values["interval_length"],
+                stride_train=data_values["stride_train"],
+                stride_eval=data_values["stride_eval"],
+                fps=data_values["fps"],
+                label_creation=data_values["label_creation"],
+                summary=data_values["summary"]
+            )
+
+        if format == "timeseries":
+            # get timeseries format
+            val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
+                intervallength=data_values["interval_length"],
+                stride_train=data_values["stride_train"],
+                stride_eval=data_values["stride_eval"], verbose=False,
+                fps=data_values["fps"],
+                label_creation=data_values["label_creation"])
+
         # nan handling
         if data_values["nan_handling"] == "zeros":
             train_X_TS = np.nan_to_num(train_X_TS, nan=0)
@@ -431,6 +451,48 @@ class TS_Model_Trainer:
             accuracy, F1Score()], cbs=cbs, loss_func=loss_func)
         return learn
 
+    def get_classic_learner(self, trial: optuna.Trial, config: dict) -> object:
+        '''Get a classic learner following sklearn conventions based on the configuration and the trial parameters.
+        params: trial: optuna.Trial: The trial object.
+        params: config: dict: The configuration dictionary
+        output: object: The classic learner object to use for training.
+        '''
+        model_params = config["model_params"]
+        model_trial_params = {}
+        if config["model_type"] == "RandomForest":
+            model_trial_params["n_estimators"] = trial.suggest_int(
+                "n_estimators", **model_params["n_estimators"])
+            model_trial_params["max_depth"] = trial.suggest_int(
+                "max_depth", **model_params["max_depth"])
+            model_trial_params["random_state"] = trial.suggest_int(
+                "random_state", **model_params["random_state"])
+            model_trial_params["criterion"] = trial.suggest_categorical(
+                "criterion", model_params["criterion"])
+            model_trial_params["max_features"] = trial.suggest_categorical(
+                "max_features", model_params["max_features"])
+            model = RandomForestClassifier(**model_trial_params)
+        elif config["model_type"] == "XGBoost":
+            model_trial_params["n_estimators"] = trial.suggest_int(
+                "n_estimators", **model_params["n_estimators"])
+            model_trial_params["max_depth"] = trial.suggest_int(
+                "max_depth", **model_params["max_depth"])
+            model_trial_params["learning_rate"] = trial.suggest_float(
+                "learning_rate", **model_params["learning_rate"])
+            model_trial_params["booster"] = trial.suggest_categorical(
+                "booster", model_params["booster"])
+            model_trial_params["n_jobs"] = model_params["n_jobs"]
+            model = XGBClassifier(**model_trial_params)
+        elif config["model_type"] == "MiniRocket":
+            model_trial_params["n_estimators"] = trial.suggest_int(
+                "n_estimators", **model_params["n_estimators"])
+            model_trial_params["max_dilations_per_kernel"] = trial.suggest_int(
+                "max_dilations_per_kernel", **model_params["max_dilations_per_kernel"])
+            model_trial_params["class_weight"] = trial.suggest_categorical(
+                "class_weight", model_params["class_weight"])
+            model = MINIROCKET.MiniRocketVotingClassifier(
+                **model_trial_params)
+        return model
+
     def optuna_objective_tsai(self, trial: optuna.Trial) -> tuple:
         '''Optuna objective function for all tsai style models. Optimizes for accuracy and macro f1 score.
         params: trial: optuna.Trial: The optuna trial runnning.
@@ -461,7 +523,7 @@ class TS_Model_Trainer:
 
         ### EVALUATION ###
         preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, intervallength=data_values[
-            "intervallength"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms)
+            "interval_length"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms)
         outcomes = self.get_eval_metrics(
             preds=preds, dataset="val", verbose=False)
         return outcomes["accuracy"], outcomes["f1"]
@@ -492,9 +554,34 @@ class TS_Model_Trainer:
 
         ### EVAL ###
         test_preds = self.get_full_test_preds(
-            model, val_X_TS_list, data_values["intervallength"], data_values["stride_eval"], model_type="MiniRocket")
+            model, val_X_TS_list, data_values["interval_length"], data_values["stride_eval"], model_type="Classic")
         eval_scores = self.get_eval_metrics(
             preds=test_preds, dataset="val", verbose=True)
+        return eval_scores["accuracy"], eval_scores["f1"]
+
+    def optuna_objective_classic(self, trial: optuna.Trial):
+        model_params = self.config["model_params"]
+        data_params = self.config["data_params"]
+
+        # val_X_summary_list, val_Y_summary_list, train_X_summary, train_Y_summary, column_order, train_Y_summary_task, data_values = self.data_from_config(
+        #    data_params, trial)
+        if self.config["model_type"] == "MiniRocket":
+            val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
+                self.config, trial, format="timeseries")
+        else:
+            val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS_task, column_order, data_values = self.data_from_config(
+                self.config, trial, format="classic")
+
+        model = self.get_classic_learner(trial, self.config)
+
+        model.fit(train_X_TS, train_Y_TS_task)
+
+        test_preds = self.get_full_test_preds(
+            model, val_X_TS_list, data_values["interval_length"], data_values["stride_eval"], model_type="Classic")
+
+        eval_scores = self.get_eval_metrics(
+            test_preds, dataset="val", verbose=True)
+
         return eval_scores["accuracy"], eval_scores["f1"]
 
 
@@ -504,9 +591,9 @@ if __name__ == '__main__':
     # parse arguments (config file, n_jobs)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, help="Path to the configuration file.",
-                        default="configs/config_lstmfcn.json")
+                        default="configs/config_mac.json")
     parser.add_argument(
-        "--njobs", type=int, help="Number of cpu cores to use for training.", default=2)
+        "--njobs", type=int, help="Number of cpu cores to use for training.", default=4)
     args = parser.parse_args()
     print(args)
     if args.config:

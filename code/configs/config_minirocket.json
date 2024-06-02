@@ -3,7 +3,7 @@
     "model_type": "MiniRocket",
     "n_trials": 150,
     "data_params": {
-        "intervallength": {
+        "interval_length": {
             "low": 700,
             "high": 1100,
             "step": 50
@@ -49,6 +49,10 @@
             "low": 12,
             "high": 48,
             "step": 12
-        }
+        },
+        "class_weight": [
+            null,
+            "balanced"
+        ]
     }
 }

@@ -1,7 +1,7 @@
 {
     "task": 2,
     "model_type": "RandomForest",
-    "n_trials": 150,
+    "n_trials": 2,
     "data_params": {
         "interval_length": {
             "low": 400,
@@ -45,9 +45,8 @@
             "median",
             "max",
             "min"
-        ] 
+        ]
     },
-
     "model_params": {
         "n_estimators": {
             "low": 20,
