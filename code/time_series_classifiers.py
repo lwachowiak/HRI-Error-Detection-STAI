@@ -183,6 +183,8 @@ class TS_Model_Trainer:
 
         # TODO change variable names from TS to sth generic
         if format == "classic":
+            data_values["summary"] = trial.suggest_categorical(
+                "summary", data_params["summary"])
             val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_summary_format(
                 interval_length=data_values["interval_length"],
                 stride_train=data_values["stride_train"],
@@ -569,7 +571,7 @@ class TS_Model_Trainer:
             val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
                 self.config, trial, format="timeseries")
         else:
-            val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS_task, column_order, data_values = self.data_from_config(
+            val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
                 self.config, trial, format="classic")
 
         model = self.get_classic_learner(trial, self.config)
@@ -591,7 +593,7 @@ if __name__ == '__main__':
     # parse arguments (config file, n_jobs)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, help="Path to the configuration file.",
-                        default="configs/config_mac.json")
+                        default="configs/config_rf.json")
     parser.add_argument(
         "--njobs", type=int, help="Number of cpu cores to use for training.", default=4)
     args = parser.parse_args()
