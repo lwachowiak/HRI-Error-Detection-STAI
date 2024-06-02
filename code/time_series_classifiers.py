@@ -16,6 +16,7 @@ import numpy as np
 from get_metrics import get_metrics
 import matplotlib.pyplot as plt
 import torch
+import argparse
 
 # TODO:
 # - just train with some columns / column selection / feature importance
@@ -499,15 +500,25 @@ class TS_Model_Trainer:
 if __name__ == '__main__':
     my_setup(optuna)
     print(platform.platform())
+    # parse arguments (config file, n_jobs)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, help="Path to the configuration file.",
+                        default="configs/config_lstmfcn.json")
+    parser.add_argument(
+        "--n_jobs", type=int, help="Number of cpu cores to use for training.", default=2)
+    args = parser.parse_args()
+    print(args)
+    if args.config:
+        config_name = args.config
+    if args.n_jobs:
+        n_jobs = args.n_jobs
+
+    print("n_jobs:", n_jobs, "\nconfig:", config_name)
+
     if "macOS" in platform.platform():
-        n_jobs = 2
         pathprefix = ""
-        config_name = "configs/config_lstmfcn.json"
     else:
-        n_jobs = -1
         pathprefix = "HRI-Error-Detection-STAI/"
-        config_name = "configs/config_minirocket.json"
-    print("n_jobs:", n_jobs)
 
     trainer = TS_Model_Trainer(pathprefix+"data/", n_jobs=n_jobs)
     config = trainer.read_config(pathprefix+"code/"+config_name)

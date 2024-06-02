@@ -1,7 +1,7 @@
 {
     "task": 2,
     "model_type": "TST",
-    "n_trials": 100,
+    "n_trials": 10,
     "data_params": {
         "intervallength": {
             "low": 600,
@@ -76,7 +76,7 @@
         },
         "d_model": {
             "low": 64,
-            "high": 512,
+            "high": 256,
             "step": 64
         }
     }
