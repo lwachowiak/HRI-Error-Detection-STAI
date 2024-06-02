@@ -21,7 +21,6 @@ import argparse
 # TODO:
 # - just train with some columns / column selection / feature importance
 # - merge objective functions for all TSAI models
-# - add early stopping
 # Models:
 #   - Try annotation/outlier processing: https://www.sktime.net/en/stable/api_reference/annotation.html
 #   - Try prediction/forcasting --> unlikely sequence --> outlier --> label 1
@@ -45,7 +44,9 @@ class TS_Model_Trainer:
             "MiniRocket": self.optuna_objective_minirocket,
             "MiniRocketTorch": self.optuna_objective_tsai,
             "TST": self.optuna_objective_tsai,
-            "LSTM_FCN": self.optuna_objective_tsai
+            "LSTM_FCN": self.optuna_objective_tsai,
+            "RF": self.optuna_objective_classic,
+            "XGBoost": self.optuna_objective_classic
         }
         self.config = None
         self.column_removal_dict = {"REMOVE_NOTHING": ["REMOVE_NOTHING"],
@@ -505,13 +506,13 @@ if __name__ == '__main__':
     parser.add_argument("--config", type=str, help="Path to the configuration file.",
                         default="configs/config_lstmfcn.json")
     parser.add_argument(
-        "--n_jobs", type=int, help="Number of cpu cores to use for training.", default=2)
+        "--njobs", type=int, help="Number of cpu cores to use for training.", default=2)
     args = parser.parse_args()
     print(args)
     if args.config:
         config_name = args.config
-    if args.n_jobs:
-        n_jobs = args.n_jobs
+    if args.njobs:
+        n_jobs = args.njobs
 
     print("n_jobs:", n_jobs, "\nconfig:", config_name)
 
