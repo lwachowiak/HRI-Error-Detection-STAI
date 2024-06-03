@@ -5,7 +5,6 @@ import re
 import math
 
 # TODO:
-# - Improve: downsampling
 # - Add: data augmentation (TSAI has methods for that)
 # - IMPORTANT check how X data is loaded and aligned. it does not seem to work correctly on the last view rows
 
@@ -335,7 +334,7 @@ class DataLoader_HRI:
 
         return merged_df.reset_index()
 
-    def get_summary_format(self, interval_length, stride_train, stride_eval, fps=100, label_creation="full", summary='mean'):
+    def get_summary_format(self, interval_length, stride_train, stride_eval, fps=100, label_creation="full", summary='mean', oversampling_rate=0, undersampling_rate=0, task=2):
         """
         Convert the data to summary form. Split the data from the dfs into intervals of length interval_length with stride stride.
         Split takes place of adjacent frames of the same session.
@@ -343,12 +342,16 @@ class DataLoader_HRI:
         :param stride_train: The stride for the training data (oversampling technique)
         :param stride_eval: The stride for the evaluation data (eval update frequency)
         :param fps: The desired fps of the data. Original is 100 fps
-        :param eval: Either 'full' or 'stride'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
+        :param label_creation: Either 'full' or 'stride_eval' or 'stride_train'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
+        :param summary: The summary type. One of 'mean', 'max', 'min', 'median'
+        :param oversampling_rate: x% of the minority class replicated in the training data as oversampling
+        :param undersampling_rate: x% of the majority class removed from the training data as undersampling
+        :param task: The task to load the data for. 1 for UserAwkwardness, 2 for RobotMistake, 3 for InteractionRupture
         :return: The data in summary format
         """
 
         val_X_TS, val_Y_summary_list, train_X_TS, train_Y_summary, column_order = self.get_timeseries_format(
-            interval_length, stride_train, stride_eval, fps, label_creation)
+            interval_length=interval_length, stride_train=stride_train, stride_eval=stride_eval, fps=fps, label_creation=label_creation, oversampling_rate=oversampling_rate, undersampling_rate=undersampling_rate, task=task)
 
         if summary not in ['mean', 'max', 'min', 'median']:
             raise ValueError(
@@ -375,14 +378,14 @@ class DataLoader_HRI:
             val_X_summary_list = [
                 np.median(val_X_TS[i], axis=2) for i in range(len(val_X_TS))]
 
-        # replace NaNs with 0
+        # replace NaNs with 0 # TODO do we have this twice??
         train_X_summary = np.nan_to_num(train_X_summary)
         for i in range(len(val_X_summary_list)):
             val_X_summary_list[i] = np.nan_to_num(val_X_summary_list[i])
 
         return val_X_summary_list, val_Y_summary_list, train_X_summary, train_Y_summary, column_order
 
-    def get_timeseries_format(self, intervallength, stride_train, stride_eval, fps=100, verbose=False, label_creation="full"):
+    def get_timeseries_format(self, intervallength, stride_train, stride_eval, fps=100, verbose=False, label_creation="full", oversampling_rate=1, undersampling_rate=0, task=2):
         """
         Convert the data to timeseries form. Split the data from the dfs into intervals of length intervallength with stride stride.
         Split takes place of adjacent frames of the same session.
@@ -391,7 +394,10 @@ class DataLoader_HRI:
         :param stride_eval: The stride for the evaluation data (eval update frequency)
         :param fps: The desired fps of the data. Original is 100 fps
         :param verbose: Print debug information
-        :param eval: Either 'full' or 'stride'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
+        :param label_creation: Either 'full' or 'stride_eval' or 'stride_train'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
+        :param oversampling_rate: x% of the minority class replicated in the training data as oversampling
+        :param undersampling_rate: x% of the majority class removed from the training data as undersampling
+        :param task: The task to load the data for. 1 for UserAwkwardness, 2 for RobotMistake, 3 for InteractionRupture
         :return: The data in timeseries format and the column order for feature importance analysis
         """
 
@@ -484,6 +490,40 @@ class DataLoader_HRI:
             val_X_TS_list[i] = np.array(val_X_TS_list[i])
             val_Y_TS_list[i] = np.array(val_Y_TS_list[i])
 
+        minority_class = np.argmin(np.bincount(train_Y_TS[:, task]))
+        majority_class = np.argmax(np.bincount(train_Y_TS[:, task]))
+        if verbose:
+            print("Minority class: ", minority_class)
+            print("Majority class: ", majority_class)
+        if oversampling_rate > 0:  # float indicating the percentage of oversampling # TODO make this work with more than one class
+            # oversample the minority class in the training data
+            # get the indexes of the minority class
+            minority_indexes = np.where(
+                train_Y_TS[:, task] == minority_class)[0]
+            # oversample the minority class by the oversampling rate
+            oversampling_indices = np.random.choice(minority_indexes, int(
+                len(minority_indexes) * oversampling_rate), replace=True)
+            train_X_TS = np.concatenate(
+                (train_X_TS, train_X_TS[oversampling_indices]))
+            train_Y_TS = np.concatenate(
+                (train_Y_TS, train_Y_TS[oversampling_indices]))
+            if verbose:
+                print("From minority class: ", len(minority_indexes),
+                      " oversampled: ", len(oversampling_indices))
+        if undersampling_rate > 0:  # float indicating the percentage of undersampling
+            # undersample the majority class in the training data
+            # get the indexes of the majority class
+            majority_indexes = np.where(
+                train_Y_TS[:, task] == majority_class)[0]
+            # undersample the majority class by the undersampling rate
+            undersampling_indices = np.random.choice(
+                majority_indexes, int(len(majority_indexes) * undersampling_rate), replace=False)
+            train_X_TS = np.delete(train_X_TS, undersampling_indices, axis=0)
+            train_Y_TS = np.delete(train_Y_TS, undersampling_indices, axis=0)
+            if verbose:
+                print("From majority class: ", len(majority_indexes),
+                      " undersampled: ", len(undersampling_indices))
+
         return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order
 
     def resample(self, interval: list, fps: int, style: str) -> list:
@@ -518,7 +558,7 @@ class DataLoader_HRI:
 
         return new_interval
 
-    @staticmethod
+    @ staticmethod
     def impute_nan_with_feature_mean(data) -> np.array:
         for i in range(data.shape[0]):  # Iterate over each sample
             for j in range(data.shape[1]):  # Iterate over each feature

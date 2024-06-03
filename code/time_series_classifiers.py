@@ -1,24 +1,31 @@
-import optuna.study.study
-from tsai.models import MINIROCKET, HydraMultiRocketPlus, MINIROCKET_Pytorch
+### OWN CODE IMPORTS ###
+from get_metrics import get_metrics
 from data_loader import DataLoader_HRI
+
+### ML IMPORTS ###
 from tsai.data.all import *
 from tsai.models.utils import *
-from tsai.all import my_setup, LabelSmoothingCrossEntropyFlat, accuracy, F1Score, CrossEntropyLossFlat, FocalLossFlat, Learner, TST, LSTM_FCN
+from tsai.models import MINIROCKET, MINIROCKET_Pytorch
+from tsai.all import my_setup, accuracy, F1Score, CrossEntropyLossFlat, FocalLossFlat, Learner, TST, LSTM_FCN, TransformerLSTMPlus, HydraMultiRocketPlus, ConvTranPlus
 from fastai.callback.all import EarlyStoppingCallback
 from sklearn.metrics import confusion_matrix
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+import torch
+
+### TRACKING IMPORTS ###
 import optuna
+import optuna.study.study
 from optuna.integration import WeightsAndBiasesCallback
 import wandb
+
+### OTHER IMPORTS ###
 import json
 import datetime
 import platform
 import numpy as np
-from get_metrics import get_metrics
 import matplotlib.pyplot as plt
-import torch
 import argparse
-from sklearn.ensemble import RandomForestClassifier
-from xgboost import XGBClassifier
 import os
 
 # TODO:
@@ -46,11 +53,13 @@ class TS_Model_Trainer:
         self.n_jobs = n_jobs
         self.objective_per_model = {
             "MiniRocket": self.optuna_objective_classic,
+            "RandomForest": self.optuna_objective_classic,
+            "XGBoost": self.optuna_objective_classic,
             "MiniRocketTorch": self.optuna_objective_tsai,
             "TST": self.optuna_objective_tsai,
             "LSTM_FCN": self.optuna_objective_tsai,
-            "RandomForest": self.optuna_objective_classic,
-            "XGBoost": self.optuna_objective_classic
+            "ConvTranPlus": self.optuna_objective_tsai,
+            "TransformerLSTMPlus": self.optuna_objective_tsai
         }
         self.config = self.read_config(folder+"code/"+config_name)
         self.column_removal_dict = {"REMOVE_NOTHING": ["REMOVE_NOTHING"],
@@ -182,9 +191,14 @@ class TS_Model_Trainer:
             "label_creation", data_params["label_creation"])
         data_values["nan_handling"] = trial.suggest_categorical(
             "nan_handling", data_params["nan_handling"])
+        data_values["oversampling_rate"] = trial.suggest_float(
+            "oversampling_rate", low=data_params["oversampling_rate"]["low"], high=data_params["oversampling_rate"]["high"], step=data_params["oversampling_rate"]["step"])
+        data_values["undersampling_rate"] = trial.suggest_float(
+            "undersampling_rate", low=data_params["undersampling_rate"]["low"], high=data_params["undersampling_rate"]["high"], step=data_params["undersampling_rate"]["step"])
 
         # TODO change variable names from TS to sth generic
         if format == "classic":
+            # get summary format for classic models
             data_values["summary"] = trial.suggest_categorical(
                 "summary", data_params["summary"])
             val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_summary_format(
@@ -193,7 +207,10 @@ class TS_Model_Trainer:
                 stride_eval=data_values["stride_eval"],
                 fps=data_values["fps"],
                 label_creation=data_values["label_creation"],
-                summary=data_values["summary"]
+                summary=data_values["summary"],
+                oversampling_rate=data_values["oversampling_rate"],
+                undersampling_rate=data_values["undersampling_rate"],
+                task=self.task
             )
 
         if format == "timeseries":
@@ -203,7 +220,11 @@ class TS_Model_Trainer:
                 stride_train=data_values["stride_train"],
                 stride_eval=data_values["stride_eval"], verbose=False,
                 fps=data_values["fps"],
-                label_creation=data_values["label_creation"])
+                label_creation=data_values["label_creation"],
+                oversampling_rate=data_values["oversampling_rate"],
+                undersampling_rate=data_values["undersampling_rate"],
+                task=self.task
+            )
 
         # nan handling
         if data_values["nan_handling"] == "zeros":
@@ -235,7 +256,7 @@ class TS_Model_Trainer:
             all_X = np.concatenate((all_X, val_X_TS), axis=0)
         all_Y = train_Y_TS_task
         for val_Y_TS in val_Y_TS_list:
-            val_Y_TS = val_Y_TS[:, 2]
+            val_Y_TS = val_Y_TS[:, self.task]
             all_Y = np.concatenate((all_Y, val_Y_TS), axis=0)
         # print(all_X.shape, all_Y.shape)
         splits = [range(0, len(train_X_TS)), range(
@@ -427,6 +448,7 @@ class TS_Model_Trainer:
         output: object: The tsai learner object to use for training.
         """
         model_params = config["model_params"]
+        model_trial_params = {}
         if config["model_type"] == "TST":
             dropout = trial.suggest_float("dropout", low=model_params["dropout"]["low"],
                                           high=model_params["dropout"]["high"], step=model_params["dropout"]["step"])
@@ -438,7 +460,6 @@ class TS_Model_Trainer:
                                         high=model_params["n_heads"]["high"], step=model_params["n_heads"]["step"])
             d_model = trial.suggest_int("d_model", low=model_params["d_model"]["low"],
                                         high=model_params["d_model"]["high"], step=model_params["d_model"]["step"])
-
             model = TST(dls.vars, dls.c, dls.len, n_layers=n_layers, n_heads=n_heads,
                         d_model=d_model, fc_dropout=fc_dropout, dropout=dropout)
         elif config["model_type"] == "LSTM_FCN":
@@ -452,9 +473,50 @@ class TS_Model_Trainer:
                                            high=model_params["rnn_layers"]["high"], step=model_params["rnn_layers"]["step"])
             bidirectional = trial.suggest_categorical(
                 "bidirectional", model_params["bidirectional"])
-
             model = LSTM_FCN(dls.vars, dls.c, dls.len,
                              fc_dropout=fc_dropout, rnn_dropout=rnn_dropout, hidden_size=hidden_size, rnn_layers=rnn_layers, bidirectional=bidirectional)
+        elif config["model_type"] == "ConvTranPlus":
+            #    d_model: int = 16,
+            # n_heads: int = 8,
+            # dim_ff: int = 256,
+            # encoder_dropout: float = 0.01,
+            # fc_dropout: float = 0.1,
+            model_trial_params["d_model"] = trial.suggest_int(
+                "d_model", **model_params["d_model"])
+            model_trial_params["n_heads"] = trial.suggest_int(
+                "n_heads", **model_params["n_heads"])
+            model_trial_params["dim_ff"] = trial.suggest_int(
+                "dim_ff", **model_params["dim_ff"])
+            model_trial_params["encoder_dropout"] = trial.suggest_float(
+                "encoder_dropout", **model_params["encoder_dropout"])
+            model_trial_params["fc_dropout"] = trial.suggest_float(
+                "fc_dropout", **model_params["fc_dropout"])
+            model = ConvTranPlus(dls.vars, dls.c, dls.len,
+                                 **model_trial_params)
+        elif config["model_type"] == "TransformerLSTMPlus":
+            #     d_model: int = 128,
+            # nhead: int = 16,
+            # proj_dropout: float = 0.1,
+            # num_encoder_layers: int = 1,
+            # dim_feedforward: int = 2048,
+            # dropout: float = 0.1,
+            #  num_rnn_layers: int = 1,
+            model_trial_params["d_model"] = trial.suggest_int(
+                "d_model", **model_params["d_model"])
+            model_trial_params["nhead"] = trial.suggest_int(
+                "nhead", **model_params["nhead"])
+            model_trial_params["proj_dropout"] = trial.suggest_float(
+                "proj_dropout", **model_params["proj_dropout"])
+            model_trial_params["num_encoder_layers"] = trial.suggest_int(
+                "num_encoder_layers", **model_params["num_encoder_layers"])
+            model_trial_params["dim_feedforward"] = trial.suggest_int(
+                "dim_feedforward", **model_params["dim_feedforward"])
+            model_trial_params["dropout"] = trial.suggest_float(
+                "dropout", **model_params["dropout"])
+            model_trial_params["num_rnn_layers"] = trial.suggest_int(
+                "num_rnn_layers", **model_params["num_rnn_layers"])
+            model = TransformerLSTMPlus(dls.vars, dls.c, dls.len,
+                                        **model_trial_params)
 
         loss_func = trial.suggest_categorical("loss", model_params["loss"])
         loss_func = self.loss_dict[loss_func]
@@ -603,7 +665,7 @@ if __name__ == '__main__':
     # parse arguments (config file, n_jobs)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, help="Path to the configuration file.",
-                        default="configs/config_rf.json")
+                        default="configs/config_mac.json")
     parser.add_argument(
         "--njobs", type=int, help="Number of cpu cores to use for training.", default=4)
     args = parser.parse_args()

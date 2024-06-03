@@ -45,7 +45,17 @@
             "median",
             "max",
             "min"
-        ]
+        ],
+        "oversampling_rate": {
+            "low": 0.0,
+            "high": 0.3,
+            "step": 0.1
+        },
+        "undersampling_rate": {
+            "low": 0.0,
+            "high": 0.3,
+            "step": 0.1
+        }
     },
     "model_params": {
         "n_estimators": {
