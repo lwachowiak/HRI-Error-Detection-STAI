@@ -1,0 +1,17 @@
+Best params:
+interval_length: 500
+stride_train: 200
+stride_eval: 400
+fps: 100
+columns_to_remove: openpose, speaker
+label_creation: full
+nan_handling: zeros
+summary: max
+n_estimators: 90
+max_depth: 25
+random_state: 2
+criterion: gini
+max_features: None
+Best values:
+2: 0.8125061470293772
+2: 0.6898190699545552

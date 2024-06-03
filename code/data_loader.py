@@ -343,7 +343,6 @@ class DataLoader_HRI:
         :param stride_train: The stride for the training data (oversampling technique)
         :param stride_eval: The stride for the evaluation data (eval update frequency)
         :param fps: The desired fps of the data. Original is 100 fps
-        :param verbose: Print debug information
         :param eval: Either 'full' or 'stride'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
         :return: The data in summary format
         """
@@ -410,8 +409,8 @@ class DataLoader_HRI:
 
         # Split the data into intervals, if the session changes, start a new interval
         for session in self.train_X['session'].unique():
-            if verbose:
-                print("TS Processing for session: ", session)
+            # if verbose:
+            #    print("TS Processing for session: ", session)
             session_df = self.train_X[self.train_X['session'] == session]
             # remove session column
             session_df = session_df.drop(columns=['session'])
@@ -452,8 +451,8 @@ class DataLoader_HRI:
         for session in self.val_X['session'].unique():
             val_X_TS = []
             val_Y_TS = []
-            if verbose:
-                print("TS Processing for session: ", session)
+            # if verbose:
+            #    print("TS Processing for session: ", session)
             session_df = self.val_X[self.val_X['session'] == session]
             session_df = session_df.drop(columns=['session'])
             # drop last 10 rows to avoid NaNs

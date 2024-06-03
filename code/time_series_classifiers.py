@@ -19,6 +19,7 @@ import torch
 import argparse
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
+import os
 
 # TODO:
 # - just train with some columns / column selection / feature importance
@@ -31,13 +32,14 @@ from xgboost import XGBClassifier
 
 class TS_Model_Trainer:
 
-    def __init__(self, data_folder: str, n_jobs: int):
+    def __init__(self, folder: str, n_jobs: int, config_name: str):
         '''
         Initialize the TS_Model_Trainer with the data folder and the task to be trained on.
         :param data_folder: The folder containing the data.
         :param n_jobs: CPU usage parameter
         '''
-        self.data = DataLoader_HRI(data_folder)
+        self.folder = folder
+        self.data = DataLoader_HRI(folder+"data/")
         self.task = None
         self.TASK_TO_COLUMN = {0: "UserAwkwardness",
                                1: "RobotMistake", 2: "InteractionRupture"}
@@ -50,7 +52,7 @@ class TS_Model_Trainer:
             "RandomForest": self.optuna_objective_classic,
             "XGBoost": self.optuna_objective_classic
         }
-        self.config = None
+        self.config = self.read_config(folder+"code/"+config_name)
         self.column_removal_dict = {"REMOVE_NOTHING": ["REMOVE_NOTHING"],
                                     "opensmile": ["opensmile"],
                                     "speaker": ["speaker"],
@@ -71,7 +73,7 @@ class TS_Model_Trainer:
                 print("\nConfiguration loaded successfully.")
                 for key, value in config.items():
                     print(f"{key}: {value}")
-                self.config = config
+                # self.config = config
                 self.task = config["task"]
                 return config
         except FileNotFoundError:
@@ -245,13 +247,13 @@ class TS_Model_Trainer:
         :param n_trials: The number of search trials to perform.
         :param model_type: The type of model to optimize (MiniRocket, TST).
         """
-        wandb_kwargs = {"project": "HRI-Errors"}
+        wandb_kwargs = {"project": "HRI-Errors",
+                        "name": study_name, "group": model_type}
         wandbc = WeightsAndBiasesCallback(
             metric_name=["accuracy", "macro f1"], wandb_kwargs=wandb_kwargs)
 
-        date = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         study = optuna.create_study(
-            directions=["maximize", "maximize"], study_name=date + "_" + study_name)
+            directions=["maximize", "maximize"], study_name=study_name)
         print(f"Sampler is {study.sampler.__class__.__name__}")
         objective = self.objective_per_model[model_type]
         study.optimize(objective, n_trials=n_trials, callbacks=[wandbc])
@@ -267,11 +269,19 @@ class TS_Model_Trainer:
 
         # attach optuna visualization to wandb
         self.get_trials_figures(study, 0, "accuracy")
-        self.get_trials_figures(study, 1, "macro f1")
+        # self.get_trials_figures(study, 1, "macro f1")
 
-        f = "best_{}".format
-        for param_name, param_value in trial_with_highest_accuracy.params.items():
-            wandb.run.summary[f(param_name)] = param_value
+        # create txt file with best params in /best_models folder
+        with open(f"{self.folder}code/best_models/{study_name}_best_params.txt", "w") as file:
+            f = "best_{}".format
+            file.write("Best params:\n")
+            for param_name, param_value in trial_with_highest_accuracy.params.items():
+                wandb.run.summary[f(param_name)] = param_value
+                file.write(f"{param_name}: {param_value}\n")
+            file.write("Best values:\n")
+            for value_name, value in zip(study.directions, trial_with_highest_accuracy.values):
+                wandb.run.summary[f(value_name)] = value
+                file.write(f"{value_name}: {value}\n")
 
         wandb.run.summary["best accuracy"] = trial_with_highest_accuracy.values[0]
         wandb.run.summary["best macro f1"] = trial_with_highest_accuracy.values[1]
@@ -521,7 +531,7 @@ class TS_Model_Trainer:
             dls=dls, trial=trial, config=self.config)
         lr = trial.suggest_float("lr", low=model_params["lr"]["low"],
                                  high=model_params["lr"]["high"], log=True)
-        learn.fit_one_cycle(20, lr)
+        learn.fit_one_cycle(30, lr)
 
         ### EVALUATION ###
         preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, intervallength=data_values[
@@ -605,16 +615,19 @@ if __name__ == '__main__':
 
     print("n_jobs:", n_jobs, "\nconfig:", config_name)
 
-    if "macOS" in platform.platform():
+    if os.getcwd().endswith("HRI-Error-Detection-STAI"):
         pathprefix = ""
     else:
         pathprefix = "HRI-Error-Detection-STAI/"
 
-    trainer = TS_Model_Trainer(pathprefix+"data/", n_jobs=n_jobs)
-    config = trainer.read_config(pathprefix+"code/"+config_name)
+    trainer = TS_Model_Trainer(
+        folder=pathprefix, n_jobs=n_jobs, config_name=config_name)
+    # config = trainer.read_config(pathprefix+"code/"+config_name)
 
+    date = datetime.datetime.now().strftime("%Y-%m-%d-%H")
+    study_name = trainer.config["model_type"] + "_" + date
     study = trainer.optuna_study(
-        n_trials=config["n_trials"], model_type=config["model_type"], study_name=config["model_type"], verbose=True)
+        n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True)
 
     # feature importance
     # trainer.feature_importance()

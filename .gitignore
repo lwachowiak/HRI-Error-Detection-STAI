@@ -3,3 +3,4 @@ venv_hri_err/
 wandb/
 *.pyc
 *.ipynb
+models/
