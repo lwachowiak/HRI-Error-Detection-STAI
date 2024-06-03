@@ -1,11 +1,11 @@
 {
     "task": 2,
     "model_type": "TST",
-    "n_trials": 10,
+    "n_trials": 100,
     "data_params": {
         "interval_length": {
-            "low": 600,
-            "high": 1100,
+            "low": 300,
+            "high": 100,
             "step": 100
         },
         "stride_train": {
@@ -30,11 +30,9 @@
             "avg"
         ],
         "label_creation": [
-            "stride_eval",
-            "stride_train"
+            "stride_eval"
         ],
         "columns_to_remove": [
-            "REMOVE_NOTHING",
             "speaker",
             "openpose",
             "openpose, speaker"
@@ -66,7 +64,7 @@
         },
         "n_layers": {
             "low": 1,
-            "high": 8,
+            "high": 16,
             "step": 1
         },
         "n_heads": {
