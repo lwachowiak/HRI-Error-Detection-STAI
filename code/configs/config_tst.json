@@ -51,8 +51,8 @@
     "model_params": {
         "batch_size": {
             "low": 32,
-            "high": 64,
-            "step": 64
+            "high": 32,
+            "step": 32
         },
         "loss": [
             "FocalLossFlat",
