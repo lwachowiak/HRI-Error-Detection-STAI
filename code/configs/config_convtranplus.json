@@ -73,8 +73,8 @@
             "step": 0.1
         },
         "n_heads": {
-            "low": 4,
-            "high": 24,
+            "low": 8,
+            "high": 8,
             "step": 4
         },
         "d_model": {

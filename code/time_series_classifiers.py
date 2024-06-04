@@ -622,7 +622,7 @@ if __name__ == '__main__':
     # parse arguments (config file, n_jobs)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, help="Path to the configuration file.",
-                        default="configs/config_mac.json")
+                        default="configs/config_transformerlstmplus.json")
     parser.add_argument(
         "--njobs", type=int, help="Number of cpu cores to use for training.", default=4)
     args = parser.parse_args()

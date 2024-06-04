@@ -51,7 +51,7 @@
     "model_params": {
         "batch_size": {
             "low": 16,
-            "high": 32,
+            "high": 16,
             "step": 16
         },
         "loss": [
@@ -74,12 +74,12 @@
         },
         "num_rnn_layers": {
             "low": 1,
-            "high": 16,
+            "high": 12,
             "step": 1
         },
-        "n_heads": {
+        "nhead": {
             "low": 8,
-            "high": 24,
+            "high": 16,
             "step": 8
         },
         "d_model": {
@@ -88,6 +88,11 @@
             "step": 64
         },
         "num_encoder_layers": {
+            "low": 1024,
+            "high": 2048,
+            "step": 512
+        },
+        "dim_feedforward": {
             "low": 1024,
             "high": 2048,
             "step": 512
