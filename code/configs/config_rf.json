@@ -1,20 +1,20 @@
 {
     "task": 2,
     "model_type": "RandomForest",
-    "n_trials": 3,
+    "n_trials": 300,
     "data_params": {
         "interval_length": {
-            "low": 400,
+            "low": 300,
             "high": 1200,
             "step": 100
         },
         "stride_train": {
-            "low": 200,
+            "low": 100,
             "high": 500,
             "step": 50
         },
         "stride_eval": {
-            "low": 200,
+            "low": 100,
             "high": 500,
             "step": 50
         },
