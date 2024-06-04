@@ -1,0 +1,16 @@
+Best params:
+interval_length: 1050
+stride_train: 150
+stride_eval: 225
+fps: 10
+columns_to_remove: openpose
+label_creation: stride_eval
+nan_handling: avg
+oversampling_rate: 0.1
+undersampling_rate: 0.1
+n_estimators: 22
+max_dilations_per_kernel: 32
+class_weight: None
+Best values:
+2: 0.8404886856831588
+2: 0.7581609459135835
