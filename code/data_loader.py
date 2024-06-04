@@ -5,7 +5,6 @@ import re
 import math
 
 # TODO:
-# - Add: data augmentation (TSAI has methods for that)
 # - IMPORTANT check how X data is loaded and aligned. it does not seem to work correctly on the last view rows
 
 
@@ -28,9 +27,6 @@ class DataLoader_HRI:
         opensmile_data = self.load_data(data_dir+'opensmile/')
         speaker_data = self.load_data(data_dir+'speaker_diarization/')
         label_data = self.load_labels(data_dir+'labels/', expand=True)
-
-        # for filename, df in speaker_data:
-        #   print(filename, len(df))
 
         # align datastructures
         for filename, df in openpose_data:
@@ -158,9 +154,6 @@ class DataLoader_HRI:
         for filename in sorted(os.listdir(data_dir), key=self.extract_file_number):
             if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
                 df = pd.read_csv(os.path.join(data_dir, filename))
-                # if column with name "file" exists, remove it
-                # if 'file' in df.columns:    # TODO remove once the data is actually cleaned
-                #    df.drop(columns=['file'], inplace=True)
                 # add session number and df
                 data_frames.append((filename, df))
         return data_frames
@@ -169,15 +162,13 @@ class DataLoader_HRI:
         '''
         similar to the labels, the speaker data is originally not presented frame by frame but as time intervals
         '''
+        # TODO check output of this function
         i = 0
         data_frames = []
         for filename, df in speaker_data:
             label_df = label_data[i][1]
             i += 1
             frames_count = len(label_df)
-            # print(frames_count)
-            # TODO: this encoding becomes bad with averaging
-            # speaker_match = {"robot": 2, "participant": 1, "pause": 0}
             new_data = []
             # initialize the data with speech pauses
             for f in range(1, frames_count+1):
@@ -334,7 +325,7 @@ class DataLoader_HRI:
 
         return merged_df.reset_index()
 
-    def get_summary_format(self, interval_length, stride_train, stride_eval, fps=100, label_creation="full", summary='mean', oversampling_rate=0, undersampling_rate=0, task=2):
+    def get_summary_format(self, interval_length, stride_train, stride_eval, fps=100, label_creation="full", summary='mean', oversampling_rate=0, undersampling_rate=0, task=2) -> tuple:
         """
         Convert the data to summary form. Split the data from the dfs into intervals of length interval_length with stride stride.
         Split takes place of adjacent frames of the same session.
@@ -385,7 +376,7 @@ class DataLoader_HRI:
 
         return val_X_summary_list, val_Y_summary_list, train_X_summary, train_Y_summary, column_order
 
-    def get_timeseries_format(self, interval_length, stride_train, stride_eval, fps=100, verbose=False, label_creation="full", oversampling_rate=1, undersampling_rate=0, task=2):
+    def get_timeseries_format(self, interval_length: int, stride_train: int, stride_eval: int, fps: int = 100, verbose: bool = False, label_creation: str = "full", oversampling_rate: float = 0, undersampling_rate: float = 0, task: int = 2) -> tuple:
         """
         Convert the data to timeseries form. Split the data from the dfs into intervals of length interval_length with stride stride.
         Split takes place of adjacent frames of the same session.
@@ -569,7 +560,7 @@ class DataLoader_HRI:
                     feature_values[nan_mask] = feature_mean
         return data
 
-    def exclude_columns(self, columns: list):
+    def exclude_columns(self, columns: list) -> None:
         """
         Exclude columns from the data
         :param columns: The columns to exclude
@@ -584,7 +575,7 @@ class DataLoader_HRI:
             except:
                 print("Error excluding val column with name", col)
 
-    def limit_to_sessions(self, sessions_train=None, sessions_val=None):
+    def limit_to_sessions(self, sessions_train: list = None, sessions_val: list = None) -> None:
         """
         Limit the data to the specified sessions
         :param sessions_train: The sessions to include in the training data
@@ -621,7 +612,7 @@ if __name__ == "__main__":
     print(Y_val[0].shape)
     print(X_val[0])
 
-   # # TODO remove
+   # TODO remove
 
     # def load_labels_old(self, data_dir, expand, rows_per_second=100):
     #     '''

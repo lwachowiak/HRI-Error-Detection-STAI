@@ -1,0 +1,91 @@
+{
+    "task": 2,
+    "model_type": "ConvTranPlus",
+    "n_trials": 20,
+    "data_params": {
+        "interval_length": {
+            "low": 300,
+            "high": 1000,
+            "step": 100
+        },
+        "stride_train": {
+            "low": 50,
+            "high": 750,
+            "step": 50
+        },
+        "stride_eval": {
+            "low": 50,
+            "high": 750,
+            "step": 50
+        },
+        "fps": [
+            10,
+            20,
+            25,
+            50,
+            100
+        ],
+        "nan_handling": [
+            "zeros",
+            "avg"
+        ],
+        "label_creation": [
+            "stride_eval"
+        ],
+        "columns_to_remove": [
+            "speaker",
+            "openpose",
+            "openpose, speaker"
+        ],
+        "oversampling_rate": {
+            "low": 0.0,
+            "high": 0.3,
+            "step": 0.1
+        },
+        "undersampling_rate": {
+            "low": 0.0,
+            "high": 0.3,
+            "step": 0.1
+        }
+    },
+    "model_params": {
+        "batch_size": {
+            "low": 16,
+            "high": 32,
+            "step": 16
+        },
+        "loss": [
+            "FocalLossFlat",
+            "CrossEntropyLossFlat"
+        ],
+        "lr": {
+            "low": 1e-6,
+            "high": 1e-1
+        },
+        "fc_dropout": {
+            "low": 0.0,
+            "high": 0.5,
+            "step": 0.1
+        },
+        "encoder_dropout": {
+            "low": 0.0,
+            "high": 0.5,
+            "step": 0.1
+        },
+        "n_heads": {
+            "low": 4,
+            "high": 24,
+            "step": 4
+        },
+        "d_model": {
+            "low": 8,
+            "high": 64,
+            "step": 8
+        },
+        "dim_ff": {
+            "low": 32,
+            "high": 312,
+            "step": 56
+        }
+    }
+}

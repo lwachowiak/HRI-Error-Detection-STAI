@@ -476,11 +476,6 @@ class TS_Model_Trainer:
             model = LSTM_FCN(dls.vars, dls.c, dls.len,
                              fc_dropout=fc_dropout, rnn_dropout=rnn_dropout, hidden_size=hidden_size, rnn_layers=rnn_layers, bidirectional=bidirectional)
         elif config["model_type"] == "ConvTranPlus":
-            #    d_model: int = 16,
-            # n_heads: int = 8,
-            # dim_ff: int = 256,
-            # encoder_dropout: float = 0.01,
-            # fc_dropout: float = 0.1,
             model_trial_params["d_model"] = trial.suggest_int(
                 "d_model", **model_params["d_model"])
             model_trial_params["n_heads"] = trial.suggest_int(
@@ -494,13 +489,6 @@ class TS_Model_Trainer:
             model = ConvTranPlus(dls.vars, dls.c, dls.len,
                                  **model_trial_params)
         elif config["model_type"] == "TransformerLSTMPlus":
-            #     d_model: int = 128,
-            # nhead: int = 16,
-            # proj_dropout: float = 0.1,
-            # num_encoder_layers: int = 1,
-            # dim_feedforward: int = 2048,
-            # dropout: float = 0.1,
-            #  num_rnn_layers: int = 1,
             model_trial_params["d_model"] = trial.suggest_int(
                 "d_model", **model_params["d_model"])
             model_trial_params["nhead"] = trial.suggest_int(
@@ -601,37 +589,6 @@ class TS_Model_Trainer:
         outcomes = self.get_eval_metrics(
             preds=preds, dataset="val", verbose=False)
         return outcomes["accuracy"], outcomes["f1"]
-
-    def optuna_objective_minirocket(self, trial: optuna.Trial) -> tuple:
-        '''Optuna objective function for MiniRocket model. Optimizes for accuracy and macro f1 score.
-        params: trial: optuna.Trial: The optuna trial runnning.
-        output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
-        '''
-
-        ### DATA PRE-PROCESSING ###
-        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
-            self.config, trial)
-
-        ### MODEL SPECIFICATION ###
-        model_params = self.config["model_params"]
-        max_dilations_per_kernel = trial.suggest_int(
-            "max_dilations_per_kernel", low=model_params["max_dilations_per_kernel"]["low"], high=model_params["max_dilations_per_kernel"]["high"], step=model_params["max_dilations_per_kernel"]["step"])
-        n_estimators = trial.suggest_int(
-            "n_estimators", low=model_params["n_estimators"]["low"], high=model_params["n_estimators"]["high"], step=model_params["n_estimators"]["step"])
-        class_weight = trial.suggest_categorical(
-            "class_weight", [None])  # ["balanced", None])
-        model = MINIROCKET.MiniRocketVotingClassifier(
-            n_estimators=n_estimators, n_jobs=self.n_jobs, max_dilations_per_kernel=max_dilations_per_kernel, class_weight=class_weight)
-
-        ### TRAIN ###
-        model.fit(train_X_TS, train_Y_TS_task)
-
-        ### EVAL ###
-        test_preds = self.get_full_test_preds(
-            model, val_X_TS_list, data_values["interval_length"], data_values["stride_eval"], model_type="Classic")
-        eval_scores = self.get_eval_metrics(
-            preds=test_preds, dataset="val", verbose=True)
-        return eval_scores["accuracy"], eval_scores["f1"]
 
     def optuna_objective_classic(self, trial: optuna.Trial):
         model_params = self.config["model_params"]
@@ -796,3 +753,34 @@ if __name__ == '__main__':
     #     outcomes = self.get_eval_metrics(
     #         preds=preds, dataset="val", verbose=False)
     #     return outcomes["accuracy"], outcomes["f1"]
+
+    # def optuna_objective_minirocket(self, trial: optuna.Trial) -> tuple:
+    #     '''Optuna objective function for MiniRocket model. Optimizes for accuracy and macro f1 score.
+    #     params: trial: optuna.Trial: The optuna trial runnning.
+    #     output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
+    #     '''
+
+    #     ### DATA PRE-PROCESSING ###
+    #     val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
+    #         self.config, trial)
+
+    #     ### MODEL SPECIFICATION ###
+    #     model_params = self.config["model_params"]
+    #     max_dilations_per_kernel = trial.suggest_int(
+    #         "max_dilations_per_kernel", low=model_params["max_dilations_per_kernel"]["low"], high=model_params["max_dilations_per_kernel"]["high"], step=model_params["max_dilations_per_kernel"]["step"])
+    #     n_estimators = trial.suggest_int(
+    #         "n_estimators", low=model_params["n_estimators"]["low"], high=model_params["n_estimators"]["high"], step=model_params["n_estimators"]["step"])
+    #     class_weight = trial.suggest_categorical(
+    #         "class_weight", [None])  # ["balanced", None])
+    #     model = MINIROCKET.MiniRocketVotingClassifier(
+    #         n_estimators=n_estimators, n_jobs=self.n_jobs, max_dilations_per_kernel=max_dilations_per_kernel, class_weight=class_weight)
+
+    #     ### TRAIN ###
+    #     model.fit(train_X_TS, train_Y_TS_task)
+
+    #     ### EVAL ###
+    #     test_preds = self.get_full_test_preds(
+    #         model, val_X_TS_list, data_values["interval_length"], data_values["stride_eval"], model_type="Classic")
+    #     eval_scores = self.get_eval_metrics(
+    #         preds=test_preds, dataset="val", verbose=True)
+    #     return eval_scores["accuracy"], eval_scores["f1"]
