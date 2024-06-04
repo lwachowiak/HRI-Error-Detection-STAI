@@ -92,11 +92,11 @@ class TS_Model_Trainer:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 
-    def get_full_test_preds(self, model: object, val_X_TS_list: list, intervallength: int, stride_eval: int, model_type: str, batch_tfms: list = None) -> list:
-        '''Get full test predictions by repeating the predictions based on intervallength and stride_eval.
+    def get_full_test_preds(self, model: object, val_X_TS_list: list, interval_length: int, stride_eval: int, model_type: str, batch_tfms: list = None) -> list:
+        '''Get full test predictions by repeating the predictions based on interval_length and stride_eval.
         :param model: The model to evaluate.
         :param val_X_TS_list: List of validation/test data per session.
-        :param intervallength: The length of the interval to predict.
+        :param interval_length: The length of the interval to predict.
         :param stride_eval: The stride to evaluate the model.
         :param model_type: Either "Classic" or "TSAI", which have different API calls
         :param batch_tfms: List of batch transformations to apply, if any
@@ -115,12 +115,12 @@ class TS_Model_Trainer:
                     X=val_X_TS, y=None, with_decoded=False)  # don't use the automatic decoding, there is a bug in the tsai library
                 pred = [model.dls.vocab[p]
                         for p in np.argmax(valid_probas, axis=1)]
-            # for each sample in the session, repeat the prediction based on intervallength and stride_eval
+            # for each sample in the session, repeat the prediction based on interval_length and stride_eval
             processed_preds = []
             for i, pr in enumerate(pred):
                 if i == 0:
-                    # first prediction, so append it intervallength times
-                    processed_preds.extend([pr]*intervallength)
+                    # first prediction, so append it interval_length times
+                    processed_preds.extend([pr]*interval_length)
                 else:
                     # all other predictions are appended stride_eval times
                     processed_preds.extend([pr]*stride_eval)
@@ -177,7 +177,7 @@ class TS_Model_Trainer:
         data_values = {}
         data_values["interval_length"] = trial.suggest_int(
             "interval_length", low=data_params["interval_length"]["low"], high=data_params["interval_length"]["high"], step=data_params["interval_length"]["step"])
-        # strides must be leq than intervallength
+        # strides must be leq than interval_length
         data_values["stride_train"] = trial.suggest_int(
             "stride_train", low=data_params["stride_train"]["low"], high=min(data_values["interval_length"], data_params["stride_train"]["high"]), step=data_params["interval_length"]["step"])
         data_values["stride_eval"] = trial.suggest_int(
@@ -216,7 +216,7 @@ class TS_Model_Trainer:
         if format == "timeseries":
             # get timeseries format
             val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
-                intervallength=data_values["interval_length"],
+                interval_length=data_values["interval_length"],
                 stride_train=data_values["stride_train"],
                 stride_eval=data_values["stride_eval"], verbose=False,
                 fps=data_values["fps"],
@@ -358,10 +358,10 @@ class TS_Model_Trainer:
                           ["speaker"], ["openpose"], ["openface"], ["openpose", "speaker"], ["speaker", "openpose", "openface"], ["opensmile", "speaker", "openpose"], ["opensmile", "openpose", "openface"], ["opensmile", "speaker", "openface"]]
         # per run, remove one or more columns
         for removed_cols in feature_search:
-            intervallength = 900
+            interval_length = 900
             stride_eval = 500
             val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
-                intervallength=intervallength, stride_train=400, stride_eval=stride_eval, verbose=False, fps=50, label_creation="stride_eval")
+                interval_length=interval_length, stride_train=400, stride_eval=stride_eval, verbose=False, fps=50, label_creation="stride_eval")
             # remove columns ending, columns are the 2nd dimension
             train_X_TS = self.remove_columns(
                 columns_to_remove=removed_cols, data_X=train_X_TS, column_order=column_order)
@@ -371,7 +371,7 @@ class TS_Model_Trainer:
                 columns_to_remove=removed_cols, data_X=val_X_TS_list, column_order=column_order)
             # eval
             test_preds = self.get_full_test_preds(
-                model, val_X_TS_list_new, intervallength, stride_eval)
+                model, val_X_TS_list_new, interval_length, stride_eval)
             eval_scores = self.get_eval_metrics(
                 preds=test_preds, dataset="val", verbose=False)
             name = " ".join(removed_cols)
@@ -391,7 +391,7 @@ class TS_Model_Trainer:
         scores = []
         model = MINIROCKET.MiniRocketVotingClassifier(
             n_estimators=12, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
-        intervallength = 800
+        interval_length = 800
         stride_eval = 300
         stride_train = 300
         fps = 25
@@ -406,7 +406,7 @@ class TS_Model_Trainer:
             for j in range(iterations_per_samplesize):
                 # dataprep
                 val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
-                    intervallength=intervallength, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
+                    interval_length=interval_length, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
                 train_X_TS = self.remove_columns(
                     columns_to_remove=columns_to_remove, data_X=train_X_TS, column_order=column_order)
                 val_X_TS_list_new = self.remove_columns(
@@ -415,7 +415,7 @@ class TS_Model_Trainer:
                 model.fit(train_X_TS, train_Y_TS[:, self.task])
                 # eval
                 test_preds = self.get_full_test_preds(
-                    model, val_X_TS_list_new, intervallength, stride_eval)
+                    model, val_X_TS_list_new, interval_length, stride_eval)
                 eval_scores = self.get_eval_metrics(
                     preds=test_preds, dataset="val", verbose=False)
                 scores_iter.append(eval_scores["accuracy"])
@@ -596,7 +596,7 @@ class TS_Model_Trainer:
         learn.fit_one_cycle(30, lr)
 
         ### EVALUATION ###
-        preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, intervallength=data_values[
+        preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, interval_length=data_values[
             "interval_length"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms)
         outcomes = self.get_eval_metrics(
             preds=preds, dataset="val", verbose=False)

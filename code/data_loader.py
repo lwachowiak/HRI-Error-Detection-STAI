@@ -385,11 +385,11 @@ class DataLoader_HRI:
 
         return val_X_summary_list, val_Y_summary_list, train_X_summary, train_Y_summary, column_order
 
-    def get_timeseries_format(self, intervallength, stride_train, stride_eval, fps=100, verbose=False, label_creation="full", oversampling_rate=1, undersampling_rate=0, task=2):
+    def get_timeseries_format(self, interval_length, stride_train, stride_eval, fps=100, verbose=False, label_creation="full", oversampling_rate=1, undersampling_rate=0, task=2):
         """
-        Convert the data to timeseries form. Split the data from the dfs into intervals of length intervallength with stride stride.
+        Convert the data to timeseries form. Split the data from the dfs into intervals of length interval_length with stride stride.
         Split takes place of adjacent frames of the same session.
-        :param intervallength: The length of the intervals
+        :param interval_length: The length of the intervals
         :param stride_train: The stride for the training data (oversampling technique)
         :param stride_eval: The stride for the evaluation data (eval update frequency)
         :param fps: The desired fps of the data. Original is 100 fps
@@ -426,15 +426,15 @@ class DataLoader_HRI:
                 session_df = session_df[:-cut_length]
             session_labels = self.train_Y[self.train_Y['session'] == session]
             for i in range(0, len(session_df), stride_train):
-                if i + intervallength > len(session_df):
+                if i + interval_length > len(session_df):
                     # TODO IMPLEMENT PADDING (right now padding is done in eval which might also be ok)
                     break
-                interval = session_df.iloc[i:i+intervallength].values.T
+                interval = session_df.iloc[i:i+interval_length].values.T
                 if fps < 100:
                     interval = self.resample(
                         interval=interval, fps=fps, style='mean')
                 # for labels use the 3 columns called UserAwkwardness, RobotMistake, InteractionRupture
-                labels = session_labels.iloc[i:i+intervallength][[
+                labels = session_labels.iloc[i:i+interval_length][[
                     'UserAwkwardness', 'RobotMistake', 'InteractionRupture']].values.T
                 # get the 3 majority labels for the interval so it fits the shape
                 majority_labels = []
@@ -453,7 +453,7 @@ class DataLoader_HRI:
                 train_X_TS.append(interval)
                 train_Y_TS.append(majority_labels)
 
-        # for validation data, stride is equal to intervallength
+        # for validation data, stride is equal to interval_length
         for session in self.val_X['session'].unique():
             val_X_TS = []
             val_Y_TS = []
@@ -465,15 +465,15 @@ class DataLoader_HRI:
             if cut_length > 0:
                 session_df = session_df[:-cut_length]
             session_labels = self.val_Y[self.val_Y['session'] == session]
-            for i in range(0, len(session_df), stride_eval):  # this was intervallength before
-                if i + intervallength > len(session_df):
+            for i in range(0, len(session_df), stride_eval):  # this was interval_length before
+                if i + interval_length > len(session_df):
                     # TODO IMPLEMENT PADDING
                     break
-                interval = session_df.iloc[i:i+intervallength].values.T
+                interval = session_df.iloc[i:i+interval_length].values.T
                 if fps < 100:
                     interval = self.resample(
                         interval=interval, fps=fps, style='mean')
-                labels = session_labels.iloc[i:i+intervallength][[
+                labels = session_labels.iloc[i:i+interval_length][[
                     'UserAwkwardness', 'RobotMistake', 'InteractionRupture']].values.T
                 majority_labels = []
                 for label in labels:
@@ -605,7 +605,7 @@ if __name__ == "__main__":
     print("\n\n\nData Loaded")
 
     val_X_ts, val_Y_ts, train_X_ts, train_Y_ts = data_loader.get_timeseries_format(
-        intervallength=100, stride_train=100, stride_eval=100, fps=100, label_creation="full")
+        interval_length=100, stride_train=100, stride_eval=100, fps=100, label_creation="full")
     print("TS")
     print(len(val_X_ts), len(val_Y_ts), len(train_X_ts), len(train_Y_ts))
     print(train_X_ts.shape, train_Y_ts.shape)
