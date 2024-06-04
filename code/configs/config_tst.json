@@ -5,7 +5,7 @@
     "data_params": {
         "interval_length": {
             "low": 300,
-            "high": 100,
+            "high": 1000,
             "step": 100
         },
         "stride_train": {
