@@ -1,20 +1,20 @@
 {
     "task": 2,
     "model_type": "XGBoost",
-    "n_trials": 50,
+    "n_trials": 150,
     "data_params": {
         "interval_length": {
             "low": 700,
-            "high": 900,
-            "step": 50
+            "high": 1100,
+            "step": 100
         },
         "stride_train": {
-            "low": 250,
+            "low": 100,
             "high": 500,
             "step": 50
         },
         "stride_eval": {
-            "low": 250,
+            "low": 50,
             "high": 500,
             "step": 50
         },
