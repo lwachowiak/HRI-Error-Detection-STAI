@@ -168,12 +168,12 @@ class TS_Model_Trainer:
 
         return eval_scores
 
-    def data_from_config(self, config: dict, data_values: dict, format: str, fold: int) -> tuple:
+    def data_from_config(self, data_values: dict, format: str, columns_to_remove: list, fold: int) -> tuple:
         """
         create the datasets for training based on the configuration and the trial parameters.
-        params: config: dict: The configuration dictionary.
         params: data_values: dict: The data values to use for the data creation.
         params: format: str: The format of the data to return. Either "timeseries" or "classic".
+        params: columns_to_remove: list: The columns to remove from the data.
         params: fold: int: The fold to use for validation data
         output: tuple: Tuple containing the validation and training datasets.
         """
@@ -228,10 +228,11 @@ class TS_Model_Trainer:
 
         return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values
 
-    def get_data_values(self, trial: optuna.Trial) -> dict:
+    def get_data_values(self, trial: optuna.Trial) -> tuple:
         """ Get the data values for the trial based on the configuration and the trial parameters.
         :param trial: optuna.Trial: The trial object.
         :output data_values: dict: The data values to use for the data creation.
+        :output columns_to_remove: list: The columns to remove from the data.
         """
         data_params = self.config["data_params"]
         data_values = {}
@@ -258,7 +259,7 @@ class TS_Model_Trainer:
         if "summary" in data_params:
             data_values["summary"] = trial.suggest_categorical(
                 "summary", data_params["summary"])
-        return data_values
+        return data_values, columns_to_remove
 
     def merge_val_train(self, val_X_TS_list: list, val_Y_TS_list: list, train_X_TS: np.array, train_Y_TS_task: np.array) -> tuple:
         """
@@ -638,15 +639,15 @@ class TS_Model_Trainer:
         accuracies = []
         f1s = []
         # same data and model values for all folds (only choose hyperparamters once)
-        data_values = self.get_data_values(trial)
+        data_values, columns_to_remove = self.get_data_values(trial)
         model_values = self.get_model_values(trial)
         for fold in range(1, 5):
             if self.config["model_type"] == "MiniRocket":
                 val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
-                    self.config, data_values, format="timeseries", fold=fold)
+                    self.config, data_values, format="timeseries", columns_to_remove=columns_to_remove, fold=fold)
             else:
                 val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
-                    self.config, data_values, format="classic", fold=fold)
+                    self.config, data_values, format="classic", columns_to_remove=columns_to_remove, fold=fold)
 
             model = self.get_classic_learner(model_values)
 
