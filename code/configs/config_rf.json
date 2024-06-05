@@ -1,10 +1,10 @@
 {
     "task": 2,
     "model_type": "RandomForest",
-    "n_trials": 500,
+    "n_trials": 300,
     "data_params": {
         "interval_length": {
-            "low": 500,
+            "low": 700,
             "high": 1400,
             "step": 100
         },
@@ -29,40 +29,36 @@
             "zeros"
         ],
         "label_creation": [
-            "full",
-            "stride_eval",
-            "stride_train"
+            "stride_eval"
         ],
         "columns_to_remove": [
             "REMOVE_NOTHING",
-            "speaker",
-            "openpose",
-            "openpose, speaker"
+            "openpose"
         ],
         "summary": [
             "mean"
         ],
         "oversampling_rate": {
             "low": 0.0,
-            "high": 0.5,
+            "high": 0.4,
             "step": 0.1
         },
         "undersampling_rate": {
             "low": 0.0,
-            "high": 0.5,
+            "high": 0.4,
             "step": 0.1
         }
     },
     "model_params": {
         "n_estimators": {
-            "low": 20,
-            "high": 100,
+            "low": 80,
+            "high": 300,
             "step": 20
         },
         "max_depth": {
-            "low": 5,
-            "high": 50,
-            "step": 5
+            "low": 20,
+            "high": 80,
+            "step": 10
         },
         "random_state": {
             "low": 0,
