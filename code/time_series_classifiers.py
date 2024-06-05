@@ -646,7 +646,7 @@ class TS_Model_Trainer:
 
     def train_and_save_best_model(self, model_config: str):
 
-        config = self.read_config(model_config)
+        config = self.read_config(self.folder+"code/best_models/"+model_config)
 
         if any(s in config["model_type"] for s in ["TST", "LSTM_FCN", "ConvTranPlus", "TransformerLSTMPlus"]):
             
