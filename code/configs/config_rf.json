@@ -1,7 +1,7 @@
 {
     "task": 2,
     "model_type": "RandomForest",
-    "n_trials": 50,
+    "n_trials": 2,
     "data_params": {
         "interval_length": {
             "low": 700,

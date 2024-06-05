@@ -641,13 +641,14 @@ class TS_Model_Trainer:
         # same data and model values for all folds (only choose hyperparamters once)
         data_values, columns_to_remove = self.get_data_values(trial)
         model_values = self.get_model_values(trial)
+        # cross validation
         for fold in range(1, 5):
             if self.config["model_type"] == "MiniRocket":
                 val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
-                    self.config, data_values, format="timeseries", columns_to_remove=columns_to_remove, fold=fold)
+                    data_values=data_values, format="timeseries", columns_to_remove=columns_to_remove, fold=fold)
             else:
                 val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
-                    self.config, data_values, format="classic", columns_to_remove=columns_to_remove, fold=fold)
+                    data_values=data_values, format="classic", columns_to_remove=columns_to_remove, fold=fold)
 
             model = self.get_classic_learner(model_values)
 
@@ -662,6 +663,8 @@ class TS_Model_Trainer:
             accuracies.append(eval_scores["accuracy"])
             f1s.append(eval_scores["f1"])
 
+        print("Accuracies:", accuracies)
+
         return np.mean(accuracies), np.mean(f1s)
 
     def train_and_save_best_model(self, model_config: str):
@@ -669,6 +672,11 @@ class TS_Model_Trainer:
         config = self.read_config(
             self.folder+"code/best_model_configs/"+model_config)
         print(config)
+
+        columns_to_remove = self.column_removal_dict[config["data_params"]
+                                                     ["columns_to_remove"]]
+
+        # TODO I THINK I T SHOULD BE POSSIBLE TO CALL THE GET LEARNER FUNCTION NOW WITH THE model_params and the data with the data_params
 
         if any(s in config["model_type"] for s in ["TST", "LSTM_FCN", "ConvTranPlus", "TransformerLSTMPlus"]):
             return NotImplementedError
