@@ -159,7 +159,6 @@ class TS_Model_Trainer:
         print("Final preds length", len(preds), len(y_true))
 
         eval_scores = get_metrics(y_pred=preds, y_true=y_true, tolerance=50)
-        print(eval_scores)
 
         # print confusion matrix
         if verbose:
@@ -177,7 +176,9 @@ class TS_Model_Trainer:
         params: fold: int: The fold to use for validation data
         output: tuple: Tuple containing the validation and training datasets.
         """
-
+        if fold not in range(1, 5):
+            raise ValueError(
+                "Fold must be an integer between 1 and 4, corresponding to the 4 folds of the dataset used for CV.")
         # TODO change variable names from TS to sth generic
         if format == "classic":
             # get summary format for classic models
@@ -570,7 +571,6 @@ class TS_Model_Trainer:
                 "learning_rate", **model_params["learning_rate"])
             model_values["booster"] = trial.suggest_categorical(
                 "booster", model_params["booster"])
-            model_values["n_jobs"] = model_params["n_jobs"]
         if self.config["model_type"] == "MiniRocket":
             model_values["n_estimators"] = trial.suggest_int(
                 "n_estimators", **model_params["n_estimators"])
@@ -578,6 +578,7 @@ class TS_Model_Trainer:
                 "max_dilations_per_kernel", **model_params["max_dilations_per_kernel"])
             model_values["class_weight"] = trial.suggest_categorical(
                 "class_weight", model_params["class_weight"])
+        return model_values
 
     def get_classic_learner(self, model_values: dict) -> object:
         '''Get a classic learner following sklearn conventions based on the configuration and the trial parameters.
@@ -585,12 +586,12 @@ class TS_Model_Trainer:
         output: object: The classic learner object to use for training.
         '''
         if self.config["model_type"] == "RandomForest":
-            model = RandomForestClassifier(**model_values)
+            model = RandomForestClassifier(**model_values, n_jobs=self.n_jobs)
         elif self.config["model_type"] == "XGBoost":
             model = XGBClassifier(**model_values)
         elif self.config["model_type"] == "MiniRocket":
             model = MINIROCKET.MiniRocketVotingClassifier(
-                **model_values)
+                **model_values, n_jobs=self.n_jobs)
         return model
 
     def optuna_objective_tsai(self, trial: optuna.Trial) -> tuple:
@@ -641,8 +642,11 @@ class TS_Model_Trainer:
         # same data and model values for all folds (only choose hyperparamters once)
         data_values, columns_to_remove = self.get_data_values(trial)
         model_values = self.get_model_values(trial)
+        print("Model Values:", model_values)
+        print("\nData Values:", data_values)
         # cross validation
         for fold in range(1, 5):
+            print("Fold", fold)
             if self.config["model_type"] == "MiniRocket":
                 val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
                     data_values=data_values, format="timeseries", columns_to_remove=columns_to_remove, fold=fold)
