@@ -135,8 +135,10 @@ class TS_Model_Trainer:
         '''
         y_true = []
         # iterate over all preds (per session) and append 0s if necessary
-        for i in range(len(preds)):
-            session_id = i
+        session_ids = self.data.val_Y["session"].unique()
+        print("Session IDs Val:", session_ids)
+        # TODO is preds in the same order as session_ids????
+        for i, session_id in enumerate(session_ids):
             y_true.append(
                 self.data.val_Y[self.data.val_Y['session'] == session_id][self.TASK_TO_COLUMN[self.task]].values)
             # append 0s to preds if necessary
@@ -166,12 +168,13 @@ class TS_Model_Trainer:
         return eval_scores
 
     # TODO: add fold argument here
-    def data_from_config(self, config: dict, trial: optuna.Trial, format: str = "timeseries") -> tuple:
+    def data_from_config(self, config: dict, trial: optuna.Trial, format: str, fold: int) -> tuple:
         """
         create the datasets for training based on the configuration and the trial parameters.
         params: config: dict: The configuration dictionary.
         params: trial: optuna.Trial: The trial object.
         params: format: str: The format of the data to return. Either "timeseries" or "classic".
+        params: fold: int: The fold to use for validation data
         output: tuple: Tuple containing the validation and training datasets.
         """
         data_params = self.config["data_params"]
@@ -211,7 +214,8 @@ class TS_Model_Trainer:
                 summary=data_values["summary"],
                 oversampling_rate=data_values["oversampling_rate"],
                 undersampling_rate=data_values["undersampling_rate"],
-                task=self.task
+                task=self.task,
+                fold=fold
             )
 
         if format == "timeseries":
@@ -224,7 +228,8 @@ class TS_Model_Trainer:
                 label_creation=data_values["label_creation"],
                 oversampling_rate=data_values["oversampling_rate"],
                 undersampling_rate=data_values["undersampling_rate"],
-                task=self.task
+                task=self.task,
+                fold=fold
             )
 
         # nan handling
@@ -296,11 +301,11 @@ class TS_Model_Trainer:
         # save best params to json
         best_params = {}
         best_params["task"] = self.task
-        best_params["model_type"] = study_name
-        best_params["data_params"]  = {}
+        best_params["model_type"] = model_type
+        best_params["data_params"] = {}
         best_params["model_params"] = {}
         best_params["stats"] = {}
-        
+
         f = "best_{}".format
         for param_name, param_value in trial_with_highest_accuracy.params.items():
             wandb.run.summary[f(param_name)] = param_value
@@ -308,21 +313,23 @@ class TS_Model_Trainer:
                 best_params["data_params"][param_name] = param_value
             elif param_name in self.config["model_params"]:
                 best_params["model_params"][param_name] = param_value
-            
-        for value_name, value in zip(study.directions, trial_with_highest_accuracy.values):
-            wandb.run.summary[f(value_name)] = value
-            best_params["stats"][value_name] = value
-            
+
+        # for value_name, value in zip(study.directions, trial_with_highest_accuracy.values):
+        #    wandb.run.summary[f(value_name)] = value
+        #    best_params["stats"][value_name] = value
+
         wandb.run.summary["best accuracy"] = trial_with_highest_accuracy.values[0]
         wandb.run.summary["best macro f1"] = trial_with_highest_accuracy.values[1]
+        best_params["stats"]["accuracy"] = trial_with_highest_accuracy.values[0]
+        best_params["stats"]["macro f1"] = trial_with_highest_accuracy.values[1]
 
         wandb.finish()
 
-        with open(self.folder+"/code/best_model_configs/"+str(study_name)+".json", "w") as f:
+        with open(self.folder+"code/best_model_configs/"+str(study_name)+".json", "w") as f:
             json.dump(best_params, f)
 
         return study
-    
+
     def get_trials_figures(self, study: optuna.study.Study, target_index: int, target_name: str) -> None:
         '''Get optuna visualization figures and log them to wandb. Summary visualizations for full search.
         params: study: optuna.study.Study: The optuna study object.
@@ -605,30 +612,35 @@ class TS_Model_Trainer:
         return outcomes["accuracy"], outcomes["f1"]
 
     def optuna_objective_classic(self, trial: optuna.Trial) -> tuple:
-        model_params = self.config["model_params"]
-        data_params = self.config["data_params"]
+        '''Optuna objective function for all classic (sklearn API style) models. Optimizes for accuracy and macro f1 score.
+        params: trial: optuna.Trial: The optuna trial runnning.
+        output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
+        '''
+        accuracies = []
+        f1s = []
+        for fold in range(1, 5):
+            if self.config["model_type"] == "MiniRocket":
+                val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
+                    self.config, trial, format="timeseries", fold=fold)
+            else:
+                val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
+                    self.config, trial, format="classic", fold=fold)
 
-        # val_X_summary_list, val_Y_summary_list, train_X_summary, train_Y_summary, column_order, train_Y_summary_task, data_values = self.data_from_config(
-        #    data_params, trial)
-        if self.config["model_type"] == "MiniRocket":
-            val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
-                self.config, trial, format="timeseries")
-        else:
-            val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
-                self.config, trial, format="classic")
+            model = self.get_classic_learner(trial, self.config)
 
-        model = self.get_classic_learner(trial, self.config)
+            model.fit(train_X_TS, train_Y_TS_task)
 
-        model.fit(train_X_TS, train_Y_TS_task)
+            test_preds = self.get_full_test_preds(
+                model, val_X_TS_list, data_values["interval_length"], data_values["stride_eval"], model_type="Classic")
 
-        test_preds = self.get_full_test_preds(
-            model, val_X_TS_list, data_values["interval_length"], data_values["stride_eval"], model_type="Classic")
+            eval_scores = self.get_eval_metrics(
+                test_preds, dataset="val", verbose=True)
 
-        eval_scores = self.get_eval_metrics(
-            test_preds, dataset="val", verbose=True)
+            accuracies.append(eval_scores["accuracy"])
+            f1s.append(eval_scores["f1"])
 
-        return eval_scores["accuracy"], eval_scores["f1"]
-    
+        return np.mean(accuracies), np.mean(f1s)
+
     def train_and_save_best_model(self, model: str):
         pass
 
