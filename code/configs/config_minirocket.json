@@ -1,7 +1,7 @@
 {
     "task": 2,
     "model_type": "MiniRocket",
-    "n_trials": 60,
+    "n_trials": 10,
     "data_params": {
         "interval_length": {
             "low": 700,
@@ -54,8 +54,8 @@
             "step": 8
         },
         "n_estimators": {
-            "low": 20,
-            "high": 28,
+            "low": 10,
+            "high": 10,
             "step": 2
         },
         "class_weight": [
