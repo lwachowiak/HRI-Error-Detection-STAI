@@ -168,44 +168,19 @@ class TS_Model_Trainer:
 
         return eval_scores
 
-    # TODO: add fold argument here
-    def data_from_config(self, config: dict, trial: optuna.Trial, format: str, fold: int) -> tuple:
+    def data_from_config(self, config: dict, data_values: dict, format: str, fold: int) -> tuple:
         """
         create the datasets for training based on the configuration and the trial parameters.
         params: config: dict: The configuration dictionary.
-        params: trial: optuna.Trial: The trial object.
+        params: data_values: dict: The data values to use for the data creation.
         params: format: str: The format of the data to return. Either "timeseries" or "classic".
         params: fold: int: The fold to use for validation data
         output: tuple: Tuple containing the validation and training datasets.
         """
-        data_params = self.config["data_params"]
-        data_values = {}
-        data_values["interval_length"] = trial.suggest_int(
-            "interval_length", low=data_params["interval_length"]["low"], high=data_params["interval_length"]["high"], step=data_params["interval_length"]["step"])
-        # strides must be leq than interval_length
-        data_values["stride_train"] = trial.suggest_int(
-            "stride_train", low=data_params["stride_train"]["low"], high=min(data_values["interval_length"], data_params["stride_train"]["high"]), step=data_params["interval_length"]["step"])
-        data_values["stride_eval"] = trial.suggest_int(
-            "stride_eval", low=data_params["stride_eval"]["low"], high=min(data_values["interval_length"], data_params["stride_eval"]["high"]), step=data_params["interval_length"]["step"])
-        data_values["fps"] = trial.suggest_categorical(
-            "fps", data_params["fps"])
-        data_values["columns_to_remove"] = trial.suggest_categorical("columns_to_remove",
-                                                                     data_params["columns_to_remove"])
-        columns_to_remove = self.column_removal_dict[data_values["columns_to_remove"]]
-        data_values["label_creation"] = trial.suggest_categorical(
-            "label_creation", data_params["label_creation"])
-        data_values["nan_handling"] = trial.suggest_categorical(
-            "nan_handling", data_params["nan_handling"])
-        data_values["oversampling_rate"] = trial.suggest_float(
-            "oversampling_rate", low=data_params["oversampling_rate"]["low"], high=data_params["oversampling_rate"]["high"], step=data_params["oversampling_rate"]["step"])
-        data_values["undersampling_rate"] = trial.suggest_float(
-            "undersampling_rate", low=data_params["undersampling_rate"]["low"], high=data_params["undersampling_rate"]["high"], step=data_params["undersampling_rate"]["step"])
 
         # TODO change variable names from TS to sth generic
         if format == "classic":
             # get summary format for classic models
-            data_values["summary"] = trial.suggest_categorical(
-                "summary", data_params["summary"])
             val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_summary_format(
                 interval_length=data_values["interval_length"],
                 stride_train=data_values["stride_train"],
@@ -252,6 +227,38 @@ class TS_Model_Trainer:
         train_Y_TS_task = train_Y_TS[:, self.task]
 
         return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values
+
+    def get_data_values(self, trial: optuna.Trial) -> dict:
+        """ Get the data values for the trial based on the configuration and the trial parameters.
+        :param trial: optuna.Trial: The trial object.
+        :output data_values: dict: The data values to use for the data creation.
+        """
+        data_params = self.config["data_params"]
+        data_values = {}
+        data_values["interval_length"] = trial.suggest_int(
+            "interval_length", low=data_params["interval_length"]["low"], high=data_params["interval_length"]["high"], step=data_params["interval_length"]["step"])
+        # strides must be leq than interval_length
+        data_values["stride_train"] = trial.suggest_int(
+            "stride_train", low=data_params["stride_train"]["low"], high=min(data_values["interval_length"], data_params["stride_train"]["high"]), step=data_params["interval_length"]["step"])
+        data_values["stride_eval"] = trial.suggest_int(
+            "stride_eval", low=data_params["stride_eval"]["low"], high=min(data_values["interval_length"], data_params["stride_eval"]["high"]), step=data_params["interval_length"]["step"])
+        data_values["fps"] = trial.suggest_categorical(
+            "fps", data_params["fps"])
+        data_values["columns_to_remove"] = trial.suggest_categorical("columns_to_remove",
+                                                                     data_params["columns_to_remove"])
+        columns_to_remove = self.column_removal_dict[data_values["columns_to_remove"]]
+        data_values["label_creation"] = trial.suggest_categorical(
+            "label_creation", data_params["label_creation"])
+        data_values["nan_handling"] = trial.suggest_categorical(
+            "nan_handling", data_params["nan_handling"])
+        data_values["oversampling_rate"] = trial.suggest_float(
+            "oversampling_rate", low=data_params["oversampling_rate"]["low"], high=data_params["oversampling_rate"]["high"], step=data_params["oversampling_rate"]["step"])
+        data_values["undersampling_rate"] = trial.suggest_float(
+            "undersampling_rate", low=data_params["undersampling_rate"]["low"], high=data_params["undersampling_rate"]["high"], step=data_params["undersampling_rate"]["step"])
+        if "summary" in data_params:
+            data_values["summary"] = trial.suggest_categorical(
+                "summary", data_params["summary"])
+        return data_values
 
     def merge_val_train(self, val_X_TS_list: list, val_Y_TS_list: list, train_X_TS: np.array, train_Y_TS_task: np.array) -> tuple:
         """
@@ -535,46 +542,54 @@ class TS_Model_Trainer:
             accuracy, F1Score()], cbs=cbs, loss_func=loss_func)
         return learn
 
-    def get_classic_learner(self, trial: optuna.Trial, config: dict) -> object:
-        '''Get a classic learner following sklearn conventions based on the configuration and the trial parameters.
+    def get_model_values(self, trial: optuna.Trial) -> dict:
+        '''Get the model values for the trial based on the configuration and the trial parameters.
         params: trial: optuna.Trial: The trial object.
-        params: config: dict: The configuration dictionary
+        output: dict: The model values to use for the model creation.
+        '''
+        model_params = self.config["model_params"]
+        model_values = {}
+        if self.config["model_type"] == "RandomForest":
+            model_values["n_estimators"] = trial.suggest_int(
+                "n_estimators", **model_params["n_estimators"])
+            model_values["max_depth"] = trial.suggest_int(
+                "max_depth", **model_params["max_depth"])
+            model_values["random_state"] = trial.suggest_int(
+                "random_state", **model_params["random_state"])
+            model_values["criterion"] = trial.suggest_categorical(
+                "criterion", model_params["criterion"])
+            model_values["max_features"] = trial.suggest_categorical(
+                "max_features", model_params["max_features"])
+        if self.config["model_type"] == "XGBoost":
+            model_values["n_estimators"] = trial.suggest_int(
+                "n_estimators", **model_params["n_estimators"])
+            model_values["max_depth"] = trial.suggest_int(
+                "max_depth", **model_params["max_depth"])
+            model_values["learning_rate"] = trial.suggest_float(
+                "learning_rate", **model_params["learning_rate"])
+            model_values["booster"] = trial.suggest_categorical(
+                "booster", model_params["booster"])
+            model_values["n_jobs"] = model_params["n_jobs"]
+        if self.config["model_type"] == "MiniRocket":
+            model_values["n_estimators"] = trial.suggest_int(
+                "n_estimators", **model_params["n_estimators"])
+            model_values["max_dilations_per_kernel"] = trial.suggest_int(
+                "max_dilations_per_kernel", **model_params["max_dilations_per_kernel"])
+            model_values["class_weight"] = trial.suggest_categorical(
+                "class_weight", model_params["class_weight"])
+
+    def get_classic_learner(self, model_values: dict) -> object:
+        '''Get a classic learner following sklearn conventions based on the configuration and the trial parameters.
+        params: model_values: dict: The model values to use for the model creation.
         output: object: The classic learner object to use for training.
         '''
-        model_params = config["model_params"]
-        model_trial_params = {}
-        if config["model_type"] == "RandomForest":
-            model_trial_params["n_estimators"] = trial.suggest_int(
-                "n_estimators", **model_params["n_estimators"])
-            model_trial_params["max_depth"] = trial.suggest_int(
-                "max_depth", **model_params["max_depth"])
-            model_trial_params["random_state"] = trial.suggest_int(
-                "random_state", **model_params["random_state"])
-            model_trial_params["criterion"] = trial.suggest_categorical(
-                "criterion", model_params["criterion"])
-            model_trial_params["max_features"] = trial.suggest_categorical(
-                "max_features", model_params["max_features"])
-            model = RandomForestClassifier(**model_trial_params)
-        elif config["model_type"] == "XGBoost":
-            model_trial_params["n_estimators"] = trial.suggest_int(
-                "n_estimators", **model_params["n_estimators"])
-            model_trial_params["max_depth"] = trial.suggest_int(
-                "max_depth", **model_params["max_depth"])
-            model_trial_params["learning_rate"] = trial.suggest_float(
-                "learning_rate", **model_params["learning_rate"])
-            model_trial_params["booster"] = trial.suggest_categorical(
-                "booster", model_params["booster"])
-            model_trial_params["n_jobs"] = model_params["n_jobs"]
-            model = XGBClassifier(**model_trial_params)
-        elif config["model_type"] == "MiniRocket":
-            model_trial_params["n_estimators"] = trial.suggest_int(
-                "n_estimators", **model_params["n_estimators"])
-            model_trial_params["max_dilations_per_kernel"] = trial.suggest_int(
-                "max_dilations_per_kernel", **model_params["max_dilations_per_kernel"])
-            model_trial_params["class_weight"] = trial.suggest_categorical(
-                "class_weight", model_params["class_weight"])
+        if self.config["model_type"] == "RandomForest":
+            model = RandomForestClassifier(**model_values)
+        elif self.config["model_type"] == "XGBoost":
+            model = XGBClassifier(**model_values)
+        elif self.config["model_type"] == "MiniRocket":
             model = MINIROCKET.MiniRocketVotingClassifier(
-                **model_trial_params)
+                **model_values)
         return model
 
     def optuna_objective_tsai(self, trial: optuna.Trial) -> tuple:
@@ -584,6 +599,7 @@ class TS_Model_Trainer:
         '''
         accuracies = []
         f1s = []
+        # TODO
         ### DATA PRE-PROCESSING ###
         model_params = self.config["model_params"]
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
@@ -621,15 +637,18 @@ class TS_Model_Trainer:
         '''
         accuracies = []
         f1s = []
+        # same data and model values for all folds (only choose hyperparamters once)
+        data_values = self.get_data_values(trial)
+        model_values = self.get_model_values(trial)
         for fold in range(1, 5):
             if self.config["model_type"] == "MiniRocket":
                 val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
-                    self.config, trial, format="timeseries", fold=fold)
+                    self.config, data_values, format="timeseries", fold=fold)
             else:
                 val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
-                    self.config, trial, format="classic", fold=fold)
+                    self.config, data_values, format="classic", fold=fold)
 
-            model = self.get_classic_learner(trial, self.config)
+            model = self.get_classic_learner(model_values)
 
             model.fit(train_X_TS, train_Y_TS_task)
 
@@ -646,14 +665,14 @@ class TS_Model_Trainer:
 
     def train_and_save_best_model(self, model_config: str):
 
-        config = self.read_config(self.folder+"code/best_models/"+model_config)
+        config = self.read_config(
+            self.folder+"code/best_model_configs/"+model_config)
+        print(config)
 
         if any(s in config["model_type"] for s in ["TST", "LSTM_FCN", "ConvTranPlus", "TransformerLSTMPlus"]):
-
             return NotImplementedError
 
         elif any(s in config["model_type"] for s in ["RandomForest", "XGBoost", "MiniRocket"]):
-
             if "MiniRocket" in self.config["model_type"]:
                 _, _, train_X_TS, _, _, train_Y_TS_task, _ = self.data.get_timeseries_format(
                     **config["data_params"], task=config["task"])
@@ -669,7 +688,7 @@ class TS_Model_Trainer:
 
             model.fit(train_X_TS, train_Y_TS_task)
 
-            with open(self.folder+"/code/trained_models/"+str(config["model_type"])+".pkl", "wb") as f:
+            with open(self.folder+"code/trained_models/"+str(config["model_type"])+".pkl", "wb") as f:
                 pickle.dump(model, f)
         else:
             raise Exception("Model type not recognized.")
