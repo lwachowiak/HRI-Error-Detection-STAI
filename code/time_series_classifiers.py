@@ -581,6 +581,8 @@ class TS_Model_Trainer:
         params: trial: optuna.Trial: The optuna trial runnning.
         output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
         '''
+        accuracies = []
+        f1s = []
         ### DATA PRE-PROCESSING ###
         model_params = self.config["model_params"]
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
