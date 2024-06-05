@@ -27,6 +27,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import os
+import pickle
 
 # TODO:
 # - just train with some columns / column selection / feature importance
@@ -643,9 +644,32 @@ class TS_Model_Trainer:
 
         return np.mean(accuracies), np.mean(f1s)
 
-    def train_and_save_best_model(self, model: str):
-        pass
+    def train_and_save_best_model(self, model_config: str):
 
+        config = self.read_config(model_config)
+
+        if any(s in config["model_type"] for s in ["TST", "LSTM_FCN", "ConvTranPlus", "TransformerLSTMPlus"]):
+            
+            return NotImplementedError
+
+        elif any(s in config["model_type"] for s in ["RandomForest", "XGBoost", "MiniRocket"]):
+
+            if "MiniRocket" in self.config["model_type"]:
+                _,_, train_X_TS, _,_, train_Y_TS_task, _ = self.data.get_timeseries_format(**config["data_params"], task=config["task"])
+                model = MINIROCKET.MiniRocketVotingClassifier(**config["model_params"])
+            else:
+                _,_, train_X_TS, _,_, train_Y_TS_task, _ = self.data.get_summary_format(**config["data_params"], task=config["task"])
+                if "RandomForest" in self.config["model_type"]:
+                    model = RandomForestClassifier(**config["model_params"])
+                elif "XGBoost" in self.config["model_type"]:
+                    model = XGBClassifier(**config["model_params"])
+
+            model.fit(train_X_TS, train_Y_TS_task)
+
+            with open(self.folder+"/code/trained_models/"+str(config["model_type"])+".pkl", "wb") as f:
+                pickle.dump(model, f)
+        else:
+            raise Exception("Model type not recognized.")
 
 if __name__ == '__main__':
     my_setup(optuna)
