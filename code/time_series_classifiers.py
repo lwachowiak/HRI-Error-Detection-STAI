@@ -649,16 +649,19 @@ class TS_Model_Trainer:
         config = self.read_config(self.folder+"code/best_models/"+model_config)
 
         if any(s in config["model_type"] for s in ["TST", "LSTM_FCN", "ConvTranPlus", "TransformerLSTMPlus"]):
-            
+
             return NotImplementedError
 
         elif any(s in config["model_type"] for s in ["RandomForest", "XGBoost", "MiniRocket"]):
 
             if "MiniRocket" in self.config["model_type"]:
-                _,_, train_X_TS, _,_, train_Y_TS_task, _ = self.data.get_timeseries_format(**config["data_params"], task=config["task"])
-                model = MINIROCKET.MiniRocketVotingClassifier(**config["model_params"])
+                _, _, train_X_TS, _, _, train_Y_TS_task, _ = self.data.get_timeseries_format(
+                    **config["data_params"], task=config["task"])
+                model = MINIROCKET.MiniRocketVotingClassifier(
+                    **config["model_params"])
             else:
-                _,_, train_X_TS, _,_, train_Y_TS_task, _ = self.data.get_summary_format(**config["data_params"], task=config["task"])
+                _, _, train_X_TS, _, _, train_Y_TS_task, _ = self.data.get_summary_format(
+                    **config["data_params"], task=config["task"])
                 if "RandomForest" in self.config["model_type"]:
                     model = RandomForestClassifier(**config["model_params"])
                 elif "XGBoost" in self.config["model_type"]:
@@ -670,6 +673,11 @@ class TS_Model_Trainer:
                 pickle.dump(model, f)
         else:
             raise Exception("Model type not recognized.")
+
+    # TODO
+    def create_meta_learner():
+        pass
+
 
 if __name__ == '__main__':
     my_setup(optuna)

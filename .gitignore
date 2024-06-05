@@ -1,4 +1,8 @@
-data/
+labels/
+openface/
+openpose/
+opensmile/
+speaker_diarization/
 venv_hri_err/
 wandb/
 *.pyc
