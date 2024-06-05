@@ -292,25 +292,36 @@ class TS_Model_Trainer:
         self.get_trials_figures(study, 0, "accuracy")
         # self.get_trials_figures(study, 1, "macro f1")
 
-        # create txt file with best params in /best_models folder
-        with open(f"{self.folder}code/best_models/{study_name}_best_params.txt", "w") as file:
-            f = "best_{}".format
-            file.write("Best params:\n")
-            for param_name, param_value in trial_with_highest_accuracy.params.items():
-                wandb.run.summary[f(param_name)] = param_value
-                file.write(f"{param_name}: {param_value}\n")
-            file.write("Best values:\n")
-            for value_name, value in zip(study.directions, trial_with_highest_accuracy.values):
-                wandb.run.summary[f(value_name)] = value
-                file.write(f"{value_name}: {value}\n")
-
+        # save best params to json
+        best_params = {}
+        best_params["task"] = self.task
+        best_params["model_type"] = study_name
+        best_params["data_params"]  = {}
+        best_params["model_params"] = {}
+        best_params["stats"] = {}
+        
+        f = "best_{}".format
+        for param_name, param_value in trial_with_highest_accuracy.params.items():
+            wandb.run.summary[f(param_name)] = param_value
+            if param_name in self.config["data_params"]:
+                best_params["data_params"][param_name] = param_value
+            elif param_name in self.config["model_params"]:
+                best_params["model_params"][param_name] = param_value
+            
+        for value_name, value in zip(study.directions, trial_with_highest_accuracy.values):
+            wandb.run.summary[f(value_name)] = value
+            best_params["stats"][value_name] = value
+            
         wandb.run.summary["best accuracy"] = trial_with_highest_accuracy.values[0]
         wandb.run.summary["best macro f1"] = trial_with_highest_accuracy.values[1]
 
         wandb.finish()
 
-        return study
+        with open(self.folder+"/code/best_model_configs/"+str(study_name)+".json", "w") as f:
+            json.dump(best_params, f)
 
+        return study
+    
     def get_trials_figures(self, study: optuna.study.Study, target_index: int, target_name: str) -> None:
         '''Get optuna visualization figures and log them to wandb. Summary visualizations for full search.
         params: study: optuna.study.Study: The optuna study object.
@@ -349,6 +360,7 @@ class TS_Model_Trainer:
             ]]
         return new_data_X
 
+    # TODO: Move this out to analysis and adapt to include other models?
     def feature_importance(self):
         '''Get feature importance values by leaving out the specified features and calculating the change in the performance'''
         feature_importance = {}
@@ -381,6 +393,7 @@ class TS_Model_Trainer:
             print("Removed:", key)
             print(value["accuracy"], value["f1"], "\n")
 
+    # TODO: Move this out to analysis and adapt to include other models?
     def learning_curve(self, iterations_per_samplesize: int, stepsize: int, save_to: str) -> None:
         '''Get learning curve of model.
         :param iterations_per_samplesize: Number of iterations per sample size to create an average score.
@@ -590,7 +603,7 @@ class TS_Model_Trainer:
             preds=preds, dataset="val", verbose=False)
         return outcomes["accuracy"], outcomes["f1"]
 
-    def optuna_objective_classic(self, trial: optuna.Trial):
+    def optuna_objective_classic(self, trial: optuna.Trial) -> tuple:
         model_params = self.config["model_params"]
         data_params = self.config["data_params"]
 
@@ -614,6 +627,9 @@ class TS_Model_Trainer:
             test_preds, dataset="val", verbose=True)
 
         return eval_scores["accuracy"], eval_scores["f1"]
+    
+    def train_and_save_best_model(self, model: str):
+        pass
 
 
 if __name__ == '__main__':
@@ -622,7 +638,7 @@ if __name__ == '__main__':
     # parse arguments (config file, n_jobs)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, help="Path to the configuration file.",
-                        default="configs/config_transformerlstmplus.json")
+                        default="configs/config_rf.json")
     parser.add_argument(
         "--njobs", type=int, help="Number of cpu cores to use for training.", default=4)
     args = parser.parse_args()
