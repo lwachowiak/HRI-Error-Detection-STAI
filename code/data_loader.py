@@ -21,12 +21,16 @@ class DataLoader_HRI:
         self.val_Y = []
         self.train_Y = []
         self.train_X = []
+        self.all_X = []
+        self.all_Y = []
 
         openface_data = self.load_data(data_dir+'openface/')
         openpose_data = self.load_data(data_dir+'openpose/')
         opensmile_data = self.load_data(data_dir+'opensmile/')
         speaker_data = self.load_data(data_dir+'speaker_diarization/')
         label_data = self.load_labels(data_dir+'labels/', expand=True)
+        self.fold_info = self.load_fold_info(data_dir)
+        print("fold_info", self.fold_info)
 
         # align datastructures
         for filename, df in openpose_data:
@@ -40,7 +44,7 @@ class DataLoader_HRI:
 
         for filename, df in label_data:
             # add column with session number
-            df.insert(1, 'session', int(filename.split('_')[0]))
+            df.insert(1, 'session', filename.split('.')[0])
 
         speaker_data = self.process_speaker_data(speaker_data, label_data)
         # for filename, df in speaker_data:
@@ -70,36 +74,44 @@ class DataLoader_HRI:
             merged_df = self.merge_X_data(
                 openface_data, openpose_data, opensmile_data, speaker_data, filename)
             if filename.endswith("_train.csv"):
-                self.train_X.append(merged_df)
+                # self.train_X.append(merged_df) #TODO remove once CV works
+                self.all_X.append(merged_df)
             elif filename.endswith("_val.csv"):
-                self.val_X.append(merged_df)
+                # self.val_X.append(merged_df)
+                self.all_X.append(merged_df)
         # labels to train_Y and val_Y
         for filename, df in label_data:
             if filename.endswith("_train.csv"):
-                self.train_Y.append(df)
+                # self.train_Y.append(df)
+                self.all_Y.append(df)
             elif filename.endswith("_val.csv"):
-                self.val_Y.append(df)
+                # self.val_Y.append(df)
+                self.all_Y.append(df)
 
         print("\n\nNumber of sessions (data) parsed:",
-              len(self.train_X), len(self.val_X))
+              len(self.train_X), len(self.val_X), len(self.all_X))
         print("Number of sessions (labels) parsed:",
-              len(self.train_Y), len(self.val_Y))
+              len(self.train_Y), len(self.val_Y), len(self.all_Y))
 
         # concatenate into one single dataframe
-        self.train_X = pd.concat(self.train_X)
-        self.val_X = pd.concat(self.val_X)
-        self.train_Y = pd.concat(self.train_Y)
-        self.val_Y = pd.concat(self.val_Y)
+        # self.train_X = pd.concat(self.train_X)
+        # self.val_X = pd.concat(self.val_X)
+        # self.train_Y = pd.concat(self.train_Y)
+        # self.val_Y = pd.concat(self.val_Y)
+        self.all_X = pd.concat(self.all_X)
+        self.all_Y = pd.concat(self.all_Y)
 
-        print("\n\nNumber of rows in merged dataframes: Train_X:", len(
-            self.train_X), "Train_Y:", len(self.train_Y), "Val_X:", len(self.val_X), "Val_Y:", len(self.val_Y))
+        # print("\n\nNumber of rows in merged dataframes: Train_X:", len(
+        #    self.train_X), "Train_Y:", len(self.train_Y), "Val_X:", len(self.val_X), "Val_Y:", len(self.val_Y))
 
         # COLUMN CLEANUP
         # remove trailing whitespace from column names
-        self.train_X.columns = self.train_X.columns.str.strip()
-        self.val_X.columns = self.val_X.columns.str.strip()
-        self.train_Y.columns = self.train_Y.columns.str.strip()
-        self.val_Y.columns = self.val_Y.columns.str.strip()
+        # self.train_X.columns = self.train_X.columns.str.strip()
+        # self.val_X.columns = self.val_X.columns.str.strip()
+        # self.train_Y.columns = self.train_Y.columns.str.strip()
+        # self.val_Y.columns = self.val_Y.columns.str.strip()
+        self.all_X.columns = self.all_X.columns.str.strip()
+        self.all_Y.columns = self.all_Y.columns.str.strip()
 
         # for X drop columns with names: 'person_id_openpose', 'week_id_openpose', 'robot_group_openpose', 'end_opensmile', 'start_opensmile' PT: week_id_openpose passes its presence check but fails the drop function, implying it's not in the dataframe
         columns_to_drop = ['person_id_openpose',
@@ -129,17 +141,33 @@ class DataLoader_HRI:
 
         if self.verbose:
             print("\nMerged data head:")
-            print(self.train_X.head())
-            print(self.val_X.head())
+            # print(self.train_X.head())
+            # print(self.val_X.head())
+            print(self.all_X.head())
             print("\nMerged data tail:")
-            print(self.train_X.tail())
-            print(self.val_X.tail())
+            # print(self.train_X.tail())
+            # print(self.val_X.tail())
+            print(self.all_X.tail())
 
     @staticmethod
     def extract_file_number(filename: str) -> int:
         '''extract the number from the filename, e.g. 1 from 1_train.csv'''
         match = re.search(r'\d+', filename)
         return int(match.group()) if match else None
+
+    def load_fold_info(self, data_dir: str) -> list:
+        """ loads a dict with 1,2,3,4 as keys and the corresponding sessions as values """
+        fold_info = {}
+        # load from fold_split.csv' with columns "id" and and "fold-subject-independent"
+        fold_split = pd.read_csv(data_dir+'fold_split.csv')
+        for i in range(1, 5):
+            fold_info[i] = fold_split[fold_split['fold-subject-independent']
+                                      == i]['id'].values.tolist()
+        # ids are strings in the form "10_train" -> just keept the number
+        # for i in range(1, 5):
+        #    fold_info[i] = [int(re.search(r'\d+', x).group())
+        #                    for x in fold_info[i]]
+        return fold_info
 
     def load_data(self, data_dir: str) -> list:
         '''
@@ -320,12 +348,12 @@ class DataLoader_HRI:
         if self.verbose:
             print(len(merged_df), "after merge")
 
-        # Add session number
-        merged_df.insert(1, 'session', int(filename.split('_')[0]))
+        # Add session id (split at ".")
+        merged_df.insert(1, 'session', filename.split('.')[0])
 
         return merged_df.reset_index()
 
-    def get_summary_format(self, interval_length, stride_train, stride_eval, fps=100, label_creation="full", summary='mean', oversampling_rate=0, undersampling_rate=0, task=2) -> tuple:
+    def get_summary_format(self, interval_length, stride_train, stride_eval, fps=100, label_creation="full", summary='mean', oversampling_rate=0, undersampling_rate=0, task=2, fold: int = 4) -> tuple:
         """
         Convert the data to summary form. Split the data from the dfs into intervals of length interval_length with stride stride.
         Split takes place of adjacent frames of the same session.
@@ -342,7 +370,7 @@ class DataLoader_HRI:
         """
 
         val_X_TS, val_Y_summary_list, train_X_TS, train_Y_summary, column_order = self.get_timeseries_format(
-            interval_length=interval_length, stride_train=stride_train, stride_eval=stride_eval, fps=fps, label_creation=label_creation, oversampling_rate=oversampling_rate, undersampling_rate=undersampling_rate, task=task)
+            interval_length=interval_length, stride_train=stride_train, stride_eval=stride_eval, fps=fps, label_creation=label_creation, oversampling_rate=oversampling_rate, undersampling_rate=undersampling_rate, task=task, fold=fold)
 
         if summary not in ['mean', 'max', 'min', 'median']:
             raise ValueError(
@@ -376,7 +404,7 @@ class DataLoader_HRI:
 
         return val_X_summary_list, val_Y_summary_list, train_X_summary, train_Y_summary, column_order
 
-    def get_timeseries_format(self, interval_length: int, stride_train: int, stride_eval: int, fps: int = 100, verbose: bool = False, label_creation: str = "full", oversampling_rate: float = 0, undersampling_rate: float = 0, task: int = 2) -> tuple:
+    def get_timeseries_format(self, interval_length: int, stride_train: int, stride_eval: int, fps: int = 100, verbose: bool = False, label_creation: str = "full", oversampling_rate: float = 0, undersampling_rate: float = 0, task: int = 2, fold: int = 4) -> tuple:
         """
         Convert the data to timeseries form. Split the data from the dfs into intervals of length interval_length with stride stride.
         Split takes place of adjacent frames of the same session.
@@ -389,8 +417,26 @@ class DataLoader_HRI:
         :param oversampling_rate: x% of the minority class replicated in the training data as oversampling
         :param undersampling_rate: x% of the majority class removed from the training data as undersampling
         :param task: The task to load the data for. 1 for UserAwkwardness, 2 for RobotMistake, 3 for InteractionRupture
+        :param fold: Fold which the validation data belongs to
         :return: The data in timeseries format and the column order for feature importance analysis
         """
+        # get ids based on fold
+        val_sessions = self.fold_info[fold]
+        train_sessions = []
+        for f in self.fold_info:
+            if f != fold:
+                train_sessions.extend(self.fold_info[f])
+        # based on ids, redefine self.train_X and self.val_X
+        self.train_X = self.all_X[self.all_X['session'].isin(train_sessions)]
+        self.val_X = self.all_X[self.all_X['session'].isin(val_sessions)]
+        self.train_Y = self.all_Y[self.all_Y['session'].isin(train_sessions)]
+        self.val_Y = self.all_Y[self.all_Y['session'].isin(val_sessions)]
+
+        if verbose:
+            print("Train sessions: ", len(train_sessions))
+            print("Val sessions: ", len(val_sessions))
+            print(self.train_X["session"].unique())
+            print(self.val_X["session"].unique())
 
         num_features = self.train_X.shape[1]
         val_Y_TS_list = []
@@ -406,8 +452,6 @@ class DataLoader_HRI:
 
         # Split the data into intervals, if the session changes, start a new interval
         for session in self.train_X['session'].unique():
-            # if verbose:
-            #    print("TS Processing for session: ", session)
             session_df = self.train_X[self.train_X['session'] == session]
             # remove session column
             session_df = session_df.drop(columns=['session'])
@@ -567,13 +611,17 @@ class DataLoader_HRI:
         """
         for col in columns:
             try:
-                self.train_X = self.train_X.drop(columns=col, axis=1)
+                self.all_X = self.all_X.drop(columns=col, axis=1)
             except:
-                print("Error excluding train column with name", col)
-            try:
-                self.val_X = self.val_X.drop(columns=col, axis=1)
-            except:
-                print("Error excluding val column with name", col)
+                print("Error excluding column with name", col)
+            # try:
+            #    self.train_X = self.train_X.drop(columns=col, axis=1)
+            # except:
+            #    print("Error excluding train column with name", col)
+            # try:
+            #    self.val_X = self.val_X.drop(columns=col, axis=1)
+            # except:
+            #    print("Error excluding val column with name", col)
 
     def limit_to_sessions(self, sessions_train: list = None, sessions_val: list = None) -> None:
         """

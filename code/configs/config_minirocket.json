@@ -59,8 +59,7 @@
             "step": 2
         },
         "class_weight": [
-            null,
-            "balanced"
+            null
         ]
     }
 }

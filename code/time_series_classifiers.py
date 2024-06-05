@@ -165,6 +165,7 @@ class TS_Model_Trainer:
 
         return eval_scores
 
+    # TODO: add fold argument here
     def data_from_config(self, config: dict, trial: optuna.Trial, format: str = "timeseries") -> tuple:
         """
         create the datasets for training based on the configuration and the trial parameters.
