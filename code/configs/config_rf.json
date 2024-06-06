@@ -1,7 +1,7 @@
 {
     "task": 2,
     "model_type": "RandomForest",
-    "n_trials": 200,
+    "n_trials": 50,
     "data_params": {
         "interval_length": {
             "low": 700,
@@ -32,8 +32,7 @@
             "stride_eval"
         ],
         "columns_to_remove": [
-            "REMOVE_NOTHING",
-            "openpose"
+            "speaker, openface, opensmile"
         ],
         "summary": [
             "mean"
