@@ -220,14 +220,14 @@ class TS_Model_Trainer:
             val_X_TS_list = [DataLoader_HRI.impute_nan_with_feature_mean(
                 val_X_TS) for val_X_TS in val_X_TS_list]
         # feature removal
-        train_X_TS = self.remove_columns(columns_to_remove=columns_to_remove,
-                                         data_X=train_X_TS, column_order=column_order)
-        val_X_TS_list = self.remove_columns(columns_to_remove=columns_to_remove,
-                                            data_X=val_X_TS_list, column_order=column_order)
+        train_X_TS, new_column_order = self.remove_columns(columns_to_remove=columns_to_remove,
+                                                           data_X=train_X_TS, column_order=column_order)
+        val_X_TS_list, new_column_order = self.remove_columns(columns_to_remove=columns_to_remove,
+                                                              data_X=val_X_TS_list, column_order=column_order)
 
         train_Y_TS_task = train_Y_TS[:, self.task]
 
-        return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task
+        return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, new_column_order, train_Y_TS_task
 
     def get_data_values(self, trial: optuna.Trial) -> tuple:
         """ Get the data values for the trial based on the configuration and the trial parameters.
@@ -361,12 +361,12 @@ class TS_Model_Trainer:
             study, target=lambda t: t.values[target_index], target_name=target_name)
         wandb.log({"optuna_parallel_coordinate_"+target_name: fig})
 
-    def remove_columns(self, columns_to_remove: list, data_X: np.array, column_order: list) -> np.array:
+    def remove_columns(self, columns_to_remove: list, data_X: np.array, column_order: list) -> tuple:
         '''Remove columns from the data.
         :param columns_to_remove: List of columns to remove.
         :param data_X: The data to remove the columns from. Either a list of np.arrays or a np.array.
         :param column_order: The order of the columns in the data.
-        :output new_data_X: The data with the specified columns removed.
+        :output new_data_X: The data with the specified columns removed and the new column order.
         '''
         # depending on whether data_X is list or np.array
         if isinstance(data_X, list):  # val/test
@@ -378,7 +378,9 @@ class TS_Model_Trainer:
             new_data_X = data_X[:, [
                 i for i, col in enumerate(column_order) if not any(removed_col in col for removed_col in columns_to_remove)
             ]]
-        return new_data_X
+        new_column_order = [col for col in column_order if not any(
+            removed_col in col for removed_col in columns_to_remove)]
+        return new_data_X, new_column_order
 
     # TODO: Move this out to analysis and adapt to include other models?
     def feature_importance(self):
@@ -395,11 +397,11 @@ class TS_Model_Trainer:
             val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
                 interval_length=interval_length, stride_train=400, stride_eval=stride_eval, verbose=False, fps=50, label_creation="stride_eval")
             # remove columns ending, columns are the 2nd dimension
-            train_X_TS = self.remove_columns(
+            train_X_TS, _ = self.remove_columns(
                 columns_to_remove=removed_cols, data_X=train_X_TS, column_order=column_order)
             print(train_X_TS.shape)
             model.fit(train_X_TS, train_Y_TS[:, self.task])
-            val_X_TS_list_new = self.remove_columns(
+            val_X_TS_list_new, _ = self.remove_columns(
                 columns_to_remove=removed_cols, data_X=val_X_TS_list, column_order=column_order)
             # eval
             test_preds = self.get_full_test_preds(
@@ -440,9 +442,9 @@ class TS_Model_Trainer:
                 # dataprep
                 val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
                     interval_length=interval_length, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
-                train_X_TS = self.remove_columns(
+                train_X_TS, _ = self.remove_columns(
                     columns_to_remove=columns_to_remove, data_X=train_X_TS, column_order=column_order)
-                val_X_TS_list_new = self.remove_columns(
+                val_X_TS_list_new, _ = self.remove_columns(
                     columns_to_remove=columns_to_remove, data_X=val_X_TS_list, column_order=column_order)
                 # train
                 model.fit(train_X_TS, train_Y_TS[:, self.task])
@@ -694,15 +696,20 @@ class TS_Model_Trainer:
             val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
                 config["data_params"], format=format, columns_to_remove=columns_to_remove, fold=4)
 
+            print("Column order used:", column_order)
+
             model.fit(train_X_TS, train_Y_TS_task)
             test_preds = self.get_full_test_preds(
                 model, val_X_TS_list, config["data_params"]["interval_length"], config["data_params"]["stride_eval"], model_type="Classic")
             eval_scores = self.get_eval_metrics(
                 test_preds, dataset="val", verbose=True)
-            print("Final Model Accuracy:", eval_scores["accuracy"])
 
+            # save model and column order
             with open(self.folder+"code/trained_models/"+str(config["model_type"])+".pkl", "wb") as f:
                 pickle.dump(model, f)
+            with open(self.folder+"code/trained_models/"+str(config["model_type"])+"_columns.pkl", "wb") as f:
+                pickle.dump(column_order, f)
+
         else:
             raise Exception("Model type not recognized.")
 

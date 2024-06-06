@@ -353,7 +353,7 @@ class DataLoader_HRI:
 
         return merged_df.reset_index()
 
-    def get_summary_format(self, interval_length, stride_train, stride_eval, fps=100, label_creation="full", summary='mean', oversampling_rate=0, undersampling_rate=0, task=2, fold: int = 4) -> tuple:
+    def get_summary_format(self, interval_length, stride_train, stride_eval, fps=100, label_creation="full", summary='mean', oversampling_rate=0, undersampling_rate=0, task=2, fold: int = 4, rescaling=None) -> tuple:
         """
         Convert the data to summary form. Split the data from the dfs into intervals of length interval_length with stride stride.
         Split takes place of adjacent frames of the same session.
@@ -366,11 +366,13 @@ class DataLoader_HRI:
         :param oversampling_rate: x% of the minority class replicated in the training data as oversampling
         :param undersampling_rate: x% of the majority class removed from the training data as undersampling
         :param task: The task to load the data for. 1 for UserAwkwardness, 2 for RobotMistake, 3 for InteractionRupture
+        :param fold: Fold which the validation data belongs to
+        :param rescaling: The rescaling method. One of 'standardization', 'normalization', None
         :return: The data in summary format
         """
 
         val_X_TS, val_Y_summary_list, train_X_TS, train_Y_summary, column_order = self.get_timeseries_format(
-            interval_length=interval_length, stride_train=stride_train, stride_eval=stride_eval, fps=fps, label_creation=label_creation, oversampling_rate=oversampling_rate, undersampling_rate=undersampling_rate, task=task, fold=fold)
+            interval_length=interval_length, stride_train=stride_train, stride_eval=stride_eval, fps=fps, label_creation=label_creation, oversampling_rate=oversampling_rate, undersampling_rate=undersampling_rate, task=task, fold=fold, rescaling=rescaling)
 
         if summary not in ['mean', 'max', 'min', 'median']:
             raise ValueError(
@@ -460,11 +462,15 @@ class DataLoader_HRI:
             # drop last 10 rows to avoid NaNs
             if cut_length > 0:
                 session_df = session_df[:-cut_length]
-            # Normalize/Standardize TODO
+            # Normalize/Standardize
             if rescaling == 'standardization':
-                pass
+                # per column
+                session_df = (session_df - session_df.mean()) / \
+                    session_df.std()
             elif rescaling == 'normalization':
-                pass
+                # per column
+                session_df = (session_df - session_df.min()) / \
+                    (session_df.max() - session_df.min())
             session_labels = self.train_Y[self.train_Y['session'] == session]
             for i in range(0, len(session_df), stride_train):
                 if i + interval_length > len(session_df):
@@ -505,6 +511,15 @@ class DataLoader_HRI:
             # drop last 10 rows to avoid NaNs
             if cut_length > 0:
                 session_df = session_df[:-cut_length]
+            # Normalize/Standardize
+            if rescaling == 'standardization':
+                # per column
+                session_df = (session_df - session_df.mean()) / \
+                    session_df.std()
+            elif rescaling == 'normalization':
+                # per column
+                session_df = (session_df - session_df.min()) / \
+                    (session_df.max() - session_df.min())
             session_labels = self.val_Y[self.val_Y['session'] == session]
             for i in range(0, len(session_df), stride_eval):  # this was interval_length before
                 if i + interval_length > len(session_df):
