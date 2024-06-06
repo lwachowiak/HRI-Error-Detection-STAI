@@ -192,7 +192,9 @@ class TS_Model_Trainer:
                 oversampling_rate=data_values["oversampling_rate"],
                 undersampling_rate=data_values["undersampling_rate"],
                 task=self.task,
-                fold=fold
+                fold=fold,
+                rescaling=data_values["rescaling"]
+
             )
 
         if format == "timeseries":
@@ -206,7 +208,8 @@ class TS_Model_Trainer:
                 oversampling_rate=data_values["oversampling_rate"],
                 undersampling_rate=data_values["undersampling_rate"],
                 task=self.task,
-                fold=fold
+                fold=fold,
+                rescaling=data_values["rescaling"]
             )
 
         # nan handling
@@ -257,6 +260,8 @@ class TS_Model_Trainer:
             "oversampling_rate", low=data_params["oversampling_rate"]["low"], high=data_params["oversampling_rate"]["high"], step=data_params["oversampling_rate"]["step"])
         data_values["undersampling_rate"] = trial.suggest_float(
             "undersampling_rate", low=data_params["undersampling_rate"]["low"], high=data_params["undersampling_rate"]["high"], step=data_params["undersampling_rate"]["step"])
+        data_values["rescaling"] = trial.suggest_categorical(
+            "rescaling", data_params["rescaling"])
         if "summary" in data_params:
             data_values["summary"] = trial.suggest_categorical(
                 "summary", data_params["summary"])

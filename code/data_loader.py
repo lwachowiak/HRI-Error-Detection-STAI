@@ -423,6 +423,12 @@ class DataLoader_HRI:
         :param rescaling: The rescaling method. One of 'standardization', 'normalization', None
         :return: The data in timeseries format and the column order for feature importance analysis
         """
+        if rescaling not in ['standardization', 'normalization', None]:
+            raise ValueError(
+                "Rescaling must be one of 'standardization', 'normalization', None")
+        if label_creation not in ['full', 'stride_eval', 'stride_train']:
+            raise ValueError(
+                "label_creation must be one of 'full', 'stride_eval, 'stride_train'")
         # get ids based on fold
         val_sessions = self.fold_info[fold]
         train_sessions = []

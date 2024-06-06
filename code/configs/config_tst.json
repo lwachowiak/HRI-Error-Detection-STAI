@@ -45,7 +45,12 @@
             "low": 0.0,
             "high": 0.3,
             "step": 0.1
-        }
+        },
+        "rescaling": [
+            null,
+            "standardization",
+            "normalization"
+        ]
     },
     "model_params": {
         "batch_size": {
