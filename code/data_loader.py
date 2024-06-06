@@ -30,7 +30,7 @@ class DataLoader_HRI:
         speaker_data = self.load_data(data_dir+'speaker_diarization/')
         label_data = self.load_labels(data_dir+'labels/', expand=True)
         self.fold_info = self.load_fold_info(data_dir)
-        print("fold_info", self.fold_info)
+        print("\nfold_info", self.fold_info)
 
         # align datastructures
         for filename, df in openpose_data:
@@ -437,7 +437,7 @@ class DataLoader_HRI:
 
         if verbose:
             print("Train sessions: ", len(train_sessions))
-            print("Val sessions: ", len(val_sessions))
+            print("\nVal sessions fold ", fold, ":", len(val_sessions))
             print(self.train_X["session"].unique())
             print(self.val_X["session"].unique())
 
