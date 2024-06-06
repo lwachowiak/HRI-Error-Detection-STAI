@@ -227,7 +227,7 @@ class TS_Model_Trainer:
 
         train_Y_TS_task = train_Y_TS[:, self.task]
 
-        return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values
+        return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task
 
     def get_data_values(self, trial: optuna.Trial) -> tuple:
         """ Get the data values for the trial based on the configuration and the trial parameters.
@@ -604,7 +604,7 @@ class TS_Model_Trainer:
         # TODO
         ### DATA PRE-PROCESSING ###
         model_params = self.config["model_params"]
-        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
+        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
             self.config, trial)
         all_X, all_Y, splits = self.merge_val_train(
             val_X_TS_list=val_X_TS_list, val_Y_TS_list=val_Y_TS_list, train_X_TS=train_X_TS, train_Y_TS_task=train_Y_TS_task)
@@ -648,10 +648,10 @@ class TS_Model_Trainer:
         for fold in range(1, 5):
             print("Fold", fold)
             if self.config["model_type"] == "MiniRocket":
-                val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
+                val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
                     data_values=data_values, format="timeseries", columns_to_remove=columns_to_remove, fold=fold)
             else:
-                val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
+                val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
                     data_values=data_values, format="classic", columns_to_remove=columns_to_remove, fold=fold)
 
             model = self.get_classic_learner(model_values)
@@ -671,7 +671,10 @@ class TS_Model_Trainer:
 
         return np.mean(accuracies), np.mean(f1s)
 
-    def train_and_save_best_model(self, model_config: str):
+    def train_and_save_best_model(self, model_config: str) -> None:
+        """Train a model based on the specified configuration and save it to disk. For final submission.
+        params: model_config: str: The name of the model configuration file to use for training.
+        """
 
         config = self.read_config(
             self.folder+"code/best_model_configs/"+model_config)
@@ -680,24 +683,26 @@ class TS_Model_Trainer:
         columns_to_remove = self.column_removal_dict[config["data_params"]
                                                      ["columns_to_remove"]]
 
-        # TODO I THINK I T SHOULD BE POSSIBLE TO CALL THE GET LEARNER FUNCTION NOW WITH THE model_params and the data with the data_params
-
         if any(s in config["model_type"] for s in ["TST", "LSTM_FCN", "ConvTranPlus", "TransformerLSTMPlus"]):
             return NotImplementedError
 
         elif any(s in config["model_type"] for s in ["RandomForest", "XGBoost", "MiniRocket"]):
-            if "MiniRocket" in self.config["model_type"]:
-                _, _, train_X_TS, _, _, train_Y_TS_task, _ = self.data.get_timeseries_format(
-                    **config["data_params"], task=config["task"])
-                model = MINIROCKET.MiniRocketVotingClassifier(
-                    **config["model_params"])
-            else:
-                _, _, train_X_TS, _, _, train_Y_TS_task, _ = self.data.get_summary_format(
-                    **config["data_params"], task=config["task"])
-                if "RandomForest" in self.config["model_type"]:
-                    model = RandomForestClassifier(**config["model_params"])
-                elif "XGBoost" in self.config["model_type"]:
-                    model = XGBClassifier(**config["model_params"])
+            model = self.get_classic_learner(config["model_params"])
+            format = "timeseries" if "MiniRocket" in config["model_type"] else "classic"
+            val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
+                config, format=format, columns_to_remove=columns_to_remove, fold=4)
+            # if "MiniRocket" in self.config["model_type"]:
+            #     _, _, train_X_TS, _, _, train_Y_TS_task, _ = self.data.get_timeseries_format(
+            #         **config["data_params"], task=config["task"])
+            #     model = MINIROCKET.MiniRocketVotingClassifier(
+            #         **config["model_params"])
+            # else:
+            #     _, _, train_X_TS, _, _, train_Y_TS_task, _ = self.data.get_summary_format(
+            #         **config["data_params"], task=config["task"])
+            #     if "RandomForest" in self.config["model_type"]:
+            #         model = RandomForestClassifier(**config["model_params"])
+            #     elif "XGBoost" in self.config["model_type"]:
+            #         model = XGBClassifier(**config["model_params"])
 
             model.fit(train_X_TS, train_Y_TS_task)
 
