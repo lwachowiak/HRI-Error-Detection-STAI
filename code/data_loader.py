@@ -404,7 +404,7 @@ class DataLoader_HRI:
 
         return val_X_summary_list, val_Y_summary_list, train_X_summary, train_Y_summary, column_order
 
-    def get_timeseries_format(self, interval_length: int, stride_train: int, stride_eval: int, fps: int = 100, verbose: bool = False, label_creation: str = "full", oversampling_rate: float = 0, undersampling_rate: float = 0, task: int = 2, fold: int = 4) -> tuple:
+    def get_timeseries_format(self, interval_length: int, stride_train: int, stride_eval: int, fps: int = 100, verbose: bool = False, label_creation: str = "full", oversampling_rate: float = 0, undersampling_rate: float = 0, task: int = 2, fold: int = 4, rescaling=None) -> tuple:
         """
         Convert the data to timeseries form. Split the data from the dfs into intervals of length interval_length with stride stride.
         Split takes place of adjacent frames of the same session.
@@ -418,6 +418,7 @@ class DataLoader_HRI:
         :param undersampling_rate: x% of the majority class removed from the training data as undersampling
         :param task: The task to load the data for. 1 for UserAwkwardness, 2 for RobotMistake, 3 for InteractionRupture
         :param fold: Fold which the validation data belongs to
+        :param rescaling: The rescaling method. One of 'standardization', 'normalization', None
         :return: The data in timeseries format and the column order for feature importance analysis
         """
         # get ids based on fold
@@ -459,6 +460,11 @@ class DataLoader_HRI:
             # drop last 10 rows to avoid NaNs
             if cut_length > 0:
                 session_df = session_df[:-cut_length]
+            # Normalize/Standardize TODO
+            if rescaling == 'standardization':
+                pass
+            elif rescaling == 'normalization':
+                pass
             session_labels = self.train_Y[self.train_Y['session'] == session]
             for i in range(0, len(session_df), stride_train):
                 if i + interval_length > len(session_df):

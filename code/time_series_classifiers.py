@@ -289,9 +289,11 @@ class TS_Model_Trainer:
         wandbc = WeightsAndBiasesCallback(
             metric_name=["accuracy", "macro f1"], wandb_kwargs=wandb_kwargs)
 
+        # storage_name = "sqlite:///{}.db".format(study_name)
         study = optuna.create_study(
-            directions=["maximize", "maximize"], study_name=study_name)
+            directions=["maximize", "maximize"], study_name=study_name)  # , storage=storage_name, load_if_exists=True)
         print(f"Sampler is {study.sampler.__class__.__name__}")
+
         objective = self.objective_per_model[model_type]
         study.optimize(objective, n_trials=n_trials, callbacks=[wandbc])
 
