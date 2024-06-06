@@ -63,13 +63,17 @@ class TS_Model_Trainer:
             "TransformerLSTMPlus": self.optuna_objective_tsai
         }
         self.config = self.read_config(folder+"code/"+config_name)
+        # TODO change this to a separate function that just splits based on comma
         self.column_removal_dict = {"REMOVE_NOTHING": ["REMOVE_NOTHING"],
                                     "opensmile": ["opensmile"],
                                     "speaker": ["speaker"],
                                     "openpose": ["openpose"],
                                     "openface": ["openface"],
                                     "openpose, speaker": ["openpose", "speaker"],
-                                    "speaker, openpose, openface": ["speaker", "openpose", "openface"]
+                                    "speaker, openpose, openface": ["speaker", "openpose", "openface"],
+                                    "speaker, openface, opensmile": ["speaker", "openface", "opensmile"],
+                                    "c_openface": ["c_openface"],
+                                    "openpose, c_openface": ["openpose", "c_openface"],
                                     }
         self.loss_dict = {"CrossEntropyLossFlat": CrossEntropyLossFlat(),
                           "FocalLossFlat": FocalLossFlat()}
