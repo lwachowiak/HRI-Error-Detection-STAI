@@ -690,21 +690,14 @@ class TS_Model_Trainer:
             model = self.get_classic_learner(config["model_params"])
             format = "timeseries" if "MiniRocket" in config["model_type"] else "classic"
             val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
-                config, format=format, columns_to_remove=columns_to_remove, fold=4)
-            # if "MiniRocket" in self.config["model_type"]:
-            #     _, _, train_X_TS, _, _, train_Y_TS_task, _ = self.data.get_timeseries_format(
-            #         **config["data_params"], task=config["task"])
-            #     model = MINIROCKET.MiniRocketVotingClassifier(
-            #         **config["model_params"])
-            # else:
-            #     _, _, train_X_TS, _, _, train_Y_TS_task, _ = self.data.get_summary_format(
-            #         **config["data_params"], task=config["task"])
-            #     if "RandomForest" in self.config["model_type"]:
-            #         model = RandomForestClassifier(**config["model_params"])
-            #     elif "XGBoost" in self.config["model_type"]:
-            #         model = XGBClassifier(**config["model_params"])
+                config["data_params"], format=format, columns_to_remove=columns_to_remove, fold=4)
 
             model.fit(train_X_TS, train_Y_TS_task)
+            test_preds = self.get_full_test_preds(
+                model, val_X_TS_list, config["data_params"]["interval_length"], config["data_params"]["stride_eval"], model_type="Classic")
+            eval_scores = self.get_eval_metrics(
+                test_preds, dataset="val", verbose=True)
+            print("Final Model Accuracy:", eval_scores["accuracy"])
 
             with open(self.folder+"code/trained_models/"+str(config["model_type"])+".pkl", "wb") as f:
                 pickle.dump(model, f)
