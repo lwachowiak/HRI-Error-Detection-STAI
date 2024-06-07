@@ -12,4 +12,5 @@ trainer = TS_Model_Trainer(
     config_name="configs/config_rf.json"
 )
 
-trainer.train_and_save_best_model("RandomForest_2024-06-06-18.json")
+trainer.train_and_save_best_model(
+    "RandomForest_only_pose.json", name_extension="only_pose")

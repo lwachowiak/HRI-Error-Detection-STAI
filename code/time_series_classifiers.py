@@ -695,7 +695,7 @@ class TS_Model_Trainer:
 
         return np.mean(accuracies), np.mean(f1s)
 
-    def train_and_save_best_model(self, model_config: str) -> None:
+    def train_and_save_best_model(self, model_config: str, name_extension="") -> None:
         """Train a model based on the specified configuration and save it to disk. For final submission.
         params: model_config: str: The name of the model configuration file to use for training.
         """
