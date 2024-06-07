@@ -670,7 +670,7 @@ class TS_Model_Trainer:
         f1s = []
         # same data and model values for all folds (only choose hyperparamters once)
         data_values, columns_to_remove = self.get_data_values(trial)
-        model_values = self.get_model_values(trial)
+        model_values, _ = self.get_model_values(trial)
         print("Model Values:", model_values)
         print("\nData Values:", data_values)
         # cross validation
