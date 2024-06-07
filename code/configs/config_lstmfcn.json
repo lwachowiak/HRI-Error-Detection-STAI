@@ -54,7 +54,7 @@
         ]
     },
     "model_params": {
-        "batch_size": {
+        "bs": {
             "low": 64,
             "high": 128,
             "step": 64
