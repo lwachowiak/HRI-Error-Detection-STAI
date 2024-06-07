@@ -1,7 +1,7 @@
 {
     "task": 2,
     "model_type": "XGBoost",
-    "n_trials": 500,
+    "n_trials": 150,
     "data_params": {
         "interval_length": {
             "low": 300,
