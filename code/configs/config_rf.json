@@ -50,7 +50,7 @@
             "step": 0.1
         },
         "rescaling": [
-            null,
+            "none",
             "standardization",
             "normalization"
         ]

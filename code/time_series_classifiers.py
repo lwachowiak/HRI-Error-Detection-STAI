@@ -347,6 +347,9 @@ class TS_Model_Trainer:
         with open(self.folder+"code/best_model_configs/"+str(study_name)+".json", "w") as f:
             json.dump(best_params, f)
 
+        self.train_and_save_best_model(
+            best_params)
+
         return study
 
     def get_trials_figures(self, study: optuna.study.Study, target_index: int, target_name: str) -> None:
