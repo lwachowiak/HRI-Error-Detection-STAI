@@ -485,13 +485,15 @@ class TS_Model_Trainer:
         # save as png in plots folder
         plt.savefig(save_to)
 
-    def get_model_values(self, trial: optuna.Trial) -> dict:
+    def get_model_values(self, trial: optuna.Trial) -> tuple:
         '''Get the model values for the trial based on the configuration and the trial parameters.
         params: trial: optuna.Trial: The trial object.
-        output: dict: The model values to use for the model creation.
+        output: model_values: dict: The model values to use for the model creation.
+        output: training_values: dict: The training values to use for the model training.
         '''
         model_params = self.config["model_params"]
         model_values = {}
+        training_values = {}
         if self.config["model_type"] == "RandomForest":
             model_values["n_estimators"] = trial.suggest_int(
                 "n_estimators", **model_params["n_estimators"])
@@ -568,18 +570,19 @@ class TS_Model_Trainer:
             model_values["num_rnn_layers"] = trial.suggest_int(
                 "num_rnn_layers", **model_params["num_rnn_layers"])
         if self.config["model_type"] in ["TST", "LSTM_FCN", "ConvTranPlus", "TransformerLSTMPlus"]:
-            model_values["bs"] = trial.suggest_int(
+            training_values["bs"] = trial.suggest_int(
                 "bs", **model_params["bs"])
-            model_values["lr"] = trial.suggest_float(
+            training_values["lr"] = trial.suggest_float(
                 "lr", **model_params["lr"], log=True)
-            model_values["loss_func"] = trial.suggest_categorical(
+            training_values["loss_func"] = trial.suggest_categorical(
                 "loss", model_params["loss"])
-        return model_values
+        return model_values, training_values
 
-    def get_tsai_learner(self, dls: object, model_values: dict) -> object:
+    def get_tsai_learner(self, dls: object, model_values: dict, training_values: dict) -> object:
         """Get a tsai learner based on the configuration and the trial parameters.
         params: dls: object: The dataloaders object passed to the model and learner.
         params: model_values: dict: The model values to use for the model creation.
+        params: training_values: dict: The training values to use for the model training.
         output: object: The tsai learner object to use for training.
         """
         model_trial_params = {}
@@ -595,7 +598,7 @@ class TS_Model_Trainer:
             model = TransformerLSTMPlus(dls.vars, dls.c, dls.len,
                                         **model_trial_params)
 
-        loss_func = self.loss_dict[model_values["loss_func"]]
+        loss_func = self.loss_dict[training_values["loss_func"]]
         cbs = [EarlyStoppingCallback(monitor="accuracy", patience=3)]
         learn = Learner(dls, model, metrics=[
             accuracy, F1Score()], cbs=cbs, loss_func=loss_func)
@@ -623,7 +626,7 @@ class TS_Model_Trainer:
         accuracies = []
         f1s = []
         data_values, columns_to_remove = self.get_data_values(trial)
-        model_values = self.get_model_values(trial)
+        model_values, training_values = self.get_model_values(trial)
         ### DATA PRE-PROCESSING ###
         for fold in range(1, 5):
             print("\nFold", fold)
@@ -636,14 +639,14 @@ class TS_Model_Trainer:
                                inplace=False, tfms=tfms)
             batch_tfms = [TSStandardize(by_sample=True)]
             dls = TSDataLoaders.from_dsets(
-                dsets.train, dsets.valid, bs=model_values["bs"], batch_tfms=batch_tfms)
+                dsets.train, dsets.valid, bs=training_values["bs"], batch_tfms=batch_tfms)
 
             ### MODEL SPECIFICATION ###
             torch.cuda.empty_cache()
             learn = self.get_tsai_learner(
-                dls=dls, model_values=model_values)
+                dls=dls, model_values=model_values, training_values=training_values)
 
-            learn.fit_one_cycle(100, model_values["lr"])
+            learn.fit_one_cycle(100, training_values["lr"])
 
             ### EVALUATION ###
             preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, interval_length=data_values[
@@ -744,7 +747,7 @@ if __name__ == '__main__':
     # parse arguments (config file, n_jobs)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, help="Path to the configuration file.",
-                        default="configs/config_rf.json")
+                        default="configs/config_lstmfcn.json")
     parser.add_argument(
         "--njobs", type=int, help="Number of cpu cores to use for training.", default=4)
     args = parser.parse_args()
