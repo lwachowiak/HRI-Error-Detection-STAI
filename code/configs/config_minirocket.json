@@ -1,7 +1,7 @@
 {
     "task": 2,
     "model_type": "MiniRocket",
-    "n_trials": 60,
+    "n_trials": 40,
     "data_params": {
         "interval_length": {
             "low": 700,
@@ -34,7 +34,8 @@
         ],
         "columns_to_remove": [
             "openpose",
-            "openpose, speaker"
+            "vel_dist",
+            "vel_dist, c_openface"
         ],
         "oversampling_rate": {
             "low": 0.0,
