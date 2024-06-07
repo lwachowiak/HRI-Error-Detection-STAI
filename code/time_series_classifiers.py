@@ -72,6 +72,8 @@ class TS_Model_Trainer:
                                     "speaker, openface, opensmile": ["speaker", "openface", "opensmile"],
                                     "c_openface": ["c_openface"],
                                     "openpose, c_openface": ["openpose", "c_openface"],
+                                    "vel_dist": ["vel_dist"],
+                                    "vel_dist, c_openface": ["vel_dist", "c_openface"]
                                     }
         self.loss_dict = {"CrossEntropyLossFlat": CrossEntropyLossFlat(),
                           "FocalLossFlat": FocalLossFlat()}
@@ -346,9 +348,9 @@ class TS_Model_Trainer:
 
         with open(self.folder+"code/best_model_configs/"+str(study_name)+".json", "w") as f:
             json.dump(best_params, f)
-
-        # self.train_and_save_best_model(
-        #    best_params)
+        # safe the best model overall to pkl
+        self.train_and_save_best_model(
+            model_config=str(study_name)+".json", name_extension=str(study_name))
 
         return study
 

@@ -34,7 +34,9 @@
         "columns_to_remove": [
             "openpose",
             "c_openface",
-            "openpose, c_openface"
+            "openpose, c_openface",
+            "vel_dist",
+            "vel_dist, c_openface"
         ],
         "summary": [
             "mean"
