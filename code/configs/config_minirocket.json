@@ -1,11 +1,11 @@
 {
     "task": 2,
     "model_type": "MiniRocket",
-    "n_trials": 30,
+    "n_trials": 60,
     "data_params": {
         "interval_length": {
             "low": 700,
-            "high": 1300,
+            "high": 1500,
             "step": 50
         },
         "stride_train": {

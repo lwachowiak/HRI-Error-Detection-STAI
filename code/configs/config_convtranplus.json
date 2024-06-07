@@ -1,7 +1,7 @@
 {
     "task": 2,
     "model_type": "ConvTranPlus",
-    "n_trials": 300,
+    "n_trials": 50,
     "data_params": {
         "interval_length": {
             "low": 300,
