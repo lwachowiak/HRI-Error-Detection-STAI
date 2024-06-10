@@ -367,7 +367,7 @@ class DataLoader_HRI:
         :param undersampling_rate: x% of the majority class removed from the training data as undersampling
         :param task: The task to load the data for. 1 for UserAwkwardness, 2 for RobotMistake, 3 for InteractionRupture
         :param fold: Fold which the validation data belongs to
-        :param rescaling: The rescaling method. One of 'standardization', 'normalization', None
+        :param rescaling: The rescaling method. One of 'standardization', 'normalization', "none"
         :return: The data in summary format
         """
 
@@ -423,9 +423,9 @@ class DataLoader_HRI:
         :param rescaling: The rescaling method. One of 'standardization', 'normalization', None
         :return: The data in timeseries format and the column order for feature importance analysis
         """
-        if rescaling not in ['standardization', 'normalization', None]:
+        if rescaling not in ['standardization', 'normalization', 'none']:
             raise ValueError(
-                "Rescaling must be one of 'standardization', 'normalization', None")
+                "Rescaling must be one of 'standardization', 'normalization', 'none'")
         if label_creation not in ['full', 'stride_eval', 'stride_train']:
             raise ValueError(
                 "label_creation must be one of 'full', 'stride_eval, 'stride_train'")

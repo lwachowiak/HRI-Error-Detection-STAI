@@ -32,8 +32,11 @@
             "stride_eval"
         ],
         "columns_to_remove": [
-            "REMOVE_NOTHING",
-            "openpose"
+            "openpose",
+            "c_openface",
+            "openpose, c_openface",
+            "vel_dist",
+            "vel_dist, c_openface"
         ],
         "summary": [
             "mean"
@@ -49,7 +52,7 @@
             "step": 0.1
         },
         "rescaling": [
-            null,
+            "none",
             "standardization",
             "normalization"
         ]

@@ -1,1 +1,27 @@
-{"task": 2, "model_type": "RandomForest", "data_params": {"interval_length": 1000, "stride_train": 200, "stride_eval": 500, "fps": 20, "columns_to_remove": "openpose", "label_creation": "stride_eval", "nan_handling": "zeros", "oversampling_rate": 0.4, "undersampling_rate": 0.4, "summary": "mean"}, "model_params": {"n_estimators": 120, "max_depth": 50, "random_state": 6, "criterion": "entropy", "max_features": null}, "stats": {"accuracy": 0.7933178788025343, "macro f1": 0.7133911420003588}}
+{
+    "task": 2,
+    "model_type": "RandomForest",
+    "data_params": {
+        "interval_length": 1100,
+        "stride_train": 400,
+        "stride_eval": 400,
+        "fps": 100,
+        "columns_to_remove": "openpose",
+        "label_creation": "stride_eval",
+        "nan_handling": "standard",
+        "oversampling_rate": 0.4,
+        "undersampling_rate": 0.1,
+        "summary": "mean"
+    },
+    "model_params": {
+        "n_estimators": 140,
+        "max_depth": 40,
+        "random_state": 3,
+        "criterion": "entropy",
+        "max_features": "sqrt"
+    },
+    "stats": {
+        "accuracy": 0.8176376292191494,
+        "macro f1": 0.7073985792508913
+    }
+}

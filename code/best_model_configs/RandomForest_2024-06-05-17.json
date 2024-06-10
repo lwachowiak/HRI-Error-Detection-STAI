@@ -1,6 +1,6 @@
 {
     "task": 2,
-    "model_type": "RandomForest_2024-06-05-17",
+    "model_type": "RandomForest",
     "data_params": {
         "interval_length": 1200,
         "stride_train": 300,

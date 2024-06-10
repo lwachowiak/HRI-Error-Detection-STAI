@@ -48,13 +48,13 @@
             "step": 0.1
         },
         "rescaling": [
-            null,
+            "none",
             "standardization",
             "normalization"
         ]
     },
     "model_params": {
-        "batch_size": {
+        "bs": {
             "low": 16,
             "high": 16,
             "step": 16

@@ -1,11 +1,11 @@
 {
     "task": 2,
     "model_type": "MiniRocket",
-    "n_trials": 10,
+    "n_trials": 40,
     "data_params": {
         "interval_length": {
             "low": 700,
-            "high": 1300,
+            "high": 1500,
             "step": 50
         },
         "stride_train": {
@@ -34,7 +34,8 @@
         ],
         "columns_to_remove": [
             "openpose",
-            "openpose, speaker"
+            "vel_dist",
+            "vel_dist, c_openface"
         ],
         "oversampling_rate": {
             "low": 0.0,
@@ -47,7 +48,7 @@
             "step": 0.05
         },
         "rescaling": [
-            null,
+            "none",
             "standardization",
             "normalization"
         ]
@@ -59,8 +60,8 @@
             "step": 8
         },
         "n_estimators": {
-            "low": 10,
-            "high": 10,
+            "low": 2,
+            "high": 2,
             "step": 2
         },
         "class_weight": [

@@ -30,8 +30,6 @@ import os
 import pickle
 
 # TODO:
-# - just train with some columns / column selection / feature importance
-# - merge objective functions for all TSAI models
 # Models:
 #   - Try annotation/outlier processing: https://www.sktime.net/en/stable/api_reference/annotation.html
 #   - Try prediction/forcasting --> unlikely sequence --> outlier --> label 1
@@ -74,6 +72,8 @@ class TS_Model_Trainer:
                                     "speaker, openface, opensmile": ["speaker", "openface", "opensmile"],
                                     "c_openface": ["c_openface"],
                                     "openpose, c_openface": ["openpose", "c_openface"],
+                                    "vel_dist": ["vel_dist"],
+                                    "vel_dist, c_openface": ["vel_dist", "c_openface"]
                                     }
         self.loss_dict = {"CrossEntropyLossFlat": CrossEntropyLossFlat(),
                           "FocalLossFlat": FocalLossFlat()}
@@ -348,6 +348,9 @@ class TS_Model_Trainer:
 
         with open(self.folder+"code/best_model_configs/"+str(study_name)+".json", "w") as f:
             json.dump(best_params, f)
+        # safe the best model overall to pkl
+        self.train_and_save_best_model(
+            model_config=str(study_name)+".json", name_extension=str(study_name))
 
         return study
 
@@ -484,86 +487,15 @@ class TS_Model_Trainer:
         # save as png in plots folder
         plt.savefig(save_to)
 
-    def get_tsai_learner(self, dls: object, trial: optuna.Trial, config: dict) -> object:
-        """Get a tsai learner based on the configuration and the trial parameters.
-        params: dls: object: The dataloaders object passed to the model and learner.
-        params: trial: optuna.Trial: The trial object.
-        params: config: dict: The configuration dictionary from which to get the model parameters.
-        output: object: The tsai learner object to use for training.
-        """
-        model_params = config["model_params"]
-        model_trial_params = {}
-        if config["model_type"] == "TST":
-            dropout = trial.suggest_float("dropout", low=model_params["dropout"]["low"],
-                                          high=model_params["dropout"]["high"], step=model_params["dropout"]["step"])
-            fc_dropout = trial.suggest_float("fc_dropout", low=model_params["fc_dropout"]["low"],
-                                             high=model_params["fc_dropout"]["high"], step=model_params["fc_dropout"]["step"])
-            n_layers = trial.suggest_int("n_layers", low=model_params["n_layers"]["low"],
-                                         high=model_params["n_layers"]["high"], step=model_params["n_layers"]["step"])
-            n_heads = trial.suggest_int("n_heads", low=model_params["n_heads"]["low"],
-                                        high=model_params["n_heads"]["high"], step=model_params["n_heads"]["step"])
-            d_model = trial.suggest_int("d_model", low=model_params["d_model"]["low"],
-                                        high=model_params["d_model"]["high"], step=model_params["d_model"]["step"])
-            model = TST(dls.vars, dls.c, dls.len, n_layers=n_layers, n_heads=n_heads,
-                        d_model=d_model, fc_dropout=fc_dropout, dropout=dropout)
-        elif config["model_type"] == "LSTM_FCN":
-            fc_dropout = trial.suggest_float("fc_dropout", low=model_params["fc_dropout"]["low"],
-                                             high=model_params["fc_dropout"]["high"], step=model_params["fc_dropout"]["step"])
-            rnn_dropout = trial.suggest_float("rnn_dropout", low=model_params["rnn_dropout"]["low"],
-                                              high=model_params["rnn_dropout"]["high"], step=model_params["rnn_dropout"]["step"])
-            hidden_size = trial.suggest_int("hidden_size", low=model_params["hidden_size"]["low"],
-                                            high=model_params["hidden_size"]["high"], step=model_params["hidden_size"]["step"])
-            rnn_layers = trial.suggest_int("rnn_layers", low=model_params["rnn_layers"]["low"],
-                                           high=model_params["rnn_layers"]["high"], step=model_params["rnn_layers"]["step"])
-            bidirectional = trial.suggest_categorical(
-                "bidirectional", model_params["bidirectional"])
-            model = LSTM_FCN(dls.vars, dls.c, dls.len,
-                             fc_dropout=fc_dropout, rnn_dropout=rnn_dropout, hidden_size=hidden_size, rnn_layers=rnn_layers, bidirectional=bidirectional)
-        elif config["model_type"] == "ConvTranPlus":
-            model_trial_params["d_model"] = trial.suggest_int(
-                "d_model", **model_params["d_model"])
-            model_trial_params["n_heads"] = trial.suggest_int(
-                "n_heads", **model_params["n_heads"])
-            model_trial_params["dim_ff"] = trial.suggest_int(
-                "dim_ff", **model_params["dim_ff"])
-            model_trial_params["encoder_dropout"] = trial.suggest_float(
-                "encoder_dropout", **model_params["encoder_dropout"])
-            model_trial_params["fc_dropout"] = trial.suggest_float(
-                "fc_dropout", **model_params["fc_dropout"])
-            model = ConvTranPlus(dls.vars, dls.c, dls.len,
-                                 **model_trial_params)
-        elif config["model_type"] == "TransformerLSTMPlus":
-            model_trial_params["d_model"] = trial.suggest_int(
-                "d_model", **model_params["d_model"])
-            model_trial_params["nhead"] = trial.suggest_int(
-                "nhead", **model_params["nhead"])
-            model_trial_params["proj_dropout"] = trial.suggest_float(
-                "proj_dropout", **model_params["proj_dropout"])
-            model_trial_params["num_encoder_layers"] = trial.suggest_int(
-                "num_encoder_layers", **model_params["num_encoder_layers"])
-            model_trial_params["dim_feedforward"] = trial.suggest_int(
-                "dim_feedforward", **model_params["dim_feedforward"])
-            model_trial_params["dropout"] = trial.suggest_float(
-                "dropout", **model_params["dropout"])
-            model_trial_params["num_rnn_layers"] = trial.suggest_int(
-                "num_rnn_layers", **model_params["num_rnn_layers"])
-            model = TransformerLSTMPlus(dls.vars, dls.c, dls.len,
-                                        **model_trial_params)
-
-        loss_func = trial.suggest_categorical("loss", model_params["loss"])
-        loss_func = self.loss_dict[loss_func]
-        cbs = [EarlyStoppingCallback(monitor="accuracy", patience=3)]
-        learn = Learner(dls, model, metrics=[
-            accuracy, F1Score()], cbs=cbs, loss_func=loss_func)
-        return learn
-
-    def get_model_values(self, trial: optuna.Trial) -> dict:
+    def get_model_values(self, trial: optuna.Trial) -> tuple:
         '''Get the model values for the trial based on the configuration and the trial parameters.
         params: trial: optuna.Trial: The trial object.
-        output: dict: The model values to use for the model creation.
+        output: model_values: dict: The model values to use for the model creation.
+        output: training_values: dict: The training values to use for the model training.
         '''
         model_params = self.config["model_params"]
         model_values = {}
+        training_values = {}
         if self.config["model_type"] == "RandomForest":
             model_values["n_estimators"] = trial.suggest_int(
                 "n_estimators", **model_params["n_estimators"])
@@ -591,7 +523,88 @@ class TS_Model_Trainer:
                 "max_dilations_per_kernel", **model_params["max_dilations_per_kernel"])
             model_values["class_weight"] = trial.suggest_categorical(
                 "class_weight", model_params["class_weight"])
-        return model_values
+        if self.config["model_type"] == "TST":
+            model_values["dropout"] = trial.suggest_float(
+                "dropout", **model_params["dropout"])
+            model_values["fc_dropout"] = trial.suggest_float(
+                "fc_dropout", **model_params["fc_dropout"])
+            model_values["n_layers"] = trial.suggest_int(
+                "n_layers", **model_params["n_layers"])
+            model_values["n_heads"] = trial.suggest_int(
+                "n_heads", **model_params["n_heads"])
+            model_values["d_model"] = trial.suggest_int(
+                "d_model", **model_params["d_model"])
+        if self.config["model_type"] == "LSTM_FCN":
+            model_values["fc_dropout"] = trial.suggest_float(
+                "fc_dropout", **model_params["fc_dropout"])
+            model_values["rnn_dropout"] = trial.suggest_float(
+                "rnn_dropout", **model_params["rnn_dropout"])
+            model_values["hidden_size"] = trial.suggest_int(
+                "hidden_size", **model_params["hidden_size"])
+            model_values["rnn_layers"] = trial.suggest_int(
+                "rnn_layers", **model_params["rnn_layers"])
+            model_values["bidirectional"] = trial.suggest_categorical(
+                "bidirectional", model_params["bidirectional"])
+        if self.config["model_type"] == "ConvTranPlus":
+            model_values["d_model"] = trial.suggest_int(
+                "d_model", **model_params["d_model"])
+            model_values["n_heads"] = trial.suggest_int(
+                "n_heads", **model_params["n_heads"])
+            model_values["dim_ff"] = trial.suggest_int(
+                "dim_ff", **model_params["dim_ff"])
+            model_values["encoder_dropout"] = trial.suggest_float(
+                "encoder_dropout", **model_params["encoder_dropout"])
+            model_values["fc_dropout"] = trial.suggest_float(
+                "fc_dropout", **model_params["fc_dropout"])
+        if self.config["model_type"] == "TransformerLSTMPlus":
+            model_values["d_model"] = trial.suggest_int(
+                "d_model", **model_params["d_model"])
+            model_values["nhead"] = trial.suggest_int(
+                "nhead", **model_params["nhead"])
+            model_values["proj_dropout"] = trial.suggest_float(
+                "proj_dropout", **model_params["proj_dropout"])
+            model_values["num_encoder_layers"] = trial.suggest_int(
+                "num_encoder_layers", **model_params["num_encoder_layers"])
+            model_values["dim_feedforward"] = trial.suggest_int(
+                "dim_feedforward", **model_params["dim_feedforward"])
+            model_values["dropout"] = trial.suggest_float(
+                "dropout", **model_params["dropout"])
+            model_values["num_rnn_layers"] = trial.suggest_int(
+                "num_rnn_layers", **model_params["num_rnn_layers"])
+        if self.config["model_type"] in ["TST", "LSTM_FCN", "ConvTranPlus", "TransformerLSTMPlus"]:
+            training_values["bs"] = trial.suggest_int(
+                "bs", **model_params["bs"])
+            training_values["lr"] = trial.suggest_float(
+                "lr", **model_params["lr"], log=True)
+            training_values["loss_func"] = trial.suggest_categorical(
+                "loss", model_params["loss"])
+        return model_values, training_values
+
+    def get_tsai_learner(self, dls: object, model_values: dict, training_values: dict) -> object:
+        """Get a tsai learner based on the configuration and the trial parameters.
+        params: dls: object: The dataloaders object passed to the model and learner.
+        params: model_values: dict: The model values to use for the model creation.
+        params: training_values: dict: The training values to use for the model training.
+        output: object: The tsai learner object to use for training.
+        """
+        model_trial_params = {}
+        if self.config["model_type"] == "TST":
+            model = TST(dls.vars, dls.c, dls.len, **model_values)
+        elif self.config["model_type"] == "LSTM_FCN":
+            model = LSTM_FCN(dls.vars, dls.c, dls.len,
+                             **model_values)
+        elif self.config["model_type"] == "ConvTranPlus":
+            model = ConvTranPlus(dls.vars, dls.c, dls.len,
+                                 **model_values)
+        elif self.config["model_type"] == "TransformerLSTMPlus":
+            model = TransformerLSTMPlus(dls.vars, dls.c, dls.len,
+                                        **model_trial_params)
+
+        loss_func = self.loss_dict[training_values["loss_func"]]
+        cbs = [EarlyStoppingCallback(monitor="accuracy", patience=3)]
+        learn = Learner(dls, model, metrics=[
+            accuracy, F1Score()], cbs=cbs, loss_func=loss_func)
+        return learn
 
     def get_classic_learner(self, model_values: dict) -> object:
         '''Get a classic learner following sklearn conventions based on the configuration and the trial parameters.
@@ -614,36 +627,39 @@ class TS_Model_Trainer:
         '''
         accuracies = []
         f1s = []
-        # TODO
+        data_values, columns_to_remove = self.get_data_values(trial)
+        model_values, training_values = self.get_model_values(trial)
         ### DATA PRE-PROCESSING ###
-        model_params = self.config["model_params"]
-        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
-            self.config, trial)
-        all_X, all_Y, splits = self.merge_val_train(
-            val_X_TS_list=val_X_TS_list, val_Y_TS_list=val_Y_TS_list, train_X_TS=train_X_TS, train_Y_TS_task=train_Y_TS_task)
-        tfms = [None, TSClassification()]
-        dsets = TSDatasets(all_X, all_Y, splits=splits,
-                           inplace=False, tfms=tfms)
-        batch_tfms = [TSStandardize(by_sample=True)]
-        bs = trial.suggest_int("bs", low=model_params["batch_size"]["low"],
-                               high=model_params["batch_size"]["high"], step=model_params["batch_size"]["step"])
-        dls = TSDataLoaders.from_dsets(
-            dsets.train, dsets.valid, bs=bs, batch_tfms=batch_tfms)
+        for fold in range(1, 5):
+            print("\nFold", fold)
+            val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
+                data_values=data_values, format="timeseries", columns_to_remove=columns_to_remove, fold=fold)
+            all_X, all_Y, splits = self.merge_val_train(
+                val_X_TS_list=val_X_TS_list, val_Y_TS_list=val_Y_TS_list, train_X_TS=train_X_TS, train_Y_TS_task=train_Y_TS_task)
+            tfms = [None, TSClassification()]
+            dsets = TSDatasets(all_X, all_Y, splits=splits,
+                               inplace=False, tfms=tfms)
+            batch_tfms = [TSStandardize(by_sample=True)]
+            dls = TSDataLoaders.from_dsets(
+                dsets.train, dsets.valid, bs=training_values["bs"], batch_tfms=batch_tfms)
 
-        ### MODEL SPECIFICATION ###
-        torch.cuda.empty_cache()
-        learn = self.get_tsai_learner(
-            dls=dls, trial=trial, config=self.config)
-        lr = trial.suggest_float("lr", low=model_params["lr"]["low"],
-                                 high=model_params["lr"]["high"], log=True)
-        learn.fit_one_cycle(30, lr)
+            ### MODEL SPECIFICATION ###
+            torch.cuda.empty_cache()
+            learn = self.get_tsai_learner(
+                dls=dls, model_values=model_values, training_values=training_values)
 
-        ### EVALUATION ###
-        preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, interval_length=data_values[
-            "interval_length"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms)
-        outcomes = self.get_eval_metrics(
-            preds=preds, dataset="val", verbose=False)
-        return outcomes["accuracy"], outcomes["f1"]
+            learn.fit_one_cycle(100, training_values["lr"])
+
+            ### EVALUATION ###
+            preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, interval_length=data_values[
+                "interval_length"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms)
+            outcomes = self.get_eval_metrics(
+                preds=preds, dataset="val", verbose=False)
+
+            accuracies.append(outcomes["accuracy"])
+            f1s.append(outcomes["f1"])
+
+        return np.mean(accuracies), np.mean(f1s)
 
     def optuna_objective_classic(self, trial: optuna.Trial) -> tuple:
         '''Optuna objective function for all classic (sklearn API style) models. Optimizes for accuracy and macro f1 score.
@@ -654,12 +670,12 @@ class TS_Model_Trainer:
         f1s = []
         # same data and model values for all folds (only choose hyperparamters once)
         data_values, columns_to_remove = self.get_data_values(trial)
-        model_values = self.get_model_values(trial)
+        model_values, _ = self.get_model_values(trial)
         print("Model Values:", model_values)
         print("\nData Values:", data_values)
         # cross validation
         for fold in range(1, 5):
-            print("Fold", fold)
+            print("\nFold", fold)
             if self.config["model_type"] == "MiniRocket":
                 val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
                     data_values=data_values, format="timeseries", columns_to_remove=columns_to_remove, fold=fold)
@@ -684,7 +700,7 @@ class TS_Model_Trainer:
 
         return np.mean(accuracies), np.mean(f1s)
 
-    def train_and_save_best_model(self, model_config: str) -> None:
+    def train_and_save_best_model(self, model_config: str, name_extension="") -> None:
         """Train a model based on the specified configuration and save it to disk. For final submission.
         params: model_config: str: The name of the model configuration file to use for training.
         """
@@ -733,7 +749,7 @@ if __name__ == '__main__':
     # parse arguments (config file, n_jobs)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, help="Path to the configuration file.",
-                        default="configs/config_rf.json")
+                        default="configs/config_lstmfcn.json")
     parser.add_argument(
         "--njobs", type=int, help="Number of cpu cores to use for training.", default=4)
     args = parser.parse_args()
