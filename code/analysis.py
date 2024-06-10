@@ -36,7 +36,7 @@ if __name__ == "__main__":
     if os.getcwd().endswith("HRI-Error-Detection-STAI"):
         pathprefix = ""
     else:
-        pathprefix = "HRI-Error-Detection-STAI/"
+        pathprefix = "/home/peter/HRI-Error-Detection-STAI/"
     
     with open(pathprefix + "code/trained_models/RandomForest_2024-06-05-17.pkl", "rb") as f:
         model = pickle.load(f)
