@@ -524,7 +524,7 @@ class TS_Model_Trainer:
             model_values["class_weight"] = trial.suggest_categorical(
                 "class_weight", model_params["class_weight"])
             model_values["random_state"] = trial.suggest_categorical(
-                "random_state", **model_params["random_state"])
+                "random_state", model_params["random_state"])
         if self.config["model_type"] == "TST":
             model_values["dropout"] = trial.suggest_float(
                 "dropout", **model_params["dropout"])
