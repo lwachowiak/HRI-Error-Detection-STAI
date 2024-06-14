@@ -66,6 +66,9 @@
         },
         "class_weight": [
             null
+        ],
+        "random_state": [
+            42
         ]
     }
 }

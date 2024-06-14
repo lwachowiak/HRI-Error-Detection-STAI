@@ -523,6 +523,8 @@ class TS_Model_Trainer:
                 "max_dilations_per_kernel", **model_params["max_dilations_per_kernel"])
             model_values["class_weight"] = trial.suggest_categorical(
                 "class_weight", model_params["class_weight"])
+            model_values["random_state"] = trial.suggest_int(
+                "random_state", **model_params["random_state"])
         if self.config["model_type"] == "TST":
             model_values["dropout"] = trial.suggest_float(
                 "dropout", **model_params["dropout"])
