@@ -294,7 +294,7 @@ class TS_Model_Trainer:
         :param model_type: The type of model to optimize (MiniRocket, TST).
         """
         wandb_kwargs = {"project": "HRI-Errors",
-                        "name": study_name, "group": model_type}
+                        "name": study_name+"_task_"+str(self.task), "group": model_type}
         wandbc = WeightsAndBiasesCallback(
             metric_name=["accuracy", "macro f1"], wandb_kwargs=wandb_kwargs)
 
