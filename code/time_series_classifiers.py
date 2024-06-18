@@ -350,7 +350,7 @@ class TS_Model_Trainer:
             json.dump(best_params, f)
         # safe the best model overall to pkl
         self.train_and_save_best_model(
-            model_config=str(study_name)+".json", name_extension=str(study_name))
+            model_config=str(study_name)+".json", name_extension="best_"+str(study_name))
 
         return study
 
@@ -523,8 +523,8 @@ class TS_Model_Trainer:
                 "max_dilations_per_kernel", **model_params["max_dilations_per_kernel"])
             model_values["class_weight"] = trial.suggest_categorical(
                 "class_weight", model_params["class_weight"])
-            model_values["random_state"] = trial.suggest_categorical(
-                "random_state", model_params["random_state"])
+            model_values["random_state"] = trial.suggest_int(
+                "random_state", **model_params["random_state"])
         if self.config["model_type"] == "TST":
             model_values["dropout"] = trial.suggest_float(
                 "dropout", **model_params["dropout"])
@@ -732,9 +732,9 @@ class TS_Model_Trainer:
                 test_preds, dataset="val", verbose=True)
 
             # save model and column order
-            with open(self.folder+"code/trained_models/"+str(config["model_type"])+".pkl", "wb") as f:
+            with open(self.folder+"code/trained_models/"+str(config["model_type"])+name_extension+".pkl", "wb") as f:
                 pickle.dump(model, f)
-            with open(self.folder+"code/trained_models/"+str(config["model_type"])+"_columns.pkl", "wb") as f:
+            with open(self.folder+"code/trained_models/"+str(config["model_type"])+name_extension+"_columns.pkl", "wb") as f:
                 pickle.dump(column_order, f)
 
         else:
