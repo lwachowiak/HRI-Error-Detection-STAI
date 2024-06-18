@@ -1,0 +1,25 @@
+{
+    "task": 2,
+    "model_type": "MiniRocket",
+    "data_params": {
+        "interval_length": 1500,
+        "stride_train": 400,
+        "stride_eval": 275,
+        "fps": 25,
+        "columns_to_remove": ["vel_dist", "c_openface"],
+        "label_creation": "stride_eval",
+        "nan_handling": "avg",
+        "oversampling_rate": 0.15,
+        "undersampling_rate": 0.0,
+        "rescaling": "normalization"
+    },
+    "model_params": {
+        "n_estimators": 2,
+        "max_dilations_per_kernel": 32,
+        "class_weight": null
+    },
+    "stats": {
+        "accuracy": 0.8311716399566784,
+        "macro f1": 0.7302963311993291
+    }
+}
