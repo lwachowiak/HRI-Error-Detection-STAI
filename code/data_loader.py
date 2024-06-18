@@ -21,6 +21,8 @@ class DataLoader_HRI:
         self.val_Y = []
         self.train_Y = []
         self.train_X = []
+        self.test_X = []
+        self.test_Y = []
         self.all_X = []
         self.all_Y = []
 
@@ -69,29 +71,25 @@ class DataLoader_HRI:
             print(label_data[inspect_session][1].head(3))
             print(len(label_data[inspect_session][1]))
 
-        # merge data and add to train_X and val_X
+        # merge data and add to all_X (train + val) and test_X
         for filename, _ in openface_data:
             merged_df = self.merge_X_data(
                 openface_data, openpose_data, opensmile_data, speaker_data, filename)
-            if filename.endswith("_train.csv"):
-                # self.train_X.append(merged_df) #TODO remove once CV works
+            if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
                 self.all_X.append(merged_df)
-            elif filename.endswith("_val.csv"):
-                # self.val_X.append(merged_df)
-                self.all_X.append(merged_df)
-        # labels to train_Y and val_Y
+            elif filename.endswith("_test.csv"):
+                self.test_X.append(merged_df)
+        # labels to all_Y and test_Y
         for filename, df in label_data:
-            if filename.endswith("_train.csv"):
-                # self.train_Y.append(df)
+            if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
                 self.all_Y.append(df)
-            elif filename.endswith("_val.csv"):
-                # self.val_Y.append(df)
-                self.all_Y.append(df)
+            elif filename.endswith("_test.csv"):
+                self.test_Y.append(df)
 
         print("\n\nNumber of sessions (data) parsed:",
-              len(self.train_X), len(self.val_X), len(self.all_X))
+              len(self.train_X), len(self.val_X), len(self.all_X), len(self.test_X))
         print("Number of sessions (labels) parsed:",
-              len(self.train_Y), len(self.val_Y), len(self.all_Y))
+              len(self.train_Y), len(self.val_Y), len(self.all_Y), len(self.test_Y))
 
         # concatenate into one single dataframe
         # self.train_X = pd.concat(self.train_X)
@@ -100,6 +98,9 @@ class DataLoader_HRI:
         # self.val_Y = pd.concat(self.val_Y)
         self.all_X = pd.concat(self.all_X)
         self.all_Y = pd.concat(self.all_Y)
+        self.test_X = pd.concat(self.test_X)
+        if len(self.test_Y) > 0:
+            self.test_Y = pd.concat(self.test_Y)
 
         # print("\n\nNumber of rows in merged dataframes: Train_X:", len(
         #    self.train_X), "Train_Y:", len(self.train_Y), "Val_X:", len(self.val_X), "Val_Y:", len(self.val_Y))
@@ -112,10 +113,12 @@ class DataLoader_HRI:
         # self.val_Y.columns = self.val_Y.columns.str.strip()
         self.all_X.columns = self.all_X.columns.str.strip()
         self.all_Y.columns = self.all_Y.columns.str.strip()
+        self.test_X.columns = self.test_X.columns.str.strip()
+        if len(self.test_Y) > 0:
+            self.test_Y.columns = self.test_Y.columns.str.strip()
 
         # for X drop columns with names: 'person_id_openpose', 'week_id_openpose', 'robot_group_openpose', 'end_opensmile', 'start_opensmile' PT: week_id_openpose passes its presence check but fails the drop function, implying it's not in the dataframe
         columns_to_drop = ['person_id_openpose',
-                           # 'week_id_openpose',
                            'timestamp_openface',
                            'robot_group_openpose',
                            'end_opensmile',
@@ -180,7 +183,7 @@ class DataLoader_HRI:
               ) if self.verbose else None
 
         for filename in sorted(os.listdir(data_dir), key=self.extract_file_number):
-            if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
+            if filename.endswith("_train.csv") or filename.endswith("_val.csv") or filename.endswith("_test.csv"):
                 df = pd.read_csv(os.path.join(data_dir, filename))
                 # add session number and df
                 data_frames.append((filename, df))
@@ -227,7 +230,7 @@ class DataLoader_HRI:
         data_frames = []
         print(sorted(os.listdir(data_dir), key=self.extract_file_number))
         for filename in sorted(os.listdir(data_dir), key=self.extract_file_number):
-            if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
+            if filename.endswith("_train.csv") or filename.endswith("_val.csv") or filename.endswith("_test.csv"):
                 df = pd.read_csv(os.path.join(data_dir, filename))
                 # change being/end time to frame number, expanding one row to multiple rows based on the duration
                 if expand:
@@ -405,6 +408,56 @@ class DataLoader_HRI:
             val_X_summary_list[i] = np.nan_to_num(val_X_summary_list[i])
 
         return val_X_summary_list, val_Y_summary_list, train_X_summary, train_Y_summary, column_order
+
+    def get_timeseries_format_test_data(self, interval_length: int, stride_eval: int, fps: int = 100, verbose: bool = False, label_creation: str = "full", task: int = 2, rescaling=None) -> tuple:
+        """
+        Convert the data to timeseries form. Split the data from the dfs into intervals of length interval_length with stride stride.
+        Split takes place of adjacent frames of the same session.
+        :param interval_length: The length of the intervals
+        :param stride_train: The stride for the training data (oversampling technique)
+        :param stride_eval: The stride for the evaluation data (eval update frequency)
+        :param fps: The desired fps of the data. Original is 100 fps
+        :param verbose: Print debug information
+        :param label_creation: Either 'full' or 'stride_eval' or 'stride_train'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
+        :param oversampling_rate: x% of the minority class replicated in the training data as oversampling
+        :param undersampling_rate: x% of the majority class removed from the training data as undersampling
+        :param task: The task to load the data for. 1 for UserAwkwardness, 2 for RobotMistake, 3 for InteractionRupture
+        :param fold: Fold which the validation data belongs to
+        :param rescaling: The rescaling method. One of 'standardization', 'normalization', None
+        :return: The data in timeseries format and the column order for feature importance analysis
+        """
+        if rescaling not in ['standardization', 'normalization', 'none']:
+            raise ValueError(
+                "Rescaling must be one of 'standardization', 'normalization', 'none'")
+        if label_creation not in ['full', 'stride_eval', 'stride_train']:
+            raise ValueError(
+                "label_creation must be one of 'full', 'stride_eval, 'stride_train'")
+
+        if verbose:
+            print("Test sessions: ", len(self.test_X["session"].unique()))
+            print(self.test_X["session"].unique())
+
+        num_features = self.test_X.shape[1]
+        test_Y_TS_list = []
+        test_X_TS_list = []
+
+        cut_length = 10  # drop the last x rows to avoid NaNs TODO think about this
+
+        if label_creation not in ['full', 'stride_eval', 'stride_train']:
+            raise ValueError(
+                "label_creation must be one of 'full' or 'stride'")
+
+        # test data, stride is equal to stride_eval
+        for session in self.test_X['session'].unique():
+            pass
+            # TODO
+
+        # convert to numpy arrays
+        for i in range(len(test_X_TS_list)):
+            test_X_TS_list[i] = np.array(test_X_TS_list[i])
+            test_Y_TS_list[i] = np.array(test_Y_TS_list[i])
+
+        return test_X_TS_list, test_Y_TS_list
 
     def get_timeseries_format(self, interval_length: int, stride_train: int, stride_eval: int, fps: int = 100, verbose: bool = False, label_creation: str = "full", oversampling_rate: float = 0, undersampling_rate: float = 0, task: int = 2, fold: int = 4, rescaling=None) -> tuple:
         """
@@ -641,6 +694,10 @@ class DataLoader_HRI:
                 self.all_X = self.all_X.drop(columns=col, axis=1)
             except:
                 print("Error excluding column with name", col)
+            try:
+                self.test_X = self.test_X.drop(columns=col, axis=1)
+            except:
+                print("Error excluding test column with name", col)
             # try:
             #    self.train_X = self.train_X.drop(columns=col, axis=1)
             # except:
