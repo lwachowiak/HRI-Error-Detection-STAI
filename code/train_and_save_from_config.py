@@ -3,13 +3,15 @@ import os
 import argparse
 
 argparser = argparse.ArgumentParser()
-argparser.add_argument("--file", type=str, default="/best_model_configs/best_minirocket_summerschool.json")
+argparser.add_argument("--file", type=str, default="best_model_configs/best_minirocket_summerschool.json")
 args = argparser.parse_args()
 
 if os.getcwd().endswith("HRI-Error-Detection-STAI"):
     pathprefix = ""
 else:
     pathprefix = "HRI-Error-Detection-STAI/"
+
+print(args.file)
 
 trainer = TS_Model_Trainer(
     folder=pathprefix,
