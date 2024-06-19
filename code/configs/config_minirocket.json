@@ -1,11 +1,11 @@
 {
     "task": 2,
     "model_type": "MiniRocket",
-    "n_trials": 30,
+    "n_trials": 25,
     "data_params": {
         "interval_length": {
             "low": 1450,
-            "high": 1650,
+            "high": 1600,
             "step": 50
         },
         "stride_train": {
@@ -14,8 +14,8 @@
             "step": 50
         },
         "stride_eval": {
-            "low": 250,
-            "high": 325,
+            "low": 225,
+            "high": 250,
             "step": 25
         },
         "fps": [
@@ -44,19 +44,18 @@
         },
         "rescaling": [
             "none",
-            "standardization",
             "normalization"
         ]
     },
     "model_params": {
         "max_dilations_per_kernel": {
             "low": 32,
-            "high": 32,
-            "step": 8
+            "high": 64,
+            "step": 32
         },
         "n_estimators": {
-            "low": 10,
-            "high": 10,
+            "low": 25,
+            "high": 25,
             "step": 2
         },
         "class_weight": [
