@@ -51,13 +51,13 @@ if __name__ == "__main__":
     else:
         pathprefix = "HRI-Error-Detection-STAI/"
 
-    model_to_load = ""  # TODO
+    model_to_load = "MiniRocket_2024-06-18-18"  # TODO
 
-    with open(pathprefix + "code/trained_models/" + model_to_load + ".pkl", "rb") as f:
+    with open(pathprefix + "code/trained_models/MiniRocketbest_" + model_to_load + ".pkl", "rb") as f:
         model = pickle.load(f)
 
     # features the model was trained on
-    with open(pathprefix + "code/trained_models/" + model_to_load + "_columns.pkl", "rb") as f:
+    with open(pathprefix + "code/trained_models/MiniRocketbest_" + model_to_load + "_columns.pkl", "rb") as f:
         features = pickle.load(f)
 
     # load config to get interval_length and stride_eval
