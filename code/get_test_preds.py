@@ -51,7 +51,7 @@ if __name__ == "__main__":
     else:
         pathprefix = "HRI-Error-Detection-STAI/"
 
-    model_to_load = "MiniRocket_2024-06-18-18"  # TODO
+    model_to_load = "MiniRocket_2024-06-18-18"
 
     with open(pathprefix + "code/trained_models/MiniRocketbest_" + model_to_load + ".pkl", "rb") as f:
         model = pickle.load(f)

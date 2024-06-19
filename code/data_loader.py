@@ -98,7 +98,8 @@ class DataLoader_HRI:
         # self.val_Y = pd.concat(self.val_Y)
         self.all_X = pd.concat(self.all_X)
         self.all_Y = pd.concat(self.all_Y)
-        self.test_X = pd.concat(self.test_X)
+        if len(self.test_X) > 0:
+            self.test_X = pd.concat(self.test_X)
         if len(self.test_Y) > 0:
             self.test_Y = pd.concat(self.test_Y)
 
