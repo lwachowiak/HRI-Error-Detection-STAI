@@ -91,7 +91,6 @@ class TS_Model_Trainer:
                 print("\nConfiguration loaded successfully.")
                 for key, value in config.items():
                     print(f"{key}: {value}")
-                # self.config = config
                 self.task = config["task"]
                 return config
         except FileNotFoundError:
@@ -721,8 +720,11 @@ class TS_Model_Trainer:
             features = pickle.load(f)
 
         # load config to get data preprocessing parameters
-        with open(self.folder + "code/best_model_configs/" + model_name + ".json", "r") as f:
-            config = json.load(f)
+        # with open(self.folder + "code/best_model_configs/" + model_name + ".json", "r") as f:
+        #    config = json.load(f)
+        config = self.read_config(
+            self.folder+"code/best_model_configs/"+model_name+".json")  # sets task automatically
+        print("Task active:", self.task)
 
         data_values = config["data_params"]
         interval_length = data_values["interval_length"]
@@ -737,6 +739,9 @@ class TS_Model_Trainer:
 
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(interval_length=interval_length, stride_train=stride_train,
                                                                                                              stride_eval=stride_eval, fps=fps, verbose=True, label_creation=label_creation, task=task, rescaling=rescaling, fold=4)
+
+        print(train_Y_TS.shape)  # Debugging
+        print(train_Y_TS[0])
         test_X_TS_list, _ = self.data.get_timeseries_format_test_data(interval_length=interval_length, stride_eval=stride_eval,
                                                                       fps=fps, verbose=True, label_creation=label_creation, task=task, rescaling=rescaling)
         print(len(features))
@@ -777,7 +782,7 @@ class TS_Model_Trainer:
         test_preds_df.to_csv(self.folder + "code/test_predictions/" +
                              model_name + "_test_preds_trainer.csv")
 
-    def train_and_save_best_model(self, model_config: str, name_extension="") -> None:
+    def train_and_save_best_model(self, model_config: str, name_extension="", fold: int = 4) -> None:
         """Train a model based on the specified configuration and save it to disk. For final submission.
         params: model_config: str: The name of the model configuration file to use for training.
         """
@@ -799,12 +804,12 @@ class TS_Model_Trainer:
                 config["data_params"], format=format, columns_to_remove=columns_to_remove, fold=4)
 
             print("Column order used:", column_order)
-
             model.fit(train_X_TS, train_Y_TS_task)
-            test_preds = self.get_full_test_preds(
-                model, val_X_TS_list, config["data_params"]["interval_length"], config["data_params"]["stride_eval"], model_type="Classic")
-            eval_scores = self.get_eval_metrics(
-                test_preds, dataset="val", verbose=True)
+            if fold in [1, 2, 3, 4]:  # only validate if not trained on all data
+                test_preds = self.get_full_test_preds(
+                    model, val_X_TS_list, config["data_params"]["interval_length"], config["data_params"]["stride_eval"], model_type="Classic")
+                eval_scores = self.get_eval_metrics(
+                    test_preds, dataset="val", verbose=True)
 
             # save model and column order
             with open(self.folder+"code/trained_models/"+str(config["model_type"])+name_extension+".pkl", "wb") as f:
@@ -850,7 +855,14 @@ if __name__ == '__main__':
     date = datetime.datetime.now().strftime("%Y-%m-%d-%H")
 
     # get test predictions for best model
+
+    # TASK 2
+    # newer: "MiniRocket_2024-06-19-08"
     trainer.load_and_eval("MiniRocket_2024-06-18-18")
+    # TASK 1
+    # trainer.load_and_eval("MiniRocket_2024-06-18-18")
+    # TASK 0
+    # trainer.load_and_eval("MiniRocket_2024-06-18-18")
 
     # study_name = trainer.config["model_type"] + "_" + date
     # study = trainer.optuna_study(

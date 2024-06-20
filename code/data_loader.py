@@ -523,7 +523,11 @@ class DataLoader_HRI:
             raise ValueError(
                 "label_creation must be one of 'full', 'stride_eval, 'stride_train'")
         # get ids based on fold
-        val_sessions = self.fold_info[fold]
+        if fold not in self.fold_info:
+            print("Training on all data, no validation")
+            val_sessions = []
+        else:
+            val_sessions = self.fold_info[fold]
         train_sessions = []
         for f in self.fold_info:
             if f != fold:
