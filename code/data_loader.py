@@ -4,9 +4,6 @@ import numpy as np
 import re
 import math
 
-# TODO:
-# - IMPORTANT check how X data is loaded and aligned. it does not seem to work correctly on the last view rows
-
 
 class DataLoader_HRI:
     """
@@ -48,7 +45,8 @@ class DataLoader_HRI:
             # add column with session number
             df.insert(1, 'session', filename.split('.')[0])
 
-        speaker_data = self.process_speaker_data(speaker_data, label_data)
+        speaker_data = self.process_speaker_data(
+            speaker_data, label_data, opensmile_data=opensmile_data)
         # for filename, df in speaker_data:
         #    df["frame"] = (df.index // (100 / 30)).astype(int)+1
 
@@ -87,15 +85,11 @@ class DataLoader_HRI:
                 self.test_Y.append(df)
 
         print("\n\nNumber of sessions (data) parsed:",
-              len(self.train_X), len(self.val_X), len(self.all_X), len(self.test_X))
+              len(self.all_X), len(self.test_X))
         print("Number of sessions (labels) parsed:",
-              len(self.train_Y), len(self.val_Y), len(self.all_Y), len(self.test_Y))
+              len(self.all_Y), len(self.test_Y))
 
         # concatenate into one single dataframe
-        # self.train_X = pd.concat(self.train_X)
-        # self.val_X = pd.concat(self.val_X)
-        # self.train_Y = pd.concat(self.train_Y)
-        # self.val_Y = pd.concat(self.val_Y)
         self.all_X = pd.concat(self.all_X)
         self.all_Y = pd.concat(self.all_Y)
         if len(self.test_X) > 0:
@@ -108,18 +102,17 @@ class DataLoader_HRI:
 
         # COLUMN CLEANUP
         # remove trailing whitespace from column names
-        # self.train_X.columns = self.train_X.columns.str.strip()
-        # self.val_X.columns = self.val_X.columns.str.strip()
-        # self.train_Y.columns = self.train_Y.columns.str.strip()
-        # self.val_Y.columns = self.val_Y.columns.str.strip()
         self.all_X.columns = self.all_X.columns.str.strip()
         self.all_Y.columns = self.all_Y.columns.str.strip()
-        self.test_X.columns = self.test_X.columns.str.strip()
+        if len(self.test_X) > 0:
+            self.test_X.columns = self.test_X.columns.str.strip()
         if len(self.test_Y) > 0:
             self.test_Y.columns = self.test_Y.columns.str.strip()
 
         # for X drop columns with names: 'person_id_openpose', 'week_id_openpose', 'robot_group_openpose', 'end_opensmile', 'start_opensmile' PT: week_id_openpose passes its presence check but fails the drop function, implying it's not in the dataframe
         columns_to_drop = ['person_id_openpose',
+                           'week_id_openpose',
+                           'robot_group_openpose',
                            'timestamp_openface',
                            'robot_group_openpose',
                            'end_opensmile',
@@ -145,13 +138,11 @@ class DataLoader_HRI:
 
         if self.verbose:
             print("\nMerged data head:")
-            # print(self.train_X.head())
-            # print(self.val_X.head())
             print(self.all_X.head())
+            print("Test:", self.test_X.head())
             print("\nMerged data tail:")
-            # print(self.train_X.tail())
-            # print(self.val_X.tail())
             print(self.all_X.tail())
+            print("Test:", self.test_X.tail())
 
     @staticmethod
     def extract_file_number(filename: str) -> int:
@@ -190,17 +181,28 @@ class DataLoader_HRI:
                 data_frames.append((filename, df))
         return data_frames
 
-    def process_speaker_data(self, speaker_data: list, label_data: list, rows_per_second=100) -> list:
+    def process_speaker_data(self, speaker_data: list, label_data: list, rows_per_second=100, opensmile_data: list = None) -> list:
         '''
         similar to the labels, the speaker data is originally not presented frame by frame but as time intervals
+        the speaker data is mapped to the frame number based on the label data with 100 frames per second
         '''
-        # TODO check output of this function
-        i = 0
+        i_val_train = 0
+        i_test = 0
         data_frames = []
         for filename, df in speaker_data:
-            label_df = label_data[i][1]
-            i += 1
-            frames_count = len(label_df)
+            if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
+                # TODO THIS WON'T WORK IF TEST LABELS ARE ADDED
+                reference_df = label_data[i_val_train][1]
+                i_val_train += 1
+            elif filename.endswith("_test.csv"):
+                # reference_df = opensmile_data[i_test][1]
+                # do next until filename equals the opensmile filename
+                reference_df = next(
+                    df for fname, df in opensmile_data if fname == filename)
+                print("names:", opensmile_data[i_test][0], filename)
+                # print(i_test, filename, len(reference_df))
+                # i_test += 3
+            frames_count = len(reference_df)
             new_data = []
             # initialize the data with speech pauses
             for f in range(1, frames_count+1):
@@ -214,8 +216,10 @@ class DataLoader_HRI:
                 begin_time = row['start_turn']
                 end_time = row['end_turn']
                 begin_frame = math.ceil(begin_time * rows_per_second)
-                end_frame = math.ceil(end_time * rows_per_second)
+                end_frame = min(
+                    math.ceil(end_time * rows_per_second), frames_count)
                 speaker = row['speaker']
+                print(filename, begin_frame, end_frame, len(new_data))
                 for j in range(begin_frame, end_frame):
                     new_data[j][speaker] = 1
                     if speaker != "pause":
@@ -420,10 +424,6 @@ class DataLoader_HRI:
         :param fps: The desired fps of the data. Original is 100 fps
         :param verbose: Print debug information
         :param label_creation: Either 'full' or 'stride_eval' or 'stride_train'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
-        :param oversampling_rate: x% of the minority class replicated in the training data as oversampling
-        :param undersampling_rate: x% of the majority class removed from the training data as undersampling
-        :param task: The task to load the data for. 1 for UserAwkwardness, 2 for RobotMistake, 3 for InteractionRupture
-        :param fold: Fold which the validation data belongs to
         :param rescaling: The rescaling method. One of 'standardization', 'normalization', None
         :return: The data in timeseries format and the column order for feature importance analysis
         """
@@ -442,7 +442,7 @@ class DataLoader_HRI:
         test_Y_TS_list = []
         test_X_TS_list = []
 
-        cut_length = 10  # drop the last x rows to avoid NaNs TODO think about this
+        cut_length = 10  # drop the last x rows to avoid too many NaNs when individual modalities start dropping out
 
         if label_creation not in ['full', 'stride_eval', 'stride_train']:
             raise ValueError(
@@ -450,13 +450,52 @@ class DataLoader_HRI:
 
         # test data, stride is equal to stride_eval
         for session in self.test_X['session'].unique():
-            pass
-            # TODO
+            test_X_TS = []
+            test_Y_TS = []
+            # if verbose:
+            #    print("TS Processing for session: ", session)
+            session_df = self.test_X[self.test_X['session'] == session]
+            session_df = session_df.drop(columns=['session'])
+            # drop last 10 rows to avoid NaNs
+            if cut_length > 0:
+                session_df = session_df[:-cut_length]
+            # Normalize/Standardize
+            if rescaling == 'standardization':
+                # per column
+                session_df = (session_df - session_df.mean()) / \
+                    session_df.std()
+            elif rescaling == 'normalization':
+                # per column
+                session_df = (session_df - session_df.min()) / \
+                    (session_df.max() - session_df.min())
+            if len(self.test_Y) > 0:
+                session_labels = self.test_Y[self.test_Y['session'] == session]
+            for i in range(0, len(session_df), stride_eval):
+                if i + interval_length > len(session_df):
+                    # TODO IMPLEMENT PADDING
+                    break
+                interval = session_df.iloc[i:i+interval_length].values.T
+                if fps < 100:
+                    interval = self.resample(
+                        interval=interval, fps=fps, style='mean')
+                if len(self.test_Y) > 0:
+                    labels = session_labels.iloc[i:i+interval_length][[
+                        'UserAwkwardness', 'RobotMistake', 'InteractionRupture']].values.T
+                    majority_labels = []
+                    for label in labels:
+                        majority_labels.append(np.argmax(np.bincount(label)))
+                test_X_TS.append(interval)
+                if len(self.test_Y) > 0:
+                    test_Y_TS.append(majority_labels)
+            test_X_TS_list.append(test_X_TS)
+            if len(self.test_Y) > 0:
+                test_Y_TS_list.append(test_Y_TS)
 
         # convert to numpy arrays
         for i in range(len(test_X_TS_list)):
             test_X_TS_list[i] = np.array(test_X_TS_list[i])
-            test_Y_TS_list[i] = np.array(test_Y_TS_list[i])
+            if len(self.test_Y) > 0:
+                test_Y_TS_list[i] = np.array(test_Y_TS_list[i])
 
         return test_X_TS_list, test_Y_TS_list
 
@@ -549,7 +588,6 @@ class DataLoader_HRI:
                     if label_creation == "full":
                         # get the majority label for the whole interval
                         majority_labels.append(np.argmax(np.bincount(label)))
-                    # TODO should i consider stride_eval here?
                     elif label_creation == "stride_train":
                         # get the majority label just for the last stride elements of the interval
                         majority_labels.append(
@@ -583,7 +621,7 @@ class DataLoader_HRI:
             session_labels = self.val_Y[self.val_Y['session'] == session]
             for i in range(0, len(session_df), stride_eval):  # this was interval_length before
                 if i + interval_length > len(session_df):
-                    # TODO IMPLEMENT PADDING
+                    # TODO POTENTIALLY IMPLEMENT PADDING
                     break
                 interval = session_df.iloc[i:i+interval_length].values.T
                 if fps < 100:
@@ -699,14 +737,6 @@ class DataLoader_HRI:
                 self.test_X = self.test_X.drop(columns=col, axis=1)
             except:
                 print("Error excluding test column with name", col)
-            # try:
-            #    self.train_X = self.train_X.drop(columns=col, axis=1)
-            # except:
-            #    print("Error excluding train column with name", col)
-            # try:
-            #    self.val_X = self.val_X.drop(columns=col, axis=1)
-            # except:
-            #    print("Error excluding val column with name", col)
 
     def limit_to_sessions(self, sessions_train: list = None, sessions_val: list = None) -> None:
         """
@@ -789,26 +819,3 @@ if __name__ == "__main__":
     #             # add session number and df
     #             data_frames.append((filename, df))
     #     return data_frames
-
-    # def resample_old(self, interval, fps, style):
-    #     '''
-    #     Resample the interval to the desired fps. Original framerate is 100 fps'''
-    #     # resample the interval to the desired fps
-    #     if style not in ['mean', 'max', 'min']:
-    #         raise ValueError("Style must be one of 'mean', 'max', 'min'")
-    #     new_interval = []
-    #     step = int(100/fps)
-    #     for feature in interval:
-    #         new_feature = []
-    #         # downsample the array by a rate of 100/fps
-    #         if style == 'mean':
-    #             for i in range(0, len(feature), step):
-    #                 new_feature.append(np.mean(feature[i:i+step]))
-    #         elif style == 'max':
-    #             for i in range(0, len(feature), step):
-    #                 new_feature.append(np.max(feature[i:i+step]))
-    #         elif style == 'min':
-    #             for i in range(0, len(feature), step):
-    #                 new_feature.append(np.min(feature[i:i+step]))
-    #         new_interval.append(new_feature)
-    #     return new_interval

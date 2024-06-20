@@ -27,6 +27,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import os
+import pandas as pd
 import pickle
 
 # TODO:
@@ -37,6 +38,9 @@ import pickle
 
 
 class TS_Model_Trainer:
+    """
+    A class for training individual models, doing optuna hyperparamter search, and inference with already trained models. 
+    """
 
     def __init__(self, folder: str, n_jobs: int, config_name: str):
         '''
@@ -348,7 +352,7 @@ class TS_Model_Trainer:
 
         with open(self.folder+"code/best_model_configs/"+str(study_name)+".json", "w") as f:
             json.dump(best_params, f)
-        # safe the best model overall to pkl
+        # safe the best model overall to pkl (based on fold 4 for validation)
         self.train_and_save_best_model(
             model_config=str(study_name)+".json", name_extension="best_"+str(study_name))
 
@@ -702,6 +706,77 @@ class TS_Model_Trainer:
 
         return np.mean(accuracies), np.mean(f1s)
 
+    def load_and_eval(self, model_name: str) -> None:
+        """
+        Load a model from disk and evaluate it on the test data.
+        params: model_name: str: The name of the model to load.
+        params: save_name: str: The file name to save the test predictions to.
+        """
+        # the model
+        with open(self.folder + "code/trained_models/MiniRocketbest_" + model_name + ".pkl", "rb") as f:
+            model = pickle.load(f)
+
+        # features the model was trained on
+        with open(self.folder + "code/trained_models/MiniRocketbest_" + model_name + "_columns.pkl", "rb") as f:
+            features = pickle.load(f)
+
+        # load config to get data preprocessing parameters
+        with open(self.folder + "code/best_model_configs/" + model_name + ".json", "r") as f:
+            config = json.load(f)
+
+        data_values = config["data_params"]
+        interval_length = data_values["interval_length"]
+        stride_eval = data_values["stride_eval"]
+        stride_train = data_values["stride_train"]
+        fps = data_values["fps"]
+        label_creation = data_values["label_creation"]
+        task = config["task"]
+        rescaling = data_values["rescaling"]
+        columns_to_remove = data_values["columns_to_remove"]
+        columns_to_remove = self.column_removal_dict[columns_to_remove]
+
+        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(interval_length=interval_length, stride_train=stride_train,
+                                                                                                             stride_eval=stride_eval, fps=fps, verbose=True, label_creation=label_creation, task=task, rescaling=rescaling, fold=4)
+        test_X_TS_list, _ = self.data.get_timeseries_format_test_data(interval_length=interval_length, stride_eval=stride_eval,
+                                                                      fps=fps, verbose=True, label_creation=label_creation, task=task, rescaling=rescaling)
+        print(len(features))
+        print(test_X_TS_list[0].shape)
+
+        # nan handling based on training parameters
+        if data_values["nan_handling"] == "zeros":
+            train_X_TS = np.nan_to_num(train_X_TS, nan=0)
+            val_X_TS_list = [np.nan_to_num(val_X_TS, nan=0)
+                             for val_X_TS in val_X_TS_list]
+            test_X_TS_list = [np.nan_to_num(test_X_TS, nan=0)
+                              for test_X_TS in test_X_TS_list]
+        if data_values["nan_handling"] == "avg":
+            train_X_TS = DataLoader_HRI.impute_nan_with_feature_mean(
+                train_X_TS)
+            val_X_TS_list = [DataLoader_HRI.impute_nan_with_feature_mean(
+                val_X_TS) for val_X_TS in val_X_TS_list]
+            test_X_TS_list = [DataLoader_HRI.impute_nan_with_feature_mean(
+                test_X_TS) for test_X_TS in test_X_TS_list]
+
+        # feature removal based on training parameters
+        test_X_TS_list, new_column_order = self.remove_columns(columns_to_remove=columns_to_remove,
+                                                               data_X=test_X_TS_list, column_order=column_order)
+        val_X_TS_list, new_column_order = self.remove_columns(columns_to_remove=columns_to_remove,
+                                                              data_X=val_X_TS_list, column_order=column_order)
+        print("Feature shape after removal")
+        print(len(features))
+        print(test_X_TS_list[0].shape)
+
+        test_preds = self.get_full_test_preds(
+            model, test_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, model_type="Classic")
+        val_preds = self.get_full_test_preds(
+            model, val_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, model_type="Classic")
+        val_scores = self.get_eval_metrics(
+            val_preds, dataset="val", verbose=True)
+        print("Val Scores:", val_scores)
+        test_preds_df = pd.DataFrame(test_preds).T
+        test_preds_df.to_csv(self.folder + "code/test_predictions/" +
+                             model_name + "_test_preds_trainer.csv")
+
     def train_and_save_best_model(self, model_config: str, name_extension="") -> None:
         """Train a model based on the specified configuration and save it to disk. For final submission.
         params: model_config: str: The name of the model configuration file to use for training.
@@ -753,7 +828,7 @@ if __name__ == '__main__':
     parser.add_argument("--config", type=str, help="Path to the configuration file.",
                         default="configs/config_lstmfcn.json")
     parser.add_argument(
-        "--njobs", type=int, help="Number of cpu cores to use for training.", default=4)
+        "--njobs", type=int, help="Number of cpu cores to use for training.", default=8)
     args = parser.parse_args()
     print(args)
     if args.config:
@@ -773,143 +848,16 @@ if __name__ == '__main__':
     # config = trainer.read_config(pathprefix+"code/"+config_name)
 
     date = datetime.datetime.now().strftime("%Y-%m-%d-%H")
-    study_name = trainer.config["model_type"] + "_" + date
-    study = trainer.optuna_study(
-        n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True)
+
+    # get test predictions for best model
+    trainer.load_and_eval("MiniRocket_2024-06-18-18")
+
+    # study_name = trainer.config["model_type"] + "_" + date
+    # study = trainer.optuna_study(
+    #   n_trials = trainer.config["n_trials"], model_type = trainer.config["model_type"], study_name = study_name, verbose = True)
 
     # feature importance
     # trainer.feature_importance()
 
     # learning curve
     # trainer.learning_curve(iterations_per_samplesize=8, stepsize=3, save_to=pathprefix+"plots/learning_curve.pdf")
-
-    # def optuna_objective_lstm_fcn(self, trial: optuna.Trial) -> tuple:
-    #     """ Optuna objective function for LSTM-FCN model. Optimizes for accuracy and macro f1 score.
-    #     params: trial: optuna.Trial: The optuna trial runnning.
-    #     output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
-    #     """
-    #    ### DATA PRE-PROCESSING ###
-    #     val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
-    #         self.config, trial)
-    #     all_X, all_Y, splits = self.merge_val_train(
-    #         val_X_TS_list=val_X_TS_list, val_Y_TS_list=val_Y_TS_list, train_X_TS=train_X_TS, train_Y_TS_task=train_Y_TS_task)
-    #     tfms = [None, TSClassification()]
-    #     dsets = TSDatasets(all_X, all_Y, splits=splits,
-    #                        inplace=False, tfms=tfms)
-
-    #     ### MODEL SPECIFICATION ###
-    #     model_params = self.config["model_params"]
-    #     batch_tfms = [TSStandardize(by_sample=True)]
-    #     bs = trial.suggest_int("bs", low=model_params["batch_size"]["low"],
-    #                            high=model_params["batch_size"]["high"], step=model_params["batch_size"]["step"])
-    #     dls = TSDataLoaders.from_dsets(
-    #         dsets.train, dsets.valid, bs=bs, batch_tfms=batch_tfms)
-    #     fc_dropout = trial.suggest_float("fc_dropout", low=model_params["fc_dropout"]["low"],
-    #                                      high=model_params["fc_dropout"]["high"], step=model_params["fc_dropout"]["step"])
-    #     rnn_dropout = trial.suggest_float("rnn_dropout", low=model_params["rnn_dropout"]["low"],
-    #                                       high=model_params["rnn_dropout"]["high"], step=model_params["rnn_dropout"]["step"])
-    #     hidden_size = trial.suggest_int("hidden_size", low=model_params["hidden_size"]["low"],
-    #                                     high=model_params["hidden_size"]["high"], step=model_params["hidden_size"]["step"])
-    #     rnn_layers = trial.suggest_int("rnn_layers", low=model_params["rnn_layers"]["low"],
-    #                                    high=model_params["rnn_layers"]["high"], step=model_params["rnn_layers"]["step"])
-    #     bidirectional = trial.suggest_categorical(
-    #         "bidirectional", model_params["bidirectional"])
-
-    #     model = LSTM_FCN(dls.vars, dls.c, dls.len,
-    #                      fc_dropout=fc_dropout, rnn_dropout=rnn_dropout, hidden_size=hidden_size, rnn_layers=rnn_layers, bidirectional=bidirectional)
-    #     loss_func = trial.suggest_categorical("loss", model_params["loss"])
-    #     loss_func = self.loss_dict[loss_func]
-    #     learn = Learner(dls, model, metrics=[
-    #                     accuracy, F1Score()], cbs=[], loss_func=loss_func)
-    #     lr = trial.suggest_float("lr", low=model_params["lr"]["low"],
-    #                              high=model_params["lr"]["high"], log=True)
-    #     # with early stopping
-    #     learn.fit_one_cycle(20, lr)
-    #     preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, intervallength=data_values[
-    #         "intervallength"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms)
-    #     outcomes = self.get_eval_metrics(
-    #         preds=preds, dataset="val", verbose=False)
-    #     return outcomes["accuracy"], outcomes["f1"]
-
-    # def optuna_objective_tst(self, trial: optuna.Trial) -> tuple:
-    #     '''Optuna objective function for TST model. Optimizes for accuracy and macro f1 score.
-    #     params: trial: optuna.Trial: The optuna trial runnning.
-    #     output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
-    #     '''
-    #    ### DATA PRE-PROCESSING ###
-    #     val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
-    #         self.config, trial)
-    #     all_X, all_Y, splits = self.merge_val_train(
-    #         val_X_TS_list=val_X_TS_list, val_Y_TS_list=val_Y_TS_list, train_X_TS=train_X_TS, train_Y_TS_task=train_Y_TS_task)
-    #     tfms = [None, TSClassification()]
-    #     dsets = TSDatasets(all_X, all_Y, splits=splits,
-    #                        inplace=False, tfms=tfms)
-
-    #     ### MODEL SPECIFICATION ###
-    #     model_params = self.config["model_params"]
-    #     batch_tfms = [TSStandardize(by_sample=True)]
-    #     bs = trial.suggest_int("bs", low=model_params["batch_size"]["low"],
-    #                            high=model_params["batch_size"]["high"], step=model_params["batch_size"]["step"])
-    #     dls = TSDataLoaders.from_dsets(
-    #         dsets.train, dsets.valid, bs=bs, batch_tfms=batch_tfms)
-
-    #     dropout = trial.suggest_float("dropout", low=model_params["dropout"]["low"],
-    #                                   high=model_params["dropout"]["high"], step=model_params["dropout"]["step"])
-    #     fc_dropout = trial.suggest_float("fc_dropout", low=model_params["fc_dropout"]["low"],
-    #                                      high=model_params["fc_dropout"]["high"], step=model_params["fc_dropout"]["step"])
-    #     n_layers = trial.suggest_int("n_layers", low=model_params["n_layers"]["low"],
-    #                                  high=model_params["n_layers"]["high"], step=model_params["n_layers"]["step"])
-    #     n_heads = trial.suggest_int("n_heads", low=model_params["n_heads"]["low"],
-    #                                 high=model_params["n_heads"]["high"], step=model_params["n_heads"]["step"])
-    #     d_model = trial.suggest_int("d_model", low=model_params["d_model"]["low"],
-    #                                 high=model_params["d_model"]["high"], step=model_params["d_model"]["step"])
-
-    #     # torch cleanup to prevent memory leaks
-    #     torch.cuda.empty_cache()
-    #     model = TST(dls.vars, dls.c, dls.len, n_layers=n_layers, n_heads=n_heads,
-    #                 d_model=d_model, fc_dropout=fc_dropout, dropout=dropout)
-    #     loss_func = trial.suggest_categorical("loss", model_params["loss"])
-    #     loss_func = self.loss_dict[loss_func]
-    #     learn = Learner(dls, model, metrics=[
-    #                     accuracy, F1Score()], cbs=[], loss_func=loss_func)
-    #     lr = trial.suggest_float("lr", low=model_params["lr"]["low"],
-    #                              high=model_params["lr"]["high"], log=True)
-    #     # with early stopping
-    #     cbs = [EarlyStoppingCallback(monitor="accuracy", patience=3)]
-    #     learn.fit_one_cycle(20, lr, cbs=cbs)
-    #     preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, intervallength=data_values[
-    #         "intervallength"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms)
-    #     outcomes = self.get_eval_metrics(
-    #         preds=preds, dataset="val", verbose=False)
-    #     return outcomes["accuracy"], outcomes["f1"]
-
-    # def optuna_objective_minirocket(self, trial: optuna.Trial) -> tuple:
-    #     '''Optuna objective function for MiniRocket model. Optimizes for accuracy and macro f1 score.
-    #     params: trial: optuna.Trial: The optuna trial runnning.
-    #     output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
-    #     '''
-
-    #     ### DATA PRE-PROCESSING ###
-    #     val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task, data_values = self.data_from_config(
-    #         self.config, trial)
-
-    #     ### MODEL SPECIFICATION ###
-    #     model_params = self.config["model_params"]
-    #     max_dilations_per_kernel = trial.suggest_int(
-    #         "max_dilations_per_kernel", low=model_params["max_dilations_per_kernel"]["low"], high=model_params["max_dilations_per_kernel"]["high"], step=model_params["max_dilations_per_kernel"]["step"])
-    #     n_estimators = trial.suggest_int(
-    #         "n_estimators", low=model_params["n_estimators"]["low"], high=model_params["n_estimators"]["high"], step=model_params["n_estimators"]["step"])
-    #     class_weight = trial.suggest_categorical(
-    #         "class_weight", [None])  # ["balanced", None])
-    #     model = MINIROCKET.MiniRocketVotingClassifier(
-    #         n_estimators=n_estimators, n_jobs=self.n_jobs, max_dilations_per_kernel=max_dilations_per_kernel, class_weight=class_weight)
-
-    #     ### TRAIN ###
-    #     model.fit(train_X_TS, train_Y_TS_task)
-
-    #     ### EVAL ###
-    #     test_preds = self.get_full_test_preds(
-    #         model, val_X_TS_list, data_values["interval_length"], data_values["stride_eval"], model_type="Classic")
-    #     eval_scores = self.get_eval_metrics(
-    #         preds=test_preds, dataset="val", verbose=True)
-    #     return eval_scores["accuracy"], eval_scores["f1"]
