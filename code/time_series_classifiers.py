@@ -184,8 +184,7 @@ class TS_Model_Trainer:
         output: tuple: Tuple containing the validation and training datasets.
         """
         if fold not in range(1, 5):
-            raise ValueError(
-                "Fold must be an integer between 1 and 4, corresponding to the 4 folds of the dataset used for CV.")
+            print("Warning: Training on all data, including validation set.")
         # TODO change variable names from TS to sth generic
         if format == "classic":
             # get summary format for classic models
@@ -787,34 +786,34 @@ class TS_Model_Trainer:
         params: model_config: str: The name of the model configuration file to use for training.
         """
 
-        config = self.read_config(
+        self.config = self.read_config(
             self.folder+"code/best_model_configs/"+model_config)
-        print(config)
+        print(self.config)
 
-        columns_to_remove = self.column_removal_dict[config["data_params"]
+        columns_to_remove = self.column_removal_dict[self.config["data_params"]
                                                      ["columns_to_remove"]]
 
-        if any(s in config["model_type"] for s in ["TST", "LSTM_FCN", "ConvTranPlus", "TransformerLSTMPlus"]):
+        if any(s in self.config["model_type"] for s in ["TST", "LSTM_FCN", "ConvTranPlus", "TransformerLSTMPlus"]):
             return NotImplementedError
 
-        elif any(s in config["model_type"] for s in ["RandomForest", "XGBoost", "MiniRocket"]):
-            model = self.get_classic_learner(config["model_params"])
-            format = "timeseries" if "MiniRocket" in config["model_type"] else "classic"
+        elif any(s in self.config["model_type"] for s in ["RandomForest", "XGBoost", "MiniRocket"]):
+            model = self.get_classic_learner(self.config["model_params"])
+            format = "timeseries" if "MiniRocket" in self.config["model_type"] else "classic"
             val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
-                config["data_params"], format=format, columns_to_remove=columns_to_remove, fold=4)
+                self.config["data_params"], format=format, columns_to_remove=columns_to_remove, fold=fold)
 
             print("Column order used:", column_order)
             model.fit(train_X_TS, train_Y_TS_task)
             if fold in [1, 2, 3, 4]:  # only validate if not trained on all data
                 test_preds = self.get_full_test_preds(
-                    model, val_X_TS_list, config["data_params"]["interval_length"], config["data_params"]["stride_eval"], model_type="Classic")
+                    model, val_X_TS_list, self.config["data_params"]["interval_length"], self.config["data_params"]["stride_eval"], model_type="Classic")
                 eval_scores = self.get_eval_metrics(
                     test_preds, dataset="val", verbose=True)
 
             # save model and column order
-            with open(self.folder+"code/trained_models/"+str(config["model_type"])+name_extension+".pkl", "wb") as f:
+            with open(self.folder+"code/trained_models/"+str(self.config["model_type"])+name_extension+".pkl", "wb") as f:
                 pickle.dump(model, f)
-            with open(self.folder+"code/trained_models/"+str(config["model_type"])+name_extension+"_columns.pkl", "wb") as f:
+            with open(self.folder+"code/trained_models/"+str(self.config["model_type"])+name_extension+"_columns.pkl", "wb") as f:
                 pickle.dump(column_order, f)
 
         else:
@@ -850,20 +849,23 @@ if __name__ == '__main__':
 
     trainer = TS_Model_Trainer(
         folder=pathprefix, n_jobs=n_jobs, config_name=config_name)
-    # config = trainer.read_config(pathprefix+"code/"+config_name)
 
     date = datetime.datetime.now().strftime("%Y-%m-%d-%H")
 
-    # get test predictions for best model
+    ########### run single training ###########
+    trainer.train_and_save_best_model(
+        "MiniRocket_2024-06-19-08.json", name_extension="trained_on_all_data", fold=5)
 
+    ######### get test predictions for best model ###########
     # TASK 2
     # newer: "MiniRocket_2024-06-19-08"
-    trainer.load_and_eval("MiniRocket_2024-06-18-18")
+    # trainer.load_and_eval("MiniRocket_2024-06-18-18")
     # TASK 1
     # trainer.load_and_eval("MiniRocket_2024-06-18-18")
     # TASK 0
     # trainer.load_and_eval("MiniRocket_2024-06-18-18")
 
+    ########### run optuna search ###########
     # study_name = trainer.config["model_type"] + "_" + date
     # study = trainer.optuna_study(
     #   n_trials = trainer.config["n_trials"], model_type = trainer.config["model_type"], study_name = study_name, verbose = True)

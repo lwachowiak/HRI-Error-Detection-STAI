@@ -199,7 +199,7 @@ class DataLoader_HRI:
                 # do next until filename equals the opensmile filename
                 reference_df = next(
                     df for fname, df in opensmile_data if fname == filename)
-                print("names:", opensmile_data[i_test][0], filename)
+                # print("names:", opensmile_data[i_test][0], filename)
                 # print(i_test, filename, len(reference_df))
                 # i_test += 3
             frames_count = len(reference_df)
@@ -219,7 +219,7 @@ class DataLoader_HRI:
                 end_frame = min(
                     math.ceil(end_time * rows_per_second), frames_count)
                 speaker = row['speaker']
-                print(filename, begin_frame, end_frame, len(new_data))
+                # print(filename, begin_frame, end_frame, len(new_data))
                 for j in range(begin_frame, end_frame):
                     new_data[j][speaker] = 1
                     if speaker != "pause":
