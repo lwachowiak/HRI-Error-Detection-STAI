@@ -853,8 +853,8 @@ if __name__ == '__main__':
     date = datetime.datetime.now().strftime("%Y-%m-%d-%H")
 
     ########### run single training ###########
-    trainer.train_and_save_best_model(
-        "MiniRocket_2024-06-19-08.json", name_extension="trained_on_all_data", fold=5)
+    #trainer.train_and_save_best_model(
+    #    "MiniRocket_2024-06-19-08.json", name_extension="trained_on_all_data", fold=5)
 
     ######### get test predictions for best model ###########
     # TASK 2
@@ -866,9 +866,9 @@ if __name__ == '__main__':
     # trainer.load_and_eval("MiniRocket_2024-06-18-18")
 
     ########### run optuna search ###########
-    # study_name = trainer.config["model_type"] + "_" + date
-    # study = trainer.optuna_study(
-    #   n_trials = trainer.config["n_trials"], model_type = trainer.config["model_type"], study_name = study_name, verbose = True)
+    study_name = trainer.config["model_type"] + "_" + date
+    study = trainer.optuna_study(
+       n_trials = trainer.config["n_trials"], model_type = trainer.config["model_type"], study_name = study_name, verbose = True)
 
     # feature importance
     # trainer.feature_importance()
