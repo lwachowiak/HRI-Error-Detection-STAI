@@ -704,25 +704,32 @@ class TS_Model_Trainer:
 
         return np.mean(accuracies), np.mean(f1s)
 
-    def load_and_eval(self, model_name: str) -> None:
+    def load_and_eval(self, config_name: str, saved_model_name: str = "") -> None:
         """
         Load a model from disk and evaluate it on the test data.
         params: model_name: str: The name of the model to load.
         params: save_name: str: The file name to save the test predictions to.
         """
+        if saved_model_name == "":
+            saved_model_name = config_name
+
         # the model
-        with open(self.folder + "code/trained_models/MiniRocketbest_" + model_name + ".pkl", "rb") as f:
+        if "MiniRocket" in config_name:
+            prefix = "code/trained_models/MiniRocketbest_"
+        else:
+            prefix = "code/trained_models/"
+        with open(self.folder + prefix + saved_model_name + ".pkl", "rb") as f:
             model = pickle.load(f)
 
         # features the model was trained on
-        with open(self.folder + "code/trained_models/MiniRocketbest_" + model_name + "_columns.pkl", "rb") as f:
+        with open(self.folder + prefix + saved_model_name + "_columns.pkl", "rb") as f:
             features = pickle.load(f)
 
         # load config to get data preprocessing parameters
         # with open(self.folder + "code/best_model_configs/" + model_name + ".json", "r") as f:
         #    config = json.load(f)
         config = self.read_config(
-            self.folder+"code/best_model_configs/"+model_name+".json")  # sets task automatically
+            self.folder+"code/best_model_configs/"+config_name+".json")  # sets task automatically
         print("Task active:", self.task)
 
         data_values = config["data_params"]
@@ -779,7 +786,7 @@ class TS_Model_Trainer:
         print("Val Scores:", val_scores)
         test_preds_df = pd.DataFrame(test_preds).T
         test_preds_df.to_csv(self.folder + "code/test_predictions/" +
-                             model_name + "_test_preds_trainer.csv")
+                             config_name + "_test_preds_trainer.csv")
 
     def train_and_save_best_model(self, model_config: str, name_extension="", fold: int = 4) -> None:
         """Train a model based on the specified configuration and save it to disk. For final submission.
@@ -852,24 +859,27 @@ if __name__ == '__main__':
 
     date = datetime.datetime.now().strftime("%Y-%m-%d-%H")
 
-    ########### run single training ###########
-    #trainer.train_and_save_best_model(
+    ########### uncomment to run a single training ###########
+    # trainer.train_and_save_best_model(
     #    "MiniRocket_2024-06-19-08.json", name_extension="trained_on_all_data", fold=5)
 
     ######### get test predictions for best model ###########
     # TASK 2
     # newer: "MiniRocket_2024-06-19-08"
     # trainer.load_and_eval("MiniRocket_2024-06-18-18")
+    # trainer.load_and_eval("MiniRocket_2024-06-19-08", "trained_on_all_data")
+    trainer.load_and_eval("RandomForest_2024-06-05-17")
     # TASK 1
-    # trainer.load_and_eval("MiniRocket_2024-06-18-18")
+    # trainer.load_and_eval("MiniRocket_2024-06-20-19")
     # TASK 0
-    # trainer.load_and_eval("MiniRocket_2024-06-18-18")
+    # trainer.load_and_eval("MiniRocket_2024-06-21-18")
 
-    ########### run optuna search ###########
-    study_name = trainer.config["model_type"] + "_" + date
-    study = trainer.optuna_study(
-       n_trials = trainer.config["n_trials"], model_type = trainer.config["model_type"], study_name = study_name, verbose = True)
+    ########### uncomment to run optuna search ###########
+    # study_name = trainer.config["model_type"] + "_" + date
+    # study = trainer.optuna_study(
+    #   n_trials = trainer.config["n_trials"], model_type = trainer.config["model_type"], study_name = study_name, verbose = True)
 
+    # TODO: move to analysis script
     # feature importance
     # trainer.feature_importance()
 

@@ -1,10 +1,12 @@
 # HRI Error Detection: STAI Team Contribution
 
 ## Usage
-To get the test predictions, time_series_classifiers.py with the current settings. 
+To get the test predictions, use time_series_classifiers.py and specify the model you want to get predictions from. 
 
-time_series_classifiers.py: Optuna search for models and save the best one; use models for inference
-data_loader.py: preprocessing & loading of datasets
+Moreover the files can be used for: 
+- time_series_classifiers.py: Optuna search for models and save the best one; use models for inference
+- data_loader.py: preprocessing & loading of datasets
+- get_metrics.py: official comeptition metrics script 
 
 ## Dependencies
 We used Python 3.11.9 All the python packages we used can be installed from the requirements.txt. 

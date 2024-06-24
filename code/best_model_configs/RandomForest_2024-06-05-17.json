@@ -11,7 +11,8 @@
         "nan_handling": "zeros",
         "oversampling_rate": 0.0,
         "undersampling_rate": 0.4,
-        "summary": "mean"
+        "summary": "mean",
+        "rescaling": "none"
     },
     "model_params": {
         "n_estimators": 100,
