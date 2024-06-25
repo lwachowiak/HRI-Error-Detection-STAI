@@ -355,7 +355,7 @@ class DataLoader_HRI:
 
         return merged_df.reset_index()
 
-    def get_summary_format(self, interval_length, stride_train, stride_eval, fps=100, label_creation="full", summary='mean', oversampling_rate=0, undersampling_rate=0, task=2, fold: int = 4, rescaling=None) -> tuple:
+    def get_summary_format(self, interval_length, stride_train, stride_eval, fps=100, label_creation="full", summary='mean', oversampling_rate=0, undersampling_rate=0, task=2, fold: int = 4, rescaling: str = None, start_padding: bool = False) -> tuple:
         """
         Convert the data to summary form. Split the data from the dfs into intervals of length interval_length with stride stride.
         Split takes place of adjacent frames of the same session.
@@ -374,7 +374,7 @@ class DataLoader_HRI:
         """
 
         val_X_TS, val_Y_summary_list, train_X_TS, train_Y_summary, column_order = self.get_timeseries_format(
-            interval_length=interval_length, stride_train=stride_train, stride_eval=stride_eval, fps=fps, label_creation=label_creation, oversampling_rate=oversampling_rate, undersampling_rate=undersampling_rate, task=task, fold=fold, rescaling=rescaling)
+            interval_length=interval_length, stride_train=stride_train, stride_eval=stride_eval, fps=fps, label_creation=label_creation, oversampling_rate=oversampling_rate, undersampling_rate=undersampling_rate, task=task, fold=fold, rescaling=rescaling, start_padding=start_padding)
 
         if summary not in ['mean', 'max', 'min', 'median']:
             raise ValueError(
@@ -408,7 +408,7 @@ class DataLoader_HRI:
 
         return val_X_summary_list, val_Y_summary_list, train_X_summary, train_Y_summary, column_order
 
-    def get_timeseries_format_test_data(self, interval_length: int, stride_eval: int, fps: int = 100, verbose: bool = False, label_creation: str = "full", task: int = 2, rescaling=None) -> tuple:
+    def get_timeseries_format_test_data(self, interval_length: int, stride_eval: int, fps: int = 100, verbose: bool = False, label_creation: str = "full", task: int = 2, rescaling: str = "none", start_padding: bool = False) -> tuple:
         """
         Convert the data to timeseries form. Split the data from the dfs into intervals of length interval_length with stride stride.
         Split takes place of adjacent frames of the same session.
@@ -418,7 +418,8 @@ class DataLoader_HRI:
         :param fps: The desired fps of the data. Original is 100 fps
         :param verbose: Print debug information
         :param label_creation: Either 'full' or 'stride_eval' or 'stride_train'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
-        :param rescaling: The rescaling method. One of 'standardization', 'normalization', None
+        :param rescaling: The rescaling method. One of 'standardization', 'normalization', 'none'
+        :param start_padding: If True, the data is padded at the start with 0s, and the actual data starting for the last stride elements
         :return: The data in timeseries format and the column order for feature importance analysis
         """
         if rescaling not in ['standardization', 'normalization', 'none']:
@@ -432,7 +433,6 @@ class DataLoader_HRI:
             print("Test sessions: ", len(self.test_X["session"].unique()))
             print(self.test_X["session"].unique())
 
-        num_features = self.test_X.shape[1]
         test_Y_TS_list = []
         test_X_TS_list = []
 
@@ -462,11 +462,21 @@ class DataLoader_HRI:
                 # per column
                 session_df = (session_df - session_df.min()) / \
                     (session_df.max() - session_df.min())
+            if start_padding:
+                # add interval_length - stride_eval rows of zeros at the start
+                padding = np.zeros(
+                    (interval_length-stride_eval, session_df.shape[1]))
+                session_df = pd.concat(
+                    [pd.DataFrame(padding, columns=session_df.columns), session_df])
+                # add the same amount of padding to the labels
+                padding = np.zeros(
+                    (interval_length-stride_eval, session_labels.shape[1]), dtype=int)
+                session_labels = pd.concat(
+                    [pd.DataFrame(padding, columns=session_labels.columns), session_labels])
             if len(self.test_Y) > 0:
                 session_labels = self.test_Y[self.test_Y['session'] == session]
             for i in range(0, len(session_df), stride_eval):
                 if i + interval_length > len(session_df):
-                    # TODO IMPLEMENT PADDING
                     break
                 interval = session_df.iloc[i:i+interval_length].values.T
                 if fps < 100:
@@ -493,7 +503,7 @@ class DataLoader_HRI:
 
         return test_X_TS_list, test_Y_TS_list
 
-    def get_timeseries_format(self, interval_length: int, stride_train: int, stride_eval: int, fps: int = 100, verbose: bool = False, label_creation: str = "full", oversampling_rate: float = 0, undersampling_rate: float = 0, task: int = 2, fold: int = 4, rescaling=None) -> tuple:
+    def get_timeseries_format(self, interval_length: int, stride_train: int, stride_eval: int, fps: int = 100, verbose: bool = False, label_creation: str = "full", oversampling_rate: float = 0, undersampling_rate: float = 0, task: int = 2, fold: int = 4, rescaling=None, start_padding: bool = False) -> tuple:
         """
         Convert the data to timeseries form. Split the data from the dfs into intervals of length interval_length with stride stride.
         Split takes place of adjacent frames of the same session.
@@ -508,6 +518,7 @@ class DataLoader_HRI:
         :param task: The task to load the data for. 1 for UserAwkwardness, 2 for RobotMistake, 3 for InteractionRupture
         :param fold: Fold which the validation data belongs to
         :param rescaling: The rescaling method. One of 'standardization', 'normalization', None
+        :param start_padding: If True, the data is padded at the start with 0s, and the actual data starting for the last stride elements
         :return: The data in timeseries format and the column order for feature importance analysis
         """
         if rescaling not in ['standardization', 'normalization', 'none']:
@@ -538,18 +549,18 @@ class DataLoader_HRI:
             print(self.train_X["session"].unique())
             print(self.val_X["session"].unique())
 
-        num_features = self.train_X.shape[1]
         val_Y_TS_list = []
         val_X_TS_list = []
         train_Y_TS = []
         train_X_TS = []
 
-        cut_length = 10  # drop the last x rows to avoid NaNs TODO think about this
+        cut_length = 10  # drop the last x rows to avoid NaNs
 
         if label_creation not in ['full', 'stride_eval', 'stride_train']:
             raise ValueError(
                 "label_creation must be one of 'full' or 'stride'")
 
+        ##### TRAIN DATA #####
         # Split the data into intervals, if the session changes, start a new interval
         for session in self.train_X['session'].unique():
             session_df = self.train_X[self.train_X['session'] == session]
@@ -569,9 +580,19 @@ class DataLoader_HRI:
                 session_df = (session_df - session_df.min()) / \
                     (session_df.max() - session_df.min())
             session_labels = self.train_Y[self.train_Y['session'] == session]
+            if start_padding:
+                # add interval_length - stride_train rows of zeros at the start
+                padding = np.zeros(
+                    (interval_length-stride_train, session_df.shape[1]))
+                session_df = pd.concat(
+                    [pd.DataFrame(padding, columns=session_df.columns), session_df])
+                # add the same amount of padding to the labels
+                padding = np.zeros(
+                    (interval_length-stride_train, session_labels.shape[1]), dtype=int)
+                session_labels = pd.concat(
+                    [pd.DataFrame(padding, columns=session_labels.columns), session_labels])
             for i in range(0, len(session_df), stride_train):
                 if i + interval_length > len(session_df):
-                    # TODO IMPLEMENT PADDING (right now padding is done in eval which might also be ok)
                     break
                 interval = session_df.iloc[i:i+interval_length].values.T
                 if fps < 100:
@@ -596,6 +617,7 @@ class DataLoader_HRI:
                 train_X_TS.append(interval)
                 train_Y_TS.append(majority_labels)
 
+        ##### VALIDATION DATA #####
         # for validation data, stride is equal to interval_length
         for session in self.val_X['session'].unique():
             val_X_TS = []
@@ -617,9 +639,19 @@ class DataLoader_HRI:
                 session_df = (session_df - session_df.min()) / \
                     (session_df.max() - session_df.min())
             session_labels = self.val_Y[self.val_Y['session'] == session]
+            if start_padding:
+                # add interval_length - stride_eval rows of zeros at the start
+                padding = np.zeros(
+                    (interval_length-stride_eval, session_df.shape[1]))
+                session_df = pd.concat(
+                    [pd.DataFrame(padding, columns=session_df.columns), session_df])
+                # add the same amount of padding to the labels
+                padding = np.zeros(
+                    (interval_length-stride_eval, session_labels.shape[1]), dtype=int)
+                session_labels = pd.concat(
+                    [pd.DataFrame(padding, columns=session_labels.columns), session_labels])
             for i in range(0, len(session_df), stride_eval):  # this was interval_length before
                 if i + interval_length > len(session_df):
-                    # TODO POTENTIALLY IMPLEMENT PADDING
                     break
                 interval = session_df.iloc[i:i+interval_length].values.T
                 if fps < 100:

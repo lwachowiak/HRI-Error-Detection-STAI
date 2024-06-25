@@ -100,7 +100,7 @@ class TS_Model_Trainer:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 
-    def get_full_test_preds(self, model: object, val_X_TS_list: list, interval_length: int, stride_eval: int, model_type: str, batch_tfms: list = None) -> list:
+    def get_full_test_preds(self, model: object, val_X_TS_list: list, interval_length: int, stride_eval: int, model_type: str, batch_tfms: list = None, start_padding: bool = False) -> list:
         '''Get full test predictions by repeating the predictions based on interval_length and stride_eval.
         :param model: The model to evaluate.
         :param val_X_TS_list: List of validation/test data per session.
@@ -126,8 +126,8 @@ class TS_Model_Trainer:
             # for each sample in the session, repeat the prediction based on interval_length and stride_eval
             processed_preds = []
             for i, pr in enumerate(pred):
-                if i == 0:
-                    # first prediction, so append it interval_length times
+                if i == 0 and not start_padding:
+                    # first prediction, so append it interval_length times. if start_padding was used, the first prediction only pertains to stride elements
                     processed_preds.extend([pr]*interval_length)
                 else:
                     # all other predictions are appended stride_eval times
@@ -199,7 +199,8 @@ class TS_Model_Trainer:
                 undersampling_rate=data_values["undersampling_rate"],
                 task=self.task,
                 fold=fold,
-                rescaling=data_values["rescaling"]
+                rescaling=data_values["rescaling"],
+                start_paddding=data_values["start_padding"]
 
             )
 
@@ -215,7 +216,8 @@ class TS_Model_Trainer:
                 undersampling_rate=data_values["undersampling_rate"],
                 task=self.task,
                 fold=fold,
-                rescaling=data_values["rescaling"]
+                rescaling=data_values["rescaling"],
+                start_padding=data_values["start_padding"]
             )
 
         # nan handling
@@ -268,6 +270,8 @@ class TS_Model_Trainer:
             "undersampling_rate", low=data_params["undersampling_rate"]["low"], high=data_params["undersampling_rate"]["high"], step=data_params["undersampling_rate"]["step"])
         data_values["rescaling"] = trial.suggest_categorical(
             "rescaling", data_params["rescaling"])
+        data_values["start_padding"] = trial.suggest_categorical(
+            "start_padding", data_params["start_padding"])
         if "summary" in data_params:
             data_values["summary"] = trial.suggest_categorical(
                 "summary", data_params["summary"])
@@ -656,7 +660,7 @@ class TS_Model_Trainer:
 
             ### EVALUATION ###
             preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, interval_length=data_values[
-                "interval_length"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms)
+                "interval_length"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms, start_padding=data_values["start_padding"])
             outcomes = self.get_eval_metrics(
                 preds=preds, dataset="val", verbose=False)
 
@@ -692,7 +696,7 @@ class TS_Model_Trainer:
             model.fit(train_X_TS, train_Y_TS_task)
 
             test_preds = self.get_full_test_preds(
-                model, val_X_TS_list, data_values["interval_length"], data_values["stride_eval"], model_type="Classic")
+                model, val_X_TS_list, data_values["interval_length"], data_values["stride_eval"], model_type="Classic", start_padding=data_values["start_padding"])
 
             eval_scores = self.get_eval_metrics(
                 test_preds, dataset="val", verbose=True)
@@ -778,9 +782,9 @@ class TS_Model_Trainer:
         print(test_X_TS_list[0].shape)
 
         test_preds = self.get_full_test_preds(
-            model, test_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, model_type="Classic")
+            model, test_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, model_type="Classic", start_padding=data_values["start_padding"])
         val_preds = self.get_full_test_preds(
-            model, val_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, model_type="Classic")
+            model, val_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, model_type="Classic", start_padding=data_values["start_padding"])
         val_scores = self.get_eval_metrics(
             val_preds, dataset="val", verbose=True)
         print("Val Scores:", val_scores)
@@ -813,9 +817,10 @@ class TS_Model_Trainer:
             model.fit(train_X_TS, train_Y_TS_task)
             if fold in [1, 2, 3, 4]:  # only validate if not trained on all data
                 test_preds = self.get_full_test_preds(
-                    model, val_X_TS_list, self.config["data_params"]["interval_length"], self.config["data_params"]["stride_eval"], model_type="Classic")
+                    model, val_X_TS_list, self.config["data_params"]["interval_length"], self.config["data_params"]["stride_eval"], model_type="Classic", start_padding=self.config["data_params"]["start_padding"])
                 eval_scores = self.get_eval_metrics(
                     test_preds, dataset="val", verbose=True)
+                print("Val Scores:", eval_scores)
 
             # save model and column order
             if str(self.config["model_type"]) not in name_extension:
@@ -829,10 +834,6 @@ class TS_Model_Trainer:
         else:
             raise Exception("Model type not recognized.")
 
-    # TODO
-    def create_meta_learner():
-        pass
-
 
 if __name__ == '__main__':
     my_setup(optuna)
@@ -840,7 +841,7 @@ if __name__ == '__main__':
     # parse arguments (config file, n_jobs)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, help="Path to the configuration file.",
-                        default="configs/config_lstmfcn.json")
+                        default="configs/config_minirocket.json")
     parser.add_argument(
         "--njobs", type=int, help="Number of cpu cores to use for training.", default=8)
     args = parser.parse_args()
@@ -878,9 +879,9 @@ if __name__ == '__main__':
     # trainer.load_and_eval("MiniRocket_2024-06-21-18")
 
     ########### uncomment to run optuna search ###########
-    # study_name = trainer.config["model_type"] + "_" + date
-    # study = trainer.optuna_study(
-    #   n_trials = trainer.config["n_trials"], model_type = trainer.config["model_type"], study_name = study_name, verbose = True)
+    study_name = trainer.config["model_type"] + "_" + date
+    study = trainer.optuna_study(
+        n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True)
 
     # TODO: move to analysis script
     # feature importance
