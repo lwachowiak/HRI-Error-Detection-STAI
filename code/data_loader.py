@@ -37,18 +37,12 @@ class DataLoader_HRI:
                 lambda x: int(x)+1)  # Convert frame_id to integer and add one
             df.drop(columns=['frame_id'], inplace=True)
 
-        # for filename, df in opensmile_data:
-        #    # Convert index to frame number
-        #    df['frame'] = (df.index // (100 / 30)).astype(int)+1
-
         for filename, df in label_data:
             # add column with session number
             df.insert(1, 'session', filename.split('.')[0])
 
         speaker_data = self.process_speaker_data(
             speaker_data, label_data, opensmile_data=opensmile_data)
-        # for filename, df in speaker_data:
-        #    df["frame"] = (df.index // (100 / 30)).astype(int)+1
 
         # print the head of the first three dataframes
         if self.verbose:
@@ -756,70 +750,3 @@ class DataLoader_HRI:
         if sessions_val is not None:
             self.val_X = self.val_X[self.val_X['session'].isin(sessions_val)]
             self.val_Y = self.val_Y[self.val_Y['session'].isin(sessions_val)]
-
-
-if __name__ == "__main__":
-    data_loader = DataLoader_HRI(verbose=True)
-    print("\n\n\nData Loaded")
-
-    val_X_ts, val_Y_ts, train_X_ts, train_Y_ts = data_loader.get_timeseries_format(
-        interval_length=100, stride_train=100, stride_eval=100, fps=100, label_creation="full")
-    print("TS")
-    print(len(val_X_ts), len(val_Y_ts), len(train_X_ts), len(train_Y_ts))
-    print(train_X_ts.shape, train_Y_ts.shape)
-
-    X_val, Y_val, X_train, Y_train = data_loader.get_summary_format(
-        interval_length=100, stride_train=100, stride_eval=100, fps=100, label_creation="full", summary='mean')
-
-    print("X")
-    print(len(X_val), len(Y_val), len(X_train), len(Y_train))
-    print(X_train.shape, Y_train.shape)
-
-    print(X_val[0].shape)
-    print(Y_val[0].shape)
-    print(X_val[0])
-
-   # TODO remove
-
-    # def load_labels_old(self, data_dir, expand, rows_per_second=100):
-    #     '''
-    #     load the labels from the data_dir into a list of dataframes
-    #     '''
-    #     data_frames = []
-    #     for filename in sorted(os.listdir(data_dir), key=self.extract_file_number):
-    #         if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
-    #             df = pd.read_csv(os.path.join(data_dir, filename))
-    #             # print(filename, len(df))
-    #             # change being/end time to frame number, expanding one row to multiple rows based on the duration
-    #             if expand:
-    #                 new_data = []
-    #                 frame_counter = 1
-    #                 for _, row in df.iterrows():
-    #                     begin_time = row['Begin Time - ss.msec']
-    #                     end_time = row['End Time - ss.msec']
-    #                     total_intervals = math.ceil(
-    #                         (end_time - begin_time) * rows_per_second)  # this is the number of frames for the interval
-    #                     # print(filename, begin_time, end_time, total_intervals, _) # DEBUG, TODO
-
-    #                     # Generating new time intervals
-    #                     # Exclude the last point to avoid overlap
-    #                     # new_times = np.linspace(
-    #                     #    begin_time, end_time, total_intervals + 1)[:-1]
-    #                     # Creating new rows for each time interval
-    #                     for t in range(total_intervals):
-    #                         new_data.append({
-    #                             "frame": frame_counter,
-    #                             "Duration - ss.msec": 1 / rows_per_second,
-    #                             "Begin Time - ss.msec": begin_time + t / rows_per_second,
-    #                             "UserAwkwardness": int(row['UserAwkwardness']),
-    #                             "RobotMistake": int(row['RobotMistake']),
-    #                             "InteractionRupture": int(row['InteractionRupture'])
-    #                         })
-    #                         frame_counter += 1
-
-    #                 # Create DataFrame from the list of dictionaries
-    #                 df = pd.DataFrame(new_data)
-    #                 # print(len(df))
-    #             # add session number and df
-    #             data_frames.append((filename, df))
-    #     return data_frames

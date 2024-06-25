@@ -365,15 +365,15 @@ class TS_Model_Trainer:
         # fig = optuna.visualization.plot_optimization_history(
         #    study, target=lambda t: t.values[target_index], target_name=target_name)
         # wandb.log({"optuna_optimization_history_"+target_name: fig})
+        fig = optuna.visualization.plot_parallel_coordinate(
+            study, target=lambda t: t.values[target_index], target_name=target_name)
+        wandb.log({"optuna_parallel_coordinate_"+target_name: fig})
         fig = optuna.visualization.plot_param_importances(
             study, target=lambda t: t.values[target_index], target_name=target_name)
         wandb.log({"optuna_param_importances_"+target_name: fig})
         fig = optuna.visualization.plot_slice(
             study, target=lambda t: t.values[target_index], target_name=target_name)
         wandb.log({"optuna_slice_"+target_name: fig})
-        fig = optuna.visualization.plot_parallel_coordinate(
-            study, target=lambda t: t.values[target_index], target_name=target_name)
-        wandb.log({"optuna_parallel_coordinate_"+target_name: fig})
 
     def remove_columns(self, columns_to_remove: list, data_X: np.array, column_order: list) -> tuple:
         '''Remove columns from the data.
@@ -818,9 +818,12 @@ class TS_Model_Trainer:
                     test_preds, dataset="val", verbose=True)
 
             # save model and column order
-            with open(self.folder+"code/trained_models/"+str(self.config["model_type"])+name_extension+".pkl", "wb") as f:
+            if str(self.config["model_type"]) not in name_extension:
+                name_extension = str(
+                    self.config["model_type"]) + name_extension
+            with open(self.folder+"code/trained_models/"+name_extension+".pkl", "wb") as f:
                 pickle.dump(model, f)
-            with open(self.folder+"code/trained_models/"+str(self.config["model_type"])+name_extension+"_columns.pkl", "wb") as f:
+            with open(self.folder+"code/trained_models/"+name_extension+"_columns.pkl", "wb") as f:
                 pickle.dump(column_order, f)
 
         else:
@@ -868,7 +871,7 @@ if __name__ == '__main__':
     # newer: "MiniRocket_2024-06-19-08"
     # trainer.load_and_eval("MiniRocket_2024-06-18-18")
     # trainer.load_and_eval("MiniRocket_2024-06-19-08", "trained_on_all_data")
-    trainer.load_and_eval("RandomForest_2024-06-05-17")
+    # trainer.load_and_eval("RandomForest_2024-06-05-17")
     # TASK 1
     # trainer.load_and_eval("MiniRocket_2024-06-20-19")
     # TASK 0
