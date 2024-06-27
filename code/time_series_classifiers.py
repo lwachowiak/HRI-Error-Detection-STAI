@@ -400,6 +400,7 @@ class TS_Model_Trainer:
             removed_col in col for removed_col in columns_to_remove)]
         return new_data_X, new_column_order
 
+    # TODO: rework or remove
     def feature_importance(self, config: str) -> None:
         '''Get feature importance values by leaving out the specified features and calculating the change in the performance'''
         feature_importance = {}
@@ -411,7 +412,7 @@ class TS_Model_Trainer:
         for removed_cols in feature_search:
             interval_length = 900
             stride_eval = 500
-            val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
+            val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data.get_timeseries_format(
                 interval_length=interval_length, stride_train=400, stride_eval=stride_eval, verbose=False, fps=50, label_creation="stride_eval")
             # remove columns ending, columns are the 2nd dimension
             train_X_TS, _ = self.remove_columns(
@@ -454,17 +455,17 @@ class TS_Model_Trainer:
         for i in range(max_sessions, 0, -stepsize):
             scores_iter = []
             # generate session strings, e.g. "train_0, train_1, ..."
-            sessions_train = [f"train_{j}" for j in range(i)]
+            sessions_train = [f"{j}_train" for j in range(i)]
             self.data.limit_to_sessions(sessions_train=sessions_train)
             print("Training on", i, "sessions...")
             for j in range(iterations_per_samplesize):
                 # dataprep
-                val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data_from_config(
+                val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
                     self.config["data_params"], "timeseries", columns_to_remove, fold=4)
                 print("Train X shape", train_X_TS.shape)
                 print("Val X shape", val_X_TS_list[0].shape)
                 # train
-                model.fit(train_X_TS, train_Y_TS[:, self.task])
+                model.fit(train_X_TS, train_Y_TS_task)
                 # eval
                 test_preds = self.get_full_test_preds(
                     model, val_X_TS_list, interval_length=self.config["data_params"]["interval_length"], stride_eval=self.config["data_params"]["stride_eval"], model_type="Classic", start_padding=self.config["data_params"]["start_padding"])
