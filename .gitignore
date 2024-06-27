@@ -8,4 +8,5 @@ wandb/
 *.pyc
 *.ipynb
 models/
+old/
 .DS_Store

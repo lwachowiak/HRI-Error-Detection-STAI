@@ -718,7 +718,7 @@ class TS_Model_Trainer:
 
         # the model
         if "MiniRocket" in config_name:
-            prefix = "code/trained_models/MiniRocketbest_"
+            prefix = "code/trained_models/best_"
         else:
             prefix = "code/trained_models/"
         with open(self.folder + prefix + saved_model_name + ".pkl", "rb") as f:
@@ -840,7 +840,7 @@ if __name__ == '__main__':
     # parse arguments (config file, n_jobs)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, help="Path to the configuration file.",
-                        default="configs/config_minirocket.json")
+                        default="search_configs/config_minirocket.json")
     parser.add_argument(
         "--njobs", type=int, help="Number of cpu cores to use for training.", default=8)
     args = parser.parse_args()
@@ -867,15 +867,15 @@ if __name__ == '__main__':
     #    "MiniRocket_2024-06-19-08.json", name_extension="trained_on_all_data", fold=5)
 
     ######### get test predictions for best model ###########
+    # TASK 0
+    # trainer.load_and_eval("MiniRocket_UA-Submission")
+    # TASK 1
+    # trainer.load_and_eval("MiniRocket_RM-Submission")
     # TASK 2
     # newer: "MiniRocket_2024-06-19-08"
-    # trainer.load_and_eval("MiniRocket_2024-06-18-18")
-    # trainer.load_and_eval("MiniRocket_2024-06-19-08", "trained_on_all_data")
+    # trainer.load_and_eval("MiniRocket_IR-Submission1")
+    # trainer.load_and_eval("MiniRocket_IR-Submission2")
     # trainer.load_and_eval("RandomForest_2024-06-05-17")
-    # TASK 1
-    # trainer.load_and_eval("MiniRocket_2024-06-20-19")
-    # TASK 0
-    # trainer.load_and_eval("MiniRocket_2024-06-21-18")
 
     ########### uncomment to run optuna search ###########
     study_name = trainer.config["model_type"] + "_" + date
@@ -887,5 +887,5 @@ if __name__ == '__main__':
     # trainer.feature_importance()
 
     # learning curve
-    trainer.learning_curve("best_model_configs/MiniRocket_2024-06-18-18.json",
+    trainer.learning_curve("best_model_configs/MiniRocket_2024-06-25-17.json",
                            iterations_per_samplesize=8, stepsize=3, save_to=pathprefix+"plots/learning_curve.pdf")
