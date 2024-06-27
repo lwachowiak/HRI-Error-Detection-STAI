@@ -775,10 +775,10 @@ class DataLoader_HRI:
         :param sessions_val: The sessions to include in the validation data
         """
         if sessions_train is not None:
-            self.train_X = self.train_X[self.train_X['session'].isin(
+            self.all_X = self.all_X[self.all_X['session'].isin(
                 sessions_train)]
-            self.train_Y = self.train_Y[self.train_Y['session'].isin(
+            self.all_Y = self.all_Y[self.all_Y['session'].isin(
                 sessions_train)]
         if sessions_val is not None:
-            self.val_X = self.val_X[self.val_X['session'].isin(sessions_val)]
-            self.val_Y = self.val_Y[self.val_Y['session'].isin(sessions_val)]
+            self.all_X = self.all_X[self.all_X['session'].isin(sessions_val)]
+            self.all_Y = self.all_Y[self.all_Y['session'].isin(sessions_val)]

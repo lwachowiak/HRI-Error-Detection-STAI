@@ -94,7 +94,7 @@ class TS_Model_Trainer:
                 self.task = config["task"]
                 return config
         except FileNotFoundError:
-            print("\nError: The configuration file was not found.")
+            print("\nError: The configuration", file_path, "was not found.")
         except json.JSONDecodeError:
             print("\nError: The configuration file is not in proper JSON format.")
         except Exception as e:
@@ -400,8 +400,7 @@ class TS_Model_Trainer:
             removed_col in col for removed_col in columns_to_remove)]
         return new_data_X, new_column_order
 
-    # TODO: Move this out to analysis and adapt to include other models?
-    def feature_importance(self):
+    def feature_importance(self, config: str) -> None:
         '''Get feature importance values by leaving out the specified features and calculating the change in the performance'''
         feature_importance = {}
         model = MINIROCKET.MiniRocketVotingClassifier(
@@ -433,42 +432,42 @@ class TS_Model_Trainer:
             print("Removed:", key)
             print(value["accuracy"], value["f1"], "\n")
 
-    # TODO: Move this out to analysis and adapt to include other models?
-    def learning_curve(self, iterations_per_samplesize: int, stepsize: int, save_to: str) -> None:
+    def learning_curve(self, config: str, iterations_per_samplesize: int, stepsize: int, save_to: str) -> None:
         '''Get learning curve of model.
+        :param config: The configuration file to use to create the model.
         :param iterations_per_samplesize: Number of iterations per sample size to create an average score.
         :param stepsize: Step size for the sample sizes used for learning curve.
+        :param save_to: The path to save the learning curve plot to.
         '''
         print("Learning curve run started with stepsize", stepsize, "and",
               iterations_per_samplesize, "iterations per sample size.")
         scores = []
-        model = MINIROCKET.MiniRocketVotingClassifier(
-            n_estimators=12, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
-        interval_length = 800
-        stride_eval = 300
-        stride_train = 300
-        fps = 25
-        label_creation = "stride_eval"
-        columns_to_remove = ["openpose"]
-        max_sessions = len(self.data.train_X["session"].unique())
+
+        # load config and model
+        self.config = self.read_config(self.folder+"code/"+config)
+        columns_to_remove = self.column_removal_dict[self.config["data_params"]
+                                                     ["columns_to_remove"]]
+        model = self.get_classic_learner(self.config["model_params"])
+
+        max_sessions = 55  # number of training files
         # start with all training data and remove one session per iteration
         for i in range(max_sessions, 0, -stepsize):
             scores_iter = []
-            self.data.limit_to_sessions(sessions_train=range(0, i))
+            # generate session strings, e.g. "train_0, train_1, ..."
+            sessions_train = [f"train_{j}" for j in range(i)]
+            self.data.limit_to_sessions(sessions_train=sessions_train)
             print("Training on", i, "sessions...")
             for j in range(iterations_per_samplesize):
                 # dataprep
-                val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(
-                    interval_length=interval_length, stride_train=stride_train, stride_eval=stride_eval, verbose=False, fps=fps, label_creation=label_creation)
-                train_X_TS, _ = self.remove_columns(
-                    columns_to_remove=columns_to_remove, data_X=train_X_TS, column_order=column_order)
-                val_X_TS_list_new, _ = self.remove_columns(
-                    columns_to_remove=columns_to_remove, data_X=val_X_TS_list, column_order=column_order)
+                val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data_from_config(
+                    self.config["data_params"], "timeseries", columns_to_remove, fold=4)
+                print("Train X shape", train_X_TS.shape)
+                print("Val X shape", val_X_TS_list[0].shape)
                 # train
                 model.fit(train_X_TS, train_Y_TS[:, self.task])
                 # eval
                 test_preds = self.get_full_test_preds(
-                    model, val_X_TS_list_new, interval_length, stride_eval)
+                    model, val_X_TS_list, interval_length=self.config["data_params"]["interval_length"], stride_eval=self.config["data_params"]["stride_eval"], model_type="Classic", start_padding=self.config["data_params"]["start_padding"])
                 eval_scores = self.get_eval_metrics(
                     preds=test_preds, dataset="val", verbose=False)
                 scores_iter.append(eval_scores["accuracy"])
@@ -880,12 +879,13 @@ if __name__ == '__main__':
 
     ########### uncomment to run optuna search ###########
     study_name = trainer.config["model_type"] + "_" + date
-    study = trainer.optuna_study(
-        n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True)
+    # study = trainer.optuna_study(
+    #    n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True)
 
     # TODO: move to analysis script
     # feature importance
     # trainer.feature_importance()
 
     # learning curve
-    # trainer.learning_curve(iterations_per_samplesize=8, stepsize=3, save_to=pathprefix+"plots/learning_curve.pdf")
+    trainer.learning_curve("best_model_configs/MiniRocket_2024-06-18-18.json",
+                           iterations_per_samplesize=8, stepsize=3, save_to=pathprefix+"plots/learning_curve.pdf")
