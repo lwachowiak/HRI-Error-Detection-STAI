@@ -483,8 +483,8 @@ class TS_Model_Trainer:
 
         # plot learning curve with standard deviation
         start_step = max_sessions % stepsize
-        plt.plot(range(start_step, max_sessions, stepsize), scores_mean)
-        plt.fill_between(range(0, max_sessions, stepsize), scores_mean -
+        plt.plot(range(start_step, max_sessions+1, stepsize), scores_mean)
+        plt.fill_between(range(0, max_sessions+1, stepsize), scores_mean -
                          np.std(scores, axis=1), scores_mean + np.std(scores, axis=1), alpha=0.2)
         plt.xlabel("Number of sessions in training data")
         plt.ylabel("Accuracy")
@@ -889,4 +889,4 @@ if __name__ == '__main__':
 
     # learning curve
     trainer.learning_curve("best_model_configs/MiniRocket_2024-06-25-17.json",
-                           iterations_per_samplesize=8, stepsize=3, save_to=pathprefix+"plots/learning_curve.pdf")
+                           iterations_per_samplesize=10, stepsize=3, save_to=pathprefix+"plots/learning_curve.pdf")
