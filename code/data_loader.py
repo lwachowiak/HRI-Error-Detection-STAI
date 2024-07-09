@@ -91,9 +91,6 @@ class DataLoader_HRI:
         if len(self.test_Y) > 0:
             self.test_Y = pd.concat(self.test_Y)
 
-        # print("\n\nNumber of rows in merged dataframes: Train_X:", len(
-        #    self.train_X), "Train_Y:", len(self.train_Y), "Val_X:", len(self.val_X), "Val_Y:", len(self.val_Y))
-
         # COLUMN CLEANUP
         # remove trailing whitespace from column names
         self.all_X.columns = self.all_X.columns.str.strip()
@@ -263,37 +260,7 @@ class DataLoader_HRI:
                                 new_data[i]["RobotMistake"], robot_mistake))
                             new_data[i]["InteractionRupture"] = int(max(
                                 new_data[i]["InteractionRupture"], interaction_rupture))
-                            # new_data[i] = {
-                            #    "frame": frame_counter,
-                            #    "Duration - ss.msec": 1 / rows_per_second,
-                            #    "Begin Time - ss.msec": i / rows_per_second,
-                            #    "UserAwkwardness": int(user_awkwardness),
-                            #    "RobotMistake": int(robot_mistake),
-                            #    "InteractionRupture": int(interaction_rupture)
-                            # }
-                            # frame_counter += 1
 
-                    # for i in range(labels_needed):
-                    #     current_time = i / rows_per_second
-                    #     try:
-                    #         current_df_row = df[(df['Begin Time - ss.msec'] <= current_time) & (
-                    #             df['End Time - ss.msec'] >= current_time)]
-                    #         user_awkwardness = current_df_row['UserAwkwardness'].values[0]
-                    #         robot_mistake = current_df_row['RobotMistake'].values[0]
-                    #         interaction_rupture = current_df_row['InteractionRupture'].values[0]
-                    #     except:
-                    #         print("no row found for session",
-                    #               filename, " at time: ", current_time)
-                    #         # continue
-                    #     new_data.append({
-                    #         "frame": frame_counter,
-                    #         "Duration - ss.msec": 1 / rows_per_second,
-                    #         "Begin Time - ss.msec": current_time,
-                    #         "UserAwkwardness": user_awkwardness,
-                    #         "RobotMistake": robot_mistake,
-                    #         "InteractionRupture": interaction_rupture
-                    #     })
-                    #     frame_counter += 1
                     df = pd.DataFrame(new_data)
                 data_frames.append((filename, df))
         return data_frames
@@ -311,12 +278,6 @@ class DataLoader_HRI:
         df_speaker = next(
             df for fname, df in speaker_data if fname == filename)
 
-        # Ensure all dataframes have 'frame' as the index
-        # df_openface.set_index('frame', inplace=True)
-        # df_openpose.set_index('frame', inplace=True)
-        # df_opensmile.set_index('frame', inplace=True)
-        # df_speaker.set_index('frame', inplace=True)
-
         if self.verbose:
             print(len(df_openface), len(df_openpose),
                   len(df_opensmile), len(df_speaker), filename)
@@ -327,25 +288,12 @@ class DataLoader_HRI:
             df_opensmile.add_suffix('_opensmile'), how='inner')
         merged_df["frame"] = (merged_df.index // (100 / 30)).astype(int)+1
         # merge with the rest based on the frame number
-        # merged_df.set_index('frame_opensmile', inplace=True)
         merged_df.set_index('frame', inplace=True)
         df_openpose.set_index('frame', inplace=True)
         df_openface.set_index('frame', inplace=True)
 
         merged_df = merged_df.join(df_openface.add_suffix('_openface'), how='outer').join(
             df_openpose.add_suffix('_openpose'), how='outer')
-
-        #  drop multiple frame columns
-        # columns_to_drop = ['frame_speaker', 'frame_id_openpose']
-        # merged_df.drop(columns=columns_to_drop, inplace=True)
-
-        # merged_df = df_openface.add_suffix('_openface').join(
-        #    df_openpose.add_suffix('_openpose'), how='outer'
-        # ).join(
-        #    df_opensmile.add_suffix('_opensmile'), how='outer'
-        # ).join(
-        #    df_speaker.add_suffix('_speaker'), how='outer'
-        # )
 
         if self.verbose:
             print(len(merged_df), "after merge")
@@ -622,8 +570,6 @@ class DataLoader_HRI:
         for session in self.val_X['session'].unique():
             val_X_TS = []
             val_Y_TS = []
-            # if verbose:
-            #    print("TS Processing for session: ", session)
             session_df = self.val_X[self.val_X['session'] == session]
             session_df = session_df.drop(columns=['session'])
             # drop last 10 rows to avoid NaNs
@@ -743,7 +689,7 @@ class DataLoader_HRI:
         return new_interval
 
     @ staticmethod
-    def impute_nan_with_feature_mean(data) -> np.array:
+    def impute_nan_with_feature_mean(data: np.ndarray) -> np.ndarray:
         for i in range(data.shape[0]):  # Iterate over each sample
             for j in range(data.shape[1]):  # Iterate over each feature
                 feature_values = data[i, j, :]
