@@ -1,12 +1,12 @@
 {
     "task": 2,
     "model_type": "MiniRocket",
-    "n_trials": 50,
+    "n_trials": 65,
     "data_params": {
         "interval_length": {
-            "low": 1500,
-            "high": 2500,
-            "step": 10
+            "low": 1700,
+            "high": 5000,
+            "step": 200
         },
         "stride_train": {
             "low": 300,
@@ -22,8 +22,7 @@
             25
         ],
         "nan_handling": [
-            "standard",
-            "avg"
+            "standard"
         ],
         "label_creation": [
             "stride_eval"
@@ -34,12 +33,12 @@
         ],
         "oversampling_rate": {
             "low": 0.0,
-            "high": 0.2,
+            "high": 0.15,
             "step": 0.05
         },
         "undersampling_rate": {
             "low": 0.0,
-            "high": 0.2,
+            "high": 0.15,
             "step": 0.05
         },
         "rescaling": [
@@ -47,8 +46,7 @@
             "normalization"
         ],
         "start_padding": [
-            true,
-            false
+            true
         ]
     },
     "model_params": {

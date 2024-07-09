@@ -4,8 +4,8 @@
     "n_trials": 50,
     "data_params": {
         "interval_length": {
-            "low": 300,
-            "high": 1000,
+            "low": 400,
+            "high": 2000,
             "step": 100
         },
         "stride_train": {
@@ -35,7 +35,8 @@
         "columns_to_remove": [
             "speaker",
             "openpose",
-            "openpose, speaker"
+            "openpose, speaker",
+            "REMOVE_NOTHING"
         ],
         "oversampling_rate": {
             "low": 0.0,
@@ -51,6 +52,9 @@
             "none",
             "standardization",
             "normalization"
+        ],
+        "start_padding": [
+            true
         ]
     },
     "model_params": {
