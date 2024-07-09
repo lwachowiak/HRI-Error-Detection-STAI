@@ -29,6 +29,7 @@ import argparse
 import os
 import pandas as pd
 import pickle
+import random
 
 # TODO:
 # Models:
@@ -39,7 +40,7 @@ import pickle
 
 class TS_Model_Trainer:
     """
-    A class for training individual models, doing optuna hyperparamter search, and inference with already trained models. 
+    A class for training individual models, doing optuna hyperparamter search, and inference with already trained models.
     """
 
     def __init__(self, folder: str, n_jobs: int, config_name: str):
@@ -446,6 +447,8 @@ class TS_Model_Trainer:
 
         # load config and model
         self.config = self.read_config(self.folder+"code/"+config)
+        self.config["model_params"]["random_state"] = random.randint(
+            0, 1000000)
         columns_to_remove = self.column_removal_dict[self.config["data_params"]
                                                      ["columns_to_remove"]]
         model = self.get_classic_learner(self.config["model_params"])
