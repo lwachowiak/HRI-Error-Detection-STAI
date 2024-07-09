@@ -201,7 +201,7 @@ class TS_Model_Trainer:
                 task=self.task,
                 fold=fold,
                 rescaling=data_values["rescaling"],
-                start_paddding=data_values["start_padding"]
+                start_padding=data_values["start_padding"]
 
             )
 
