@@ -50,6 +50,9 @@
             "none",
             "standardization",
             "normalization"
+        ],
+        "start_padding": [
+            true
         ]
     },
     "model_params": {
