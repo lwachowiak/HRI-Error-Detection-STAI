@@ -5,7 +5,7 @@
     "data_params": {
         "interval_length": {
             "low": 700,
-            "high": 1400,
+            "high": 2500,
             "step": 100
         },
         "stride_train": {
@@ -63,7 +63,7 @@
     "model_params": {
         "n_estimators": {
             "low": 80,
-            "high": 300,
+            "high": 200,
             "step": 20
         },
         "max_depth": {
