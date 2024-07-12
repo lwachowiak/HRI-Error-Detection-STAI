@@ -1,0 +1,29 @@
+{
+    "task": 2,
+    "model_type": "RandomForest",
+    "data_params": {
+        "interval_length": 1200,
+        "stride_train": 200,
+        "stride_eval": 400,
+        "fps": 50,
+        "columns_to_remove": "openpose, c_openface",
+        "label_creation": "stride_eval",
+        "nan_handling": "zeros",
+        "oversampling_rate": 0.3,
+        "undersampling_rate": 0.0,
+        "rescaling": "standardization",
+        "start_padding": true,
+        "summary": "mean"
+    },
+    "model_params": {
+        "n_estimators": 240,
+        "max_depth": 40,
+        "random_state": 7,
+        "criterion": "gini",
+        "max_features": "sqrt"
+    },
+    "stats": {
+        "accuracy": 0.8163679986835617,
+        "macro f1": 0.7010753402056308
+    }
+}
