@@ -1,22 +1,22 @@
 {
     "task": 2,
     "model_type": "TST",
-    "n_trials": 80,
+    "n_trials": 50,
     "data_params": {
         "interval_length": {
-            "low": 500,
+            "low": 800,
             "high": 2200,
             "step": 100
         },
         "stride_train": {
-            "low": 50,
+            "low": 100,
             "high": 6000,
-            "step": 50
+            "step": 100
         },
         "stride_eval": {
-            "low": 50,
+            "low": 100,
             "high": 600,
-            "step": 50
+            "step": 100
         },
         "fps": [
             10,
@@ -35,8 +35,7 @@
         "columns_to_remove": [
             "openpose",
             "openpose, speaker",
-            "openpose, c_openface",
-            "REMOVE_NOTHING"
+            "openpose, c_openface"
         ],
         "oversampling_rate": {
             "low": 0.0,
@@ -60,11 +59,10 @@
     "model_params": {
         "bs": {
             "low": 16,
-            "high": 16,
-            "step": 32
+            "high": 32,
+            "step": 16
         },
         "loss": [
-            "FocalLossFlat",
             "CrossEntropyLossFlat"
         ],
         "lr": {
