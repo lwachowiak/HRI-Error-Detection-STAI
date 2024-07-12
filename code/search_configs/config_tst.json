@@ -26,8 +26,7 @@
             100
         ],
         "nan_handling": [
-            "zeros",
-            "avg"
+            "zeros"
         ],
         "label_creation": [
             "stride_eval"
@@ -81,13 +80,13 @@
         },
         "n_layers": {
             "low": 1,
-            "high": 16,
+            "high": 8,
             "step": 1
         },
         "n_heads": {
-            "low": 8,
-            "high": 32,
-            "step": 8
+            "low": 4,
+            "high": 16,
+            "step": 4
         },
         "d_model": {
             "low": 32,
