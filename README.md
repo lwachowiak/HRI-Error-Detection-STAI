@@ -42,9 +42,9 @@ pip install -r requirements.txt
 | **Model Param.**  | Max Dilations per Kernel   | 64                            | 32                            | 64                            |
 | **Model Param.**  | Class Weight               | None                          | None                          | None                          |
 | **Model Param.**  | Random State               | 42                            | 42                            | 42                            |
-| **Performance ** | Accuracy (Cross-Val.)                  | 0.82           | 0.89           | 0.84          |
-| **Performance ** | Macro F1  (Cross-Val.)                 | 0.74           | 0.77            | 0.55          |
-| **Performance ** | Accuracy (Test)                  | 0.80            | 0.87           | 0.76           |
-| **Performance ** | Macro F1  (Test)                 | 0.75           | 0.73          | 0.55           |
+| **Performance** | Accuracy (Cross-Val.)                  | 0.82           | 0.89           | 0.84          |
+| **Performance** | Macro F1  (Cross-Val.)                 | 0.74           | 0.77            | 0.55          |
+| **Performance** | Accuracy (Test)                  | 0.80            | 0.87           | 0.76           |
+| **Performance** | Macro F1  (Test)                 | 0.75           | 0.73          | 0.55           |
 
 
