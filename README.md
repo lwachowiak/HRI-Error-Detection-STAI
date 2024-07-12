@@ -1,5 +1,8 @@
 # HRI Error Detection: STAI Team Contribution
 
+## Reference
+Forthcoming
+
 ## Usage
 To get the test predictions, use time_series_classifiers.py and specify the model you want to get predictions from. 
 
@@ -17,3 +20,4 @@ source venv_hri_err/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
+
