@@ -59,7 +59,7 @@
     "model_params": {
         "bs": {
             "low": 16,
-            "high": 32,
+            "high": 16,
             "step": 16
         },
         "loss": [
