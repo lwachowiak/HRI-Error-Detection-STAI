@@ -19,7 +19,7 @@ trainer = TS_Model_Trainer(
     config_name="best_model_configs/" + args.file
 )
 
-for i in range(4):
+for i in [1,2,3,4]:
     trainer.train_and_save_best_model(
         args.file,
         fold=i)
