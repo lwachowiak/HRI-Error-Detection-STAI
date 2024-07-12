@@ -614,7 +614,7 @@ class TS_Model_Trainer:
                                         **model_trial_params)
 
         loss_func = self.loss_dict[training_values["loss_func"]]
-        cbs = [EarlyStoppingCallback(monitor="accuracy", patience=3)]
+        cbs = [EarlyStoppingCallback(monitor="accuracy", patience=2)]
         learn = Learner(dls, model, metrics=[
             accuracy, F1Score()], cbs=cbs, loss_func=loss_func)
         return learn

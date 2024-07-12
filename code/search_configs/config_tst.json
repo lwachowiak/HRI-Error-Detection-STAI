@@ -92,7 +92,7 @@
         "d_model": {
             "low": 32,
             "high": 256,
-            "step": 64
+            "step": 32
         }
     }
 }
