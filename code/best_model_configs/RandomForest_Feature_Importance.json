@@ -6,7 +6,7 @@
         "stride_train": 200,
         "stride_eval": 400,
         "fps": 50,
-        "columns_to_remove": "openpose, c_openface",
+        "columns_to_remove": "REMOVE_NOTHING",
         "label_creation": "stride_eval",
         "nan_handling": "zeros",
         "oversampling_rate": 0.3,
