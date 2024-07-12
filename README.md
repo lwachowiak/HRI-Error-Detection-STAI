@@ -22,7 +22,7 @@ pip install -r requirements.txt
 ```
 
 ## Configs of Submitted Models
-## Task and Model Information
+Submitted models still missed the zero padding. The last column on the right shows our final best model, trained after the competition ended:
 
 | **Category**          | **Parameter**              | **Interaction Rupture**                   | **Robot Error**                   | **User Awkwardness**                   |
 |-----------------------|----------------------------|-------------------------------|-------------------------------|-------------------------------|
