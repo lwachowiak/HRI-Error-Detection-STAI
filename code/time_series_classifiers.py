@@ -885,13 +885,13 @@ if __name__ == '__main__':
 
     ########### uncomment to run optuna search ###########
     study_name = trainer.config["model_type"] + "_" + date
-    # study = trainer.optuna_study(
-    #    n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True)
+    study = trainer.optuna_study(
+        n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True)
 
     # TODO: move to analysis script
     # feature importance
     # trainer.feature_importance()
 
     # learning curve
-    trainer.learning_curve("best_model_configs/MiniRocket_2024-06-25-17.json",
-                           iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve.pdf")
+    #trainer.learning_curve("best_model_configs/MiniRocket_2024-06-25-17.json",
+    #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve.pdf")
