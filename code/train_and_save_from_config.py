@@ -3,7 +3,7 @@ import os
 import argparse
 
 argparser = argparse.ArgumentParser()
-argparser.add_argument("--file", type=str, default="best_minirocket_summerschool.json")
+argparser.add_argument("--file", type=str, default="MiniRocket_2024-07-09-12.json")
 args = argparser.parse_args()
 
 if os.getcwd().endswith("HRI-Error-Detection-STAI"):
@@ -19,5 +19,8 @@ trainer = TS_Model_Trainer(
     config_name="best_model_configs/" + args.file
 )
 
-trainer.train_and_save_best_model(
-    args.file)
+for i in range(4):
+    trainer.train_and_save_best_model(
+        args.file,
+        fold=i)
+    print("NEXT FOLD")
