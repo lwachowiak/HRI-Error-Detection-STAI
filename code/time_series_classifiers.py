@@ -295,7 +295,37 @@ class TS_Model_Trainer:
             len(train_X_TS), len(all_X))]
         return all_X, all_Y, splits
 
-    def optuna_study(self, n_trials: int, model_type: str, study_name: str, verbose=False) -> optuna.study.Study:
+    def create_grid_from_config(self) -> dict:
+        '''Create a grid of hyperparameters based on the configuration file.'''
+        grid = {}
+        dicts = [self.config["model_params"], self.config["data_params"]]
+        grid_length = 1
+        for d in dicts:
+            for key, value in d.items():
+                # if list, use list
+                if isinstance(value, list):
+                    grid[key] = value
+                # if dict, use range
+                elif isinstance(value, dict):
+                    # create list based on high, low, step
+                    if isinstance(value["low"], int):
+                        grid[key] = list(range(
+                            value["low"], value["high"]+1, value["step"]))
+                    else:
+                        if value["low"] == value["high"]:
+                            grid[key] = [value["low"]]
+                        else:
+                            to_add = []
+                            while value["low"] <= value["high"]:
+                                to_add.append(value["low"])
+                                value["low"] += value["step"]
+                            grid[key] = to_add
+                grid_length *= len(grid[key])
+        print("Grid length", grid_length)
+        print("Grid", grid)
+        return grid
+
+    def optuna_study(self, n_trials: int, model_type: str, study_name: str, verbose=False, gridsearch=False) -> optuna.study.Study:
         """Performs an Optuna study to optimize the hyperparameters of the model.
         :param n_trials: The number of search trials to perform.
         :param model_type: The type of model to optimize (MiniRocket, TST).
@@ -305,13 +335,19 @@ class TS_Model_Trainer:
         wandbc = WeightsAndBiasesCallback(
             metric_name=["accuracy", "macro f1"], wandb_kwargs=wandb_kwargs)
 
-        # storage_name = "sqlite:///{}.db".format(study_name)
-        study = optuna.create_study(
-            directions=["maximize", "maximize"], study_name=study_name)  # , storage=storage_name, load_if_exists=True)
+        if gridsearch:
+            study = optuna.create_study(
+                directions=["maximize", "maximize"], study_name=study_name, sampler=optuna.samplers.GridSampler(self.create_grid_from_config()))
+        else:
+            study = optuna.create_study(
+                directions=["maximize", "maximize"], study_name=study_name)
         print(f"Sampler is {study.sampler.__class__.__name__}")
 
         objective = self.objective_per_model[model_type]
-        study.optimize(objective, n_trials=n_trials, callbacks=[wandbc])
+        if gridsearch:
+            study.optimize(objective, callbacks=[wandbc])
+        else:
+            study.optimize(objective, n_trials=n_trials, callbacks=[wandbc])
 
         trial_with_highest_accuracy = max(
             study.best_trials, key=lambda t: t.values[0])
@@ -846,7 +882,7 @@ if __name__ == '__main__':
     # parse arguments (config file, n_jobs)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, help="Path to the configuration file.",
-                        default="search_configs/config_minirocket.json")
+                        default="search_configs/config_minirocket_grid.json")
     parser.add_argument(
         "--njobs", type=int, help="Number of cpu cores to use for training.", default=8)
     args = parser.parse_args()
@@ -886,12 +922,12 @@ if __name__ == '__main__':
     ########### uncomment to run optuna search ###########
     study_name = trainer.config["model_type"] + "_" + date
     study = trainer.optuna_study(
-        n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True)
+        n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True, gridsearch=True)
 
     # TODO: move to analysis script
     # feature importance
     # trainer.feature_importance()
 
     # learning curve
-    #trainer.learning_curve("best_model_configs/MiniRocket_2024-06-25-17.json",
+    # trainer.learning_curve("best_model_configs/MiniRocket_2024-06-25-17.json",
     #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve.pdf")

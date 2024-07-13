@@ -1,0 +1,89 @@
+{
+    "task": 2,
+    "model_type": "RandomForest",
+    "n_trials": 200,
+    "data_params": {
+        "interval_length": {
+            "low": 700,
+            "high": 2500,
+            "step": 100
+        },
+        "stride_train": {
+            "low": 100,
+            "high": 500,
+            "step": 50
+        },
+        "stride_eval": {
+            "low": 100,
+            "high": 500,
+            "step": 50
+        },
+        "fps": [
+            10,
+            20,
+            50,
+            100
+        ],
+        "nan_handling": [
+            "standard",
+            "zeros"
+        ],
+        "label_creation": [
+            "stride_eval"
+        ],
+        "columns_to_remove": [
+            "openpose",
+            "c_openface",
+            "openpose, c_openface",
+            "vel_dist",
+            "vel_dist, c_openface"
+        ],
+        "summary": [
+            "mean"
+        ],
+        "oversampling_rate": {
+            "low": 0.0,
+            "high": 0.4,
+            "step": 0.1
+        },
+        "undersampling_rate": {
+            "low": 0.0,
+            "high": 0.4,
+            "step": 0.1
+        },
+        "rescaling": [
+            "none",
+            "standardization",
+            "normalization"
+        ],
+        "start_padding": [
+            true
+        ]
+    },
+    "model_params": {
+        "n_estimators": {
+            "low": 80,
+            "high": 200,
+            "step": 20
+        },
+        "max_depth": {
+            "low": 20,
+            "high": 80,
+            "step": 10
+        },
+        "random_state": {
+            "low": 0,
+            "high": 10,
+            "step": 1
+        },
+        "criterion": [
+            "gini",
+            "entropy"
+        ],
+        "max_features": [
+            "sqrt",
+            "log2",
+            null
+        ]
+    }
+}
