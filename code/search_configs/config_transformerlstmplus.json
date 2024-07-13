@@ -5,18 +5,18 @@
     "data_params": {
         "interval_length": {
             "low": 600,
-            "high": 2200,
-            "step": 100
+            "high": 2000,
+            "step": 12000
         },
         "stride_train": {
             "low": 100,
-            "high": 600,
-            "step": 50
+            "high": 400,
+            "step": 100
         },
         "stride_eval": {
             "low": 100,
-            "high": 600,
-            "step": 50
+            "high": 400,
+            "step": 100
         },
         "fps": [
             10,
@@ -33,8 +33,6 @@
         ],
         "columns_to_remove": [
             "openpose, c_openface",
-            "openpose",
-            "openpose, speaker",
             "REMOVE_NOTHING"
         ],
         "oversampling_rate": {
@@ -63,16 +61,15 @@
             "step": 16
         },
         "loss": [
-            "FocalLossFlat",
-            "CrossEntropyLossFlat"
+            "FocalLossFlat"
         ],
         "lr": {
             "low": 1e-6,
-            "high": 2e-3
+            "high": 2e-4
         },
         "dropout": {
-            "low": 0.1,
-            "high": 0.5,
+            "low": 0.2,
+            "high": 0.4,
             "step": 0.1
         },
         "proj_dropout": {
@@ -86,9 +83,9 @@
             "step": 1
         },
         "nhead": {
-            "low": 8,
-            "high": 14,
-            "step": 2
+            "low": 12,
+            "high": 20,
+            "step": 4
         },
         "d_model": {
             "low": 64,
@@ -102,7 +99,7 @@
         },
         "dim_feedforward": {
             "low": 1024,
-            "high": 2048,
+            "high": 3100,
             "step": 512
         }
     }
