@@ -1,6 +1,6 @@
 {
     "task": 2,
-    "model_type": "TransformerLSTMPlus",
+    "model_type": "ConvTranPlus",
     "n_trials": 30,
     "data_params": {
         "interval_length": {
