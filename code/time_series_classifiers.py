@@ -253,9 +253,9 @@ class TS_Model_Trainer:
             "interval_length", low=data_params["interval_length"]["low"], high=data_params["interval_length"]["high"], step=data_params["interval_length"]["step"])
         # strides must be leq than interval_length
         data_values["stride_train"] = trial.suggest_int(
-            "stride_train", low=data_params["stride_train"]["low"], high=min(data_values["interval_length"], data_params["stride_train"]["high"]), step=data_params["interval_length"]["step"])
+            "stride_train", low=data_params["stride_train"]["low"], high=min(data_values["interval_length"], data_params["stride_train"]["high"]), step=data_params["stride_train"]["step"])
         data_values["stride_eval"] = trial.suggest_int(
-            "stride_eval", low=data_params["stride_eval"]["low"], high=min(data_values["interval_length"], data_params["stride_eval"]["high"]), step=data_params["interval_length"]["step"])
+            "stride_eval", low=data_params["stride_eval"]["low"], high=min(data_values["interval_length"], data_params["stride_eval"]["high"]), step=data_params["stride_eval"]["step"])
         data_values["fps"] = trial.suggest_categorical(
             "fps", data_params["fps"])
         data_values["columns_to_remove"] = trial.suggest_categorical("columns_to_remove",
