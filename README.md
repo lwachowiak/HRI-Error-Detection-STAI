@@ -21,7 +21,7 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-## Configs of Submitted Models
+## Configs of Submitted and Best Models
 Submitted models still missed the zero padding. The last column on the right shows our final best model, trained after the competition ended:
 
 | **Category**          | **Parameter**              | **Interaction Rupture (submitted)**                   | **Robot Error (submitted)**                   | **User Awkwardness (submitted)**                   | **Interaction Rupture (best)**                            |
@@ -48,5 +48,8 @@ Submitted models still missed the zero padding. The last column on the right sho
 | **Performance** | Accuracy (Test)                  | 0.80            | 0.87           | 0.76           | N/A                                      |
 | **Performance** | Macro F1  (Test)                 | 0.75           | 0.73          | 0.55           | N/A                                      |
 
-
+Best configs of other models:
+- [ConvTran](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/best_model_configs/ConvTranPlus_2024-07-12-09.json)
+- [TST]()
+- [RandomForest]()
 
