@@ -921,8 +921,9 @@ if __name__ == '__main__':
 
     ########### uncomment to run optuna search ###########
     study_name = trainer.config["model_type"] + "_" + date
+    gridsearch = "grid" in config_name
     study = trainer.optuna_study(
-        n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True, gridsearch=True)
+        n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True, gridsearch=gridsearch)
 
     # TODO: move to analysis script
     # feature importance

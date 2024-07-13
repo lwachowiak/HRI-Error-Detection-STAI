@@ -1,1 +1,28 @@
-{"task": 2, "model_type": "RandomForest", "data_params": {"interval_length": 700, "stride_train": 100, "stride_eval": 400, "fps": 100, "columns_to_remove": "openpose, c_openface", "label_creation": "stride_eval", "nan_handling": "zeros", "oversampling_rate": 0.30000000000000004, "undersampling_rate": 0.2, "rescaling": "standardization", "summary": "mean"}, "model_params": {"n_estimators": 300, "max_depth": 70, "random_state": 0, "criterion": "entropy", "max_features": "log2"}, "stats": {"accuracy": 0.8175608591243484, "macro f1": 0.7236697291367329}}
+{
+    "task": 2,
+    "model_type": "RandomForest",
+    "data_params": {
+        "interval_length": 700,
+        "stride_train": 100,
+        "stride_eval": 400,
+        "fps": 100,
+        "columns_to_remove": "openpose, c_openface",
+        "label_creation": "stride_eval",
+        "nan_handling": "zeros",
+        "oversampling_rate": 0.30000000000000004,
+        "undersampling_rate": 0.2,
+        "rescaling": "standardization",
+        "summary": "mean"
+    },
+    "model_params": {
+        "n_estimators": 300,
+        "max_depth": 70,
+        "random_state": 0,
+        "criterion": "entropy",
+        "max_features": "log2"
+    },
+    "stats": {
+        "accuracy": 0.8175608591243484,
+        "macro f1": 0.7236697291367329
+    }
+}
