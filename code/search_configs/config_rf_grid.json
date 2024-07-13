@@ -22,7 +22,7 @@
             25
         ],
         "nan_handling": [
-            "standard"
+            "zeros"
         ],
         "label_creation": [
             "stride_eval"

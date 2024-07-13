@@ -1,29 +1,25 @@
 {
     "task": 2,
-    "model_type": "ConvTranPlus",
-    "n_trials": 70,
+    "model_type": "TransformerLSTMPlus",
+    "n_trials": 30,
     "data_params": {
         "interval_length": {
-            "low": 1200,
-            "high": 2600,
-            "step": 400
+            "low": 500,
+            "high": 2500,
+            "step": 1000
         },
         "stride_train": {
-            "low": 100,
-            "high": 600,
-            "step": 50
+            "low": 300,
+            "high": 900,
+            "step": 300
         },
         "stride_eval": {
-            "low": 100,
-            "high": 600,
-            "step": 50
+            "low": 300,
+            "high": 900,
+            "step": 300
         },
         "fps": [
-            10,
-            20,
-            25,
-            50,
-            100
+            25
         ],
         "nan_handling": [
             "zeros"
@@ -32,24 +28,20 @@
             "stride_eval"
         ],
         "columns_to_remove": [
-            "openpose, c_openface",
-            "openpose",
-            "openpose, speaker",
-            "REMOVE_NOTHING"
+            "openpose, c_openface"
         ],
         "oversampling_rate": {
-            "low": 0.0,
-            "high": 0.3,
+            "low": 0.1,
+            "high": 0.1,
             "step": 0.1
         },
         "undersampling_rate": {
-            "low": 0.0,
-            "high": 0.2,
+            "low": 0.1,
+            "high": 0.1,
             "step": 0.1
         },
         "rescaling": [
             "none",
-            "standardization",
             "normalization"
         ],
         "start_padding": [
@@ -63,37 +55,36 @@
             "step": 16
         },
         "loss": [
-            "FocalLossFlat",
-            "CrossEntropyLossFlat"
+            "FocalLossFlat"
         ],
         "lr": {
-            "low": 1e-6,
-            "high": 1e-4
+            "low": 0.040868041550952174,
+            "high": 0.040868041550952174
         },
         "fc_dropout": {
-            "low": 0.0,
-            "high": 0.4,
-            "step": 0.05
+            "low": 0.1,
+            "high": 0.1,
+            "step": 0.1
         },
         "encoder_dropout": {
-            "low": 0.0,
-            "high": 0.4,
-            "step": 0.05
+            "low": 0.2,
+            "high": 0.2,
+            "step": 0.1
         },
         "n_heads": {
-            "low": 4,
+            "low": 8,
             "high": 8,
-            "step": 2
+            "step": 4
         },
         "d_model": {
-            "low": 4,
+            "low": 8,
             "high": 8,
-            "step": 2
+            "step": 8
         },
         "dim_ff": {
-            "low": 18,
+            "low": 32,
             "high": 32,
-            "step": 8
+            "step": 56
         }
     }
 }
