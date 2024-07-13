@@ -1,0 +1,35 @@
+
+{
+    "task": 2,
+    "model_type": "TST",
+    "n_trials": 50,
+    "data_params": {
+        "interval_length": 2200,
+        "stride_train": 1500,
+        "stride_eval": 500,
+        "fps": 10,
+        "nan_handling": [
+            "zeros"
+        ],
+        "label_creation": "stride_eval",
+        "columns_to_remove": "openpose, speaker",
+        "oversampling_rate": 0.2,
+        "undersampling_rate": 0.0,
+        "rescaling": "standardization",
+        "start_padding": true
+    },
+    "model_params": {
+        "bs": 16,
+        "loss": "CrossEntropyLossFlat",
+        "lr": 0.00020365943643053673,
+        "dropout": 0.0,
+        "fc_dropout": 0.3,
+        "n_layers": 4,
+        "n_heads": 8,
+        "d_model": 192
+    },
+    "stats": {
+        "accuracy": 0.7934997519993947,
+        "macro f1": 0.686518192704895
+    }
+}

@@ -66,7 +66,7 @@
         ],
         "lr": {
             "low": 1e-6,
-            "high": 2e-2
+            "high": 1e-3
         },
         "dropout": {
             "low": 0.0,
@@ -80,17 +80,17 @@
         },
         "n_layers": {
             "low": 1,
-            "high": 8,
+            "high": 7,
             "step": 1
         },
         "n_heads": {
             "low": 4,
-            "high": 16,
-            "step": 4
+            "high": 14,
+            "step": 2
         },
         "d_model": {
             "low": 32,
-            "high": 256,
+            "high": 200,
             "step": 32
         }
     }
