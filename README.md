@@ -6,13 +6,13 @@ Forthcoming
 ## Usage
 To get the test predictions, use time_series_classifiers.py and specify the model you want to get predictions from. 
 
-Moreover the files can be used for: 
-- time_series_classifiers.py: Optuna search for models and save the best one; use models for inference
+Moreover, the files can be used for: 
+- time_series_classifiers.py: run Optuna search for models and save the best one; use models for inference
 - data_loader.py: preprocessing & loading of datasets
-- get_metrics.py: official comeptition metrics script 
+- get_metrics.py: official competition metrics script 
 
 ## Dependencies
-We used Python 3.11.9 All the python packages we used can be installed from the requirements.txt. 
+We used Python 3.11.9. All the Python packages we used can be installed from the requirements.txt. 
 The easiest way is to create a virtual environment like this: 
 ```
 python3.11.9 -m venv venv_hri_err
@@ -21,7 +21,9 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-## Configs of Submitted Models
+As we are not allowed to re-publish the dataset, you need to request it from the competition organizers in case you want to reproduce our work. To facilitate reproduction, [this](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/data/tree.txt) text file indicates the necessary data folder structure to run the code as is. 
+
+## Configs of Submitted and Best Models
 Submitted models still missed the zero padding. The last column on the right shows our final best model, trained after the competition ended:
 
 | **Category**          | **Parameter**              | **Interaction Rupture (submitted)**                   | **Robot Error (submitted)**                   | **User Awkwardness (submitted)**                   | **Interaction Rupture (best)**                            |
@@ -48,5 +50,8 @@ Submitted models still missed the zero padding. The last column on the right sho
 | **Performance** | Accuracy (Test)                  | 0.80            | 0.87           | 0.76           | N/A                                      |
 | **Performance** | Macro F1  (Test)                 | 0.75           | 0.73          | 0.55           | N/A                                      |
 
-
+Best configs of other models:
+- [ConvTran](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/best_model_configs/ConvTranPlus_2024-07-12-09.json)
+- [TST]()
+- [RandomForest]()
 
