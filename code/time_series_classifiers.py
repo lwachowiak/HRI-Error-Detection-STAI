@@ -78,7 +78,11 @@ class TS_Model_Trainer:
                                     "c_openface": ["c_openface"],
                                     "openpose, c_openface": ["openpose", "c_openface"],
                                     "vel_dist": ["vel_dist"],
-                                    "vel_dist, c_openface": ["vel_dist", "c_openface"]
+                                    "vel_dist, c_openface": ["vel_dist", "c_openface"],
+                                    "only_openpose": ["opensmile", "speaker", "openface"],
+                                    "only_openface": ["opensmile", "speaker", "openpose"],
+                                    "only_speaker": ["opensmile", "openpose", "openface"],
+                                    "only_opensmile": ["openpose", "speaker", "openface"],
                                     }
         self.loss_dict = {"CrossEntropyLossFlat": CrossEntropyLossFlat(),
                           "FocalLossFlat": FocalLossFlat()}
