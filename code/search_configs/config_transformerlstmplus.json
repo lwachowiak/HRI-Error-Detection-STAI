@@ -1,12 +1,12 @@
 {
     "task": 2,
     "model_type": "TransformerLSTMPlus",
-    "n_trials": 30,
+    "n_trials": 60,
     "data_params": {
         "interval_length": {
             "low": 600,
             "high": 2000,
-            "step": 12000
+            "step": 200
         },
         "stride_train": {
             "low": 100,
@@ -37,7 +37,7 @@
         ],
         "oversampling_rate": {
             "low": 0.0,
-            "high": 0.3,
+            "high": 0.5,
             "step": 0.1
         },
         "undersampling_rate": {
@@ -46,7 +46,6 @@
             "step": 0.1
         },
         "rescaling": [
-            "none",
             "standardization",
             "normalization"
         ],
@@ -69,7 +68,7 @@
         },
         "dropout": {
             "low": 0.2,
-            "high": 0.4,
+            "high": 0.5,
             "step": 0.1
         },
         "proj_dropout": {
@@ -78,12 +77,12 @@
             "step": 0.1
         },
         "num_rnn_layers": {
-            "low": 1,
-            "high": 11,
-            "step": 1
+            "low": 2,
+            "high": 14,
+            "step": 2
         },
         "nhead": {
-            "low": 12,
+            "low": 8,
             "high": 20,
             "step": 4
         },
@@ -93,7 +92,7 @@
             "step": 24
         },
         "num_encoder_layers": {
-            "low": 1024,
+            "low": 512,
             "high": 2048,
             "step": 512
         },
