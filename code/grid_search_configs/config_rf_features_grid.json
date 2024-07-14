@@ -1,6 +1,7 @@
 {
     "task": 2,
     "model_type": "RandomForest",
+    "n_trials": 65,
     "data_params": {
         "interval_length": 900,
         "stride_train": 400,
