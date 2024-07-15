@@ -1,0 +1,89 @@
+{
+    "task": 2,
+    "model_type": "TST",
+    "n_trials": 50,
+    "data_params": {
+        "interval_length": {
+            "low": 1900,
+            "high": 1900,
+            "step": 1900
+        },
+        "stride_train": {
+            "low": 800,
+            "high": 800,
+            "step": 800
+        },
+        "stride_eval": {
+            "low": 600,
+            "high": 600,
+            "step": 600
+        },
+        "fps": [
+            100
+        ],
+        "nan_handling": [
+            "zeros"
+        ],
+        "label_creation": [
+            "stride_eval"
+        ],
+        "columns_to_remove": [
+            "REMOVE_NOTHING", "openpose", "openface", "frame", "opensmile", "speaker", "only_openface", "only_openpose", "only_opensmile", "only_speaker", "only_frame"
+        ],
+        "oversampling_rate": {
+            "low": 0.2,
+            "high": 0.2,
+            "step": 0.2
+        },
+        "undersampling_rate": {
+            "low": 0.1,
+            "high": 0.1,
+            "step": 0.1
+        },
+        "rescaling": [
+            "normalization"
+        ],
+        "start_padding": [
+            true
+        ]
+    },
+    "model_params": {
+        "bs": {
+            "low": 16,
+            "high": 16,
+            "step": 16
+        },
+        "loss": [
+            "CrossEntropyLossFlat"
+        ],
+        "lr": {
+            "low": 3.097984045602422e-05,
+            "high": 3.097984045602422e-05
+        },
+        "dropout": {
+            "low": 0.2,
+            "high": 0.2,
+            "step": 0.1
+        },
+        "fc_dropout": {
+            "low": 0.4,
+            "high": 0.4,
+            "step": 0.1
+        },
+        "n_layers": {
+            "low": 2,
+            "high": 2,
+            "step": 1
+        },
+        "n_heads": {
+            "low": 10,
+            "high": 10,
+            "step": 2
+        },
+        "d_model": {
+            "low": 128,
+            "high": 128,
+            "step": 32
+        }
+    }
+}
