@@ -28,7 +28,7 @@
             "stride_eval"
         ],
         "columns_to_remove": [
-            "openpose", "openface", "REMOVE_NOTHING","opensmile", "speaker", "only_openface", "only_openpose", "only_opensmile", "only_speaker"
+            "REMOVE_NOTHING", "openpose", "openface", "frame", "opensmile", "speaker", "only_openface", "only_openpose", "only_opensmile", "only_speaker", "only_frame"
         ],
         "oversampling_rate": {
             "low": 0.2,
