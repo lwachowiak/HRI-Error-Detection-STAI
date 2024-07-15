@@ -6,13 +6,14 @@
         "stride_train": 400,
         "stride_eval": 400,
         "fps": 10,
-        "columns_to_remove": "openpose",
-        "label_creation": "stride_eval",
         "nan_handling": "standard",
+        "label_creation": "stride_eval",
+        "columns_to_remove": "openpose",
         "oversampling_rate": 0.2,
         "undersampling_rate": 0.1,
         "rescaling": "standardization",
-        "summary": "mean"
+        "summary": "mean",
+        "start_padding": true
     },
     "model_params": {
         "n_estimators": 140,

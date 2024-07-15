@@ -1,29 +1,76 @@
 {
     "task": 2,
     "model_type": "RandomForest",
-    "n_trials": 65,
+    "n_trials": 200,
     "data_params": {
-        "interval_length": 900,
-        "stride_train": 400,
-        "stride_eval": 400,
-        "fps": 10,
-        "columns_to_remove": ["openpose", "openface", "REMOVE_NOTHING","opensmile", "speaker", "only_openface", "only_openpose", "only_opensmile", "only_speaker"],
-        "label_creation": "stride_eval",
-        "nan_handling": "standard",
-        "oversampling_rate": 0.2,
-        "undersampling_rate": 0.1,
-        "rescaling": "standardization",
-        "summary": "mean"
+        "interval_length": {
+            "low": 900,
+            "high": 900,
+            "step": 100
+        },
+        "stride_train": {
+            "low": 400,
+            "high": 400,
+            "step": 100
+        },
+        "stride_eval": {
+            "low": 400,
+            "high": 400,
+            "step": 100
+        },
+        "fps": [
+            10
+        ],
+        "nan_handling": [
+            "standard"
+        ],
+        "label_creation": [
+            "stride_eval"
+        ],
+        "columns_to_remove": [
+            "openpose", "openface", "REMOVE_NOTHING","opensmile", "speaker", "only_openface", "only_openpose", "only_opensmile", "only_speaker"
+        ],
+        "oversampling_rate": {
+            "low": 0.2,
+            "high": 0.2,
+            "step": 0.1
+        },
+        "undersampling_rate": {
+            "low": 0.1,
+            "high": 0.1,
+            "step": 0.1
+        },
+        "rescaling": [
+            "standardization"
+        ],
+        "summary": [
+            "mean"
+        ],
+        "start_padding": [
+            true
+        ]
     },
     "model_params": {
-        "n_estimators": 140,
-        "max_depth": 60,
-        "random_state": 5,
-        "criterion": "entropy",
-        "max_features": "sqrt"
-    },
-    "stats": {
-        "accuracy": 0.8187012230206221,
-        "macro f1": 0.7139734969643206
+        "n_estimators": {
+            "low": 140,
+            "high": 140,
+            "step": 20
+        },
+        "max_depth": {
+            "low": 60,
+            "high": 60,
+            "step": 10
+        },
+        "random_state": {
+            "low": 0,
+            "high": 5,
+            "step": 1
+        },
+        "criterion": [
+            "entropy"
+        ],
+        "max_features": [
+            "sqrt"
+        ]
     }
 }
