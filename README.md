@@ -53,6 +53,6 @@ Submitted models still missed the zero padding. The last column on the right sho
 Best configs of other models:
 - [ConvTran](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/best_model_configs/ConvTranPlus_2024-07-13-14.json)
 - [TST](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/best_model_configs/TST_2024-07-16-10.json)
-- [RandomForest]()
+- [RandomForest](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/best_model_configs/RandomForest_2024-06-15-11.json)
 - [MiniRocket](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/best_model_configs/MiniRocket_2024-07-14-02.json)
 
