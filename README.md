@@ -9,7 +9,9 @@ To get the test predictions, use [time_series_classifiers.py](https://github.com
 Moreover, the files can be used for: 
 - time_series_classifiers.py: run Optuna search for models and save the best one; use models for inference
 - data_loader.py: preprocessing & loading of datasets
-- get_metrics.py: official competition metrics script 
+- get_metrics.py: official competition metrics script
+
+Model searches can be easily specified via json files. We provide many examples for the [genetic searches](https://github.com/lwachowiak/HRI-Error-Detection-STAI/tree/main/code/search_configs) and [grid searches](https://github.com/lwachowiak/HRI-Error-Detection-STAI/tree/main/code/grid_search_configs) we used ourselves.
 
 ## Dependencies
 We used Python 3.11.9. All the Python packages we used can be installed from the requirements.txt. 
