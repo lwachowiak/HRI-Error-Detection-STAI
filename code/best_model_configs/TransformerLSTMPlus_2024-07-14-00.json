@@ -1,1 +1,33 @@
-{"task": 2, "model_type": "TransformerLSTMPlus", "data_params": {"interval_length": 600, "stride_train": 200, "stride_eval": 400, "fps": 100, "columns_to_remove": "openpose, c_openface", "label_creation": "stride_eval", "nan_handling": "zeros", "oversampling_rate": 0.2, "undersampling_rate": 0.0, "rescaling": "standardization", "start_padding": true}, "model_params": {"d_model": 160, "nhead": 12, "proj_dropout": 0.5, "num_encoder_layers": 1024, "dim_feedforward": 2048, "dropout": 0.4, "num_rnn_layers": 10, "bs": 16, "lr": 2.6675675046131333e-05, "loss": "FocalLossFlat"}, "stats": {"accuracy": 0.794959313743173, "macro f1": 0.6932446244721125}}
+{
+    "task": 2,
+    "model_type": "TransformerLSTMPlus",
+    "data_params": {
+        "interval_length": 600,
+        "stride_train": 200,
+        "stride_eval": 400,
+        "fps": 100,
+        "columns_to_remove": "openpose, c_openface",
+        "label_creation": "stride_eval",
+        "nan_handling": "zeros",
+        "oversampling_rate": 0.2,
+        "undersampling_rate": 0.0,
+        "rescaling": "standardization",
+        "start_padding": true
+    },
+    "model_params": {
+        "d_model": 160,
+        "nhead": 12,
+        "proj_dropout": 0.5,
+        "num_encoder_layers": 1024,
+        "dim_feedforward": 2048,
+        "dropout": 0.4,
+        "num_rnn_layers": 10,
+        "bs": 16,
+        "lr": 2.6675675046131333e-05,
+        "loss": "FocalLossFlat"
+    },
+    "stats": {
+        "accuracy": 0.794959313743173,
+        "macro f1": 0.6932446244721125
+    }
+}

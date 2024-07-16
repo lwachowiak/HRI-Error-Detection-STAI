@@ -4,7 +4,7 @@
 Forthcoming
 
 ## Usage
-To get the test predictions, use time_series_classifiers.py and specify the model you want to get predictions from. 
+To get the test predictions, use [time_series_classifiers.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/time_series_classifiers.py) and specify the model you want to get predictions from. 
 
 Moreover, the files can be used for: 
 - time_series_classifiers.py: run Optuna search for models and save the best one; use models for inference
@@ -26,7 +26,7 @@ As we are not allowed to re-publish the dataset, you need to request it from the
 ## Configs of Submitted and Best Models
 Submitted models still missed the zero padding. The last column on the right shows our final best model, trained after the competition ended:
 
-| **Category**          | **Parameter**              | **Interaction Rupture (submitted)**                   | **Robot Error (submitted)**                   | **User Awkwardness (submitted)**                   | **Interaction Rupture (best)**                            |
+| **Category**          | **Parameter**              | **Interaction Rupture (submitted)**                   | **Robot Error (submitted)**                   | **User Awkwardness (submitted)**                   | **Interaction Rupture (best MiniRocket)**                            |
 |-----------------------|----------------------------|-------------------------------|-------------------------------|-------------------------------|------------------------------------------|
 | **Task**              | Task                       | 2                             | 1                             | 0                             | 2                                        |
 | **Model**              | Model Type                 | MiniRocket                    | MiniRocket                    | MiniRocket                    | MiniRocket                               |
@@ -51,7 +51,8 @@ Submitted models still missed the zero padding. The last column on the right sho
 | **Performance** | Macro F1  (Test)                 | 0.75           | 0.73          | 0.55           | N/A                                      |
 
 Best configs of other models:
-- [ConvTran](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/best_model_configs/ConvTranPlus_2024-07-12-09.json)
-- [TST]()
+- [ConvTran](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/best_model_configs/ConvTranPlus_2024-07-13-14.json)
+- [TST](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/best_model_configs/TST_2024-07-16-10.json)
 - [RandomForest]()
+- [MiniRocket](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/best_model_configs/MiniRocket_2024-07-14-02.json)
 
