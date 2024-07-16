@@ -26,14 +26,14 @@ def plot_feature_importance(run):
     plt.grid(alpha=0.25)
     plt.xlabel('Accuracy')
     plt.ylabel('Columns to Remove')
-    plt.show()
     # save plot
     plt.savefig('plots/feature_importance.pdf')
+    plt.show()
 
 
 def violin_plots(histories):
 
-    def individual_violin_plot(histories, key, x_label):
+    def individual_violin_plot(histories, key, x_label, xticks):
         sns.violinplot(x=key, y='accuracy', data=histories,
                        hue="model_name", cut=0)
         plt.xlabel(x_label)
@@ -44,23 +44,30 @@ def violin_plots(histories):
         plt.gca().yaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
         # add transparent grid
         plt.grid(alpha=0.25)
-        plt.show()
+        # add xticks list of strings
+        plt.xticks(ticks=range(len(xticks)), labels=xticks)
         # save plot
         plt.savefig(f'plots/{key}_violin_plot.pdf')
+        plt.show()
 
     # make one joint df and add model name as column
     for i, hist in enumerate(histories):
-        hist['model_name'] = ['Random Forest', 'MiniRocket', 'ConvTran'][i]
+        hist['model_name'] = ['Random Forest',
+                              'MiniRocket', 'ConvTran', 'TST'][i]
     df = pd.concat(histories)
     print(df.columns)
     # drop rows were interval_length is nan
     df = df.dropna(subset=['interval_length'])
 
     # Creating the violin plot
-    individual_violin_plot(df, 'interval_length', 'Interval Length in Seconds')
-    individual_violin_plot(df, 'stride_eval', 'Evaluation Stride in Seconds')
-    individual_violin_plot(df, 'stride_train', 'Training Stride in Seconds')
-    individual_violin_plot(df, 'rescaling', 'With/Without Normalization')
+    individual_violin_plot(df, 'interval_length',
+                           'Interval Length in Seconds', ["5s", "15s", "25s"])
+    individual_violin_plot(
+        df, 'stride_eval', 'Evaluation Stride in Seconds', ["3s", "6s", "9s"])
+    individual_violin_plot(
+        df, 'stride_train', 'Training Stride in Seconds', ["3s", "6s", "9s"])
+    individual_violin_plot(
+        df, 'rescaling', 'With/Without Normalization', ["With", "Without"])
 
 
 if __name__ == "__main__":
@@ -73,5 +80,6 @@ if __name__ == "__main__":
     run = api.run("lennartw/HRI-Errors/pe0z1db0")  # rf
     run2 = api.run("lennartw/HRI-Errors/nk6xvdk2")  # minirocket
     run3 = api.run("lennartw/HRI-Errors/no3vd1bk")  # convtran
-    histories = [run.history(), run2.history(), run3.history()]
+    run4 = api.run("lennartw/HRI-Errors/d8r87xzk")  # tst
+    histories = [run.history(), run2.history(), run3.history(), run4.history()]
     violin_plots(histories)
