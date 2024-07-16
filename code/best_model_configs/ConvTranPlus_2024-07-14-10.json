@@ -1,1 +1,31 @@
-{"task": 2, "model_type": "ConvTranPlus", "data_params": {"interval_length": 1500, "stride_train": 600, "stride_eval": 300, "fps": 25, "columns_to_remove": "openpose, c_openface", "label_creation": "stride_eval", "nan_handling": "zeros", "oversampling_rate": 0.1, "undersampling_rate": 0.1, "rescaling": "normalization", "start_padding": true}, "model_params": {"d_model": 8, "n_heads": 8, "dim_ff": 32, "encoder_dropout": 0.2, "fc_dropout": 0.1, "bs": 16, "lr": 0.040868041550952174, "loss": "FocalLossFlat"}, "stats": {"accuracy": 0.8283064348851875, "macro f1": 0.740386403686182}}
+{
+    "task": 2,
+    "model_type": "ConvTranPlus",
+    "data_params": {
+        "interval_length": 1500,
+        "stride_train": 600,
+        "stride_eval": 300,
+        "fps": 25,
+        "columns_to_remove": "openpose, c_openface",
+        "label_creation": "stride_eval",
+        "nan_handling": "zeros",
+        "oversampling_rate": 0.1,
+        "undersampling_rate": 0.1,
+        "rescaling": "normalization",
+        "start_padding": true
+    },
+    "model_params": {
+        "d_model": 8,
+        "n_heads": 8,
+        "dim_ff": 32,
+        "encoder_dropout": 0.2,
+        "fc_dropout": 0.1,
+        "bs": 16,
+        "lr": 0.040868041550952174,
+        "loss": "FocalLossFlat"
+    },
+    "stats": {
+        "accuracy": 0.8283064348851875,
+        "macro f1": 0.740386403686182
+    }
+}

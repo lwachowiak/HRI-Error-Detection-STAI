@@ -1,1 +1,27 @@
-{"task": 2, "model_type": "XGBoost", "data_params": {"interval_length": 700, "stride_train": 100, "stride_eval": 350, "fps": 100, "columns_to_remove": "speaker", "label_creation": "stride_eval", "nan_handling": "standard", "oversampling_rate": 0.0, "undersampling_rate": 0.1, "rescaling": "standardization", "summary": "mean"}, "model_params": {"n_estimators": 70, "max_depth": 30, "learning_rate": 0.11, "booster": "dart"}, "stats": {"accuracy": 0.8104459123169436, "macro f1": 0.708059196399436}}
+{
+    "task": 2,
+    "model_type": "XGBoost",
+    "data_params": {
+        "interval_length": 700,
+        "stride_train": 100,
+        "stride_eval": 350,
+        "fps": 100,
+        "columns_to_remove": "speaker",
+        "label_creation": "stride_eval",
+        "nan_handling": "standard",
+        "oversampling_rate": 0.0,
+        "undersampling_rate": 0.1,
+        "rescaling": "standardization",
+        "summary": "mean"
+    },
+    "model_params": {
+        "n_estimators": 70,
+        "max_depth": 30,
+        "learning_rate": 0.11,
+        "booster": "dart"
+    },
+    "stats": {
+        "accuracy": 0.8104459123169436,
+        "macro f1": 0.708059196399436
+    }
+}

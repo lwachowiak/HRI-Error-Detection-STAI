@@ -1,1 +1,31 @@
-{"task": 2, "model_type": "TST", "data_params": {"interval_length": 2500, "stride_train": 300, "stride_eval": 600, "fps": 25, "columns_to_remove": "openpose, c_openface", "label_creation": "stride_eval", "nan_handling": "zeros", "oversampling_rate": 0.1, "undersampling_rate": 0.1, "rescaling": "normalization", "start_padding": true}, "model_params": {"dropout": 0.2, "fc_dropout": 0.4, "n_layers": 2, "n_heads": 10, "d_model": 128, "bs": 16, "lr": 3.097984045602422e-05, "loss": "CrossEntropyLossFlat"}, "stats": {"accuracy": 0.8043550647567999, "macro f1": 0.7226294287242037}}
+{
+    "task": 2,
+    "model_type": "TST",
+    "data_params": {
+        "interval_length": 2500,
+        "stride_train": 300,
+        "stride_eval": 600,
+        "fps": 25,
+        "columns_to_remove": "openpose, c_openface",
+        "label_creation": "stride_eval",
+        "nan_handling": "zeros",
+        "oversampling_rate": 0.1,
+        "undersampling_rate": 0.1,
+        "rescaling": "normalization",
+        "start_padding": true
+    },
+    "model_params": {
+        "dropout": 0.2,
+        "fc_dropout": 0.4,
+        "n_layers": 2,
+        "n_heads": 10,
+        "d_model": 128,
+        "bs": 16,
+        "lr": 3.097984045602422e-05,
+        "loss": "CrossEntropyLossFlat"
+    },
+    "stats": {
+        "accuracy": 0.8043550647567999,
+        "macro f1": 0.7226294287242037
+    }
+}
