@@ -907,28 +907,16 @@ class TS_Model_Trainer:
 
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(interval_length=interval_length, stride_train=stride_train,
                                                                                                              stride_eval=stride_eval, fps=fps, verbose=True, label_creation=label_creation, task=task, rescaling=rescaling, fold=4)
-
-        test_X_TS_list, _ = self.data.get_timeseries_format_test_data(interval_length=interval_length, stride_eval=stride_eval,
-                                                                      fps=fps, verbose=True, label_creation=label_creation, task=task, rescaling=rescaling)
         # nan handling based on training parameters
         if data_values["nan_handling"] == "zeros":
-            train_X_TS = np.nan_to_num(train_X_TS, nan=0)
             val_X_TS_list = [np.nan_to_num(val_X_TS, nan=0)
                              for val_X_TS in val_X_TS_list]
-            test_X_TS_list = [np.nan_to_num(test_X_TS, nan=0)
-                              for test_X_TS in test_X_TS_list]
             
         if data_values["nan_handling"] == "avg":
-            train_X_TS = DataLoader_HRI.impute_nan_with_feature_mean(
-                train_X_TS)
             val_X_TS_list = [DataLoader_HRI.impute_nan_with_feature_mean(
                 val_X_TS) for val_X_TS in val_X_TS_list]
-            test_X_TS_list = [DataLoader_HRI.impute_nan_with_feature_mean(
-                test_X_TS) for test_X_TS in test_X_TS_list]
 
         # feature removal based on training parameters
-        test_X_TS_list, new_column_order = self.remove_columns(columns_to_remove=columns_to_remove,
-                                                               data_X=test_X_TS_list, column_order=column_order)
         val_X_TS_list, new_column_order = self.remove_columns(columns_to_remove=columns_to_remove,
                                                               data_X=val_X_TS_list, column_order=column_order)
 
