@@ -67,12 +67,12 @@ def plot_feature_importance(runs: list=None, offline=True):
     print(grouped_hists)
     # plot accuracy
     y = np.arange(len(h['columns_to_remove']))
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(10, 8))
 
     for i, h in enumerate(grouped_hists):
         # TODO: shift the points so different model types are on their own y-axis but under the same categorical variable
         plt.errorbar(h['accuracy']['mean'],
-                     y - 0.4 + 0.267 * i, 
+                     y - 0.35 + 0.233 * i, 
                      xerr=h['accuracy']['std'], 
                      fmt='o',
                      markersize=14,
@@ -99,12 +99,12 @@ def plot_feature_importance(runs: list=None, offline=True):
     plt.show()
 
     # plot f1
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(10, 8))
 
     for i, h in enumerate(grouped_hists):
         # TODO: shift the points so they are not plotted on the same x-axis
         plt.errorbar(h['macro f1']['mean'], 
-                     y - 0.4 + 0.267 * i, 
+                     y - 0.35 + 0.233 * i, 
                      xerr=h['macro f1']['std'], 
                      fmt='o',
                      markersize=14,
