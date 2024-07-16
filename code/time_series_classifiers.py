@@ -905,7 +905,7 @@ class TS_Model_Trainer:
         columns_to_remove = data_values["columns_to_remove"]
         columns_to_remove = self.column_removal_dict[columns_to_remove]
 
-        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(interval_length=interval_length, stride_train=stride_train,
+        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_summary_format(interval_length=interval_length, stride_train=stride_train,
                                                                                                              stride_eval=stride_eval, fps=fps, verbose=True, label_creation=label_creation, task=task, rescaling=rescaling, fold=4)
         # nan handling based on training parameters
         if data_values["nan_handling"] == "zeros":
