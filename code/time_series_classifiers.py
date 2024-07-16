@@ -880,6 +880,66 @@ class TS_Model_Trainer:
 
         else:
             raise Exception("Model type not recognized.")
+        
+    def get_naive_baseline_stats(self):
+        '''Get the naive baseline stats for the dataset.'''
+
+        with open(self.folder + "code/trained_models/RandomForest.pkl", "rb") as f:
+            model = pickle.load(f)
+
+        # features the model was trained on
+        with open(self.folder + "code/trained_models/RandomForest_columns.pkl", "rb") as f:
+            features = pickle.load(f)
+
+        config = self.read_config(
+            self.folder+"code/best_model_configs/RandomForest_Feature_Importance.json")  # sets task automatically
+        
+        data_values = config["data_params"]
+        interval_length = data_values["interval_length"]
+        stride_eval = data_values["stride_eval"]
+        stride_train = data_values["stride_train"]
+        fps = data_values["fps"]
+        label_creation = data_values["label_creation"]
+        task = config["task"]
+        rescaling = data_values["rescaling"]
+        columns_to_remove = data_values["columns_to_remove"]
+        columns_to_remove = self.column_removal_dict[columns_to_remove]
+
+        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(interval_length=interval_length, stride_train=stride_train,
+                                                                                                             stride_eval=stride_eval, fps=fps, verbose=True, label_creation=label_creation, task=task, rescaling=rescaling, fold=4)
+
+        test_X_TS_list, _ = self.data.get_timeseries_format_test_data(interval_length=interval_length, stride_eval=stride_eval,
+                                                                      fps=fps, verbose=True, label_creation=label_creation, task=task, rescaling=rescaling)
+        # nan handling based on training parameters
+        if data_values["nan_handling"] == "zeros":
+            train_X_TS = np.nan_to_num(train_X_TS, nan=0)
+            val_X_TS_list = [np.nan_to_num(val_X_TS, nan=0)
+                             for val_X_TS in val_X_TS_list]
+            test_X_TS_list = [np.nan_to_num(test_X_TS, nan=0)
+                              for test_X_TS in test_X_TS_list]
+            
+        if data_values["nan_handling"] == "avg":
+            train_X_TS = DataLoader_HRI.impute_nan_with_feature_mean(
+                train_X_TS)
+            val_X_TS_list = [DataLoader_HRI.impute_nan_with_feature_mean(
+                val_X_TS) for val_X_TS in val_X_TS_list]
+            test_X_TS_list = [DataLoader_HRI.impute_nan_with_feature_mean(
+                test_X_TS) for test_X_TS in test_X_TS_list]
+
+        # feature removal based on training parameters
+        test_X_TS_list, new_column_order = self.remove_columns(columns_to_remove=columns_to_remove,
+                                                               data_X=test_X_TS_list, column_order=column_order)
+        val_X_TS_list, new_column_order = self.remove_columns(columns_to_remove=columns_to_remove,
+                                                              data_X=val_X_TS_list, column_order=column_order)
+
+        val_preds = self.get_full_test_preds(
+            model, val_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, model_type="Classic", start_padding=data_values["start_padding"])
+        
+        #replace val_preds with majority class prediction
+        val_preds = np.zeros(val_preds.shape).tolist()
+        val_scores = self.get_eval_metrics(
+            val_preds, dataset="val", verbose=True)
+        print("Val Scores:", val_scores)
 
 
 if __name__ == '__main__':
