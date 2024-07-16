@@ -33,7 +33,23 @@ def plot_feature_importance(runs: list=None, offline=True):
         #find and load all files in data folder that have feature_search in name
         # The files stored in the data folder are already the history dataframes
         files = [f for f in os.listdir('data') if 'features_search' in f]
-        histories = [pd.read_pickle(f'data/{f}') for f in files]
+        histories = []
+        for f in files:
+            print(f)
+            p = pd.read_pickle(f'data/{f}')
+            if 'tst' in f:
+                pass
+            elif 'convtran' in f:
+                pass
+            else:
+                histories.append(p)
+        # join convtran and tst histories
+        convtran = [pd.read_pickle(f'data/{f}') for f in files if 'convtran' in f]
+        tst = [pd.read_pickle(f'data/{f}') for f in files if 'tst' in f]
+        convtran = [pd.concat(convtran)]
+        #tst = pd.concat(tst)
+        histories = histories + convtran + tst
+
     else:
         histories = [r.history() for r in runs]
 
