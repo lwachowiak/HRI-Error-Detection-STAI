@@ -905,21 +905,9 @@ class TS_Model_Trainer:
         columns_to_remove = data_values["columns_to_remove"]
         columns_to_remove = self.column_removal_dict[columns_to_remove]
 
-        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_summary_format(interval_length=interval_length, stride_train=stride_train,
-                                                                                                             stride_eval=stride_eval, fps=fps, label_creation=label_creation, task=task, rescaling=rescaling, fold=4)
-        # nan handling based on training parameters
-        if data_values["nan_handling"] == "zeros":
-            val_X_TS_list = [np.nan_to_num(val_X_TS, nan=0)
-                             for val_X_TS in val_X_TS_list]
-            
-        if data_values["nan_handling"] == "avg":
-            val_X_TS_list = [DataLoader_HRI.impute_nan_with_feature_mean(
-                val_X_TS) for val_X_TS in val_X_TS_list]
-
-        # feature removal based on training parameters
-        val_X_TS_list, new_column_order = self.remove_columns(columns_to_remove=columns_to_remove,
-                                                              data_X=val_X_TS_list, column_order=column_order)
-
+        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
+                    data_values=data_values, format="classic", columns_to_remove=columns_to_remove, fold=4)
+        
         val_preds = self.get_full_test_preds(
             model, val_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, model_type="Classic", start_padding=data_values["start_padding"])
     
