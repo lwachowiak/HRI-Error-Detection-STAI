@@ -923,10 +923,12 @@ class TS_Model_Trainer:
         val_preds = self.get_full_test_preds(
             model, val_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, model_type="Classic", start_padding=data_values["start_padding"])
         
+        print(len(val_preds))
         #replace val_preds with majority class prediction
-        val_preds = [0]*len(val_preds)
+        naive_preds = [0]*len(val_preds)
+        print(len(naive_preds))
         val_scores = self.get_eval_metrics(
-            val_preds, dataset="val", verbose=True)
+            naive_preds, dataset="val", verbose=True)
         print("Val Scores:", val_scores)
 
 
