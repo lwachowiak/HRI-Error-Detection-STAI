@@ -1,0 +1,68 @@
+{
+    "task": 2,
+    "model_type": "MiniRocket",
+    "n_trials": 65,
+    "data_params": {
+        "interval_length": {
+            "low": 2500,
+            "high": 4500,
+            "step": 1000
+        },
+        "stride_train": {
+            "low": 300,
+            "high": 600,
+            "step": 300
+        },
+        "stride_eval": {
+            "low": 300,
+            "high": 600,
+            "step": 300
+        },
+        "fps": [
+            25
+        ],
+        "nan_handling": [
+            "standard"
+        ],
+        "label_creation": [
+            "stride_eval"
+        ],
+        "columns_to_remove": [
+            "openpose, c_openface"
+        ],
+        "oversampling_rate": {
+            "low": 0.1,
+            "high": 0.1,
+            "step": 0.3
+        },
+        "undersampling_rate": {
+            "low": 0.1,
+            "high": 0.1,
+            "step": 0.3
+        },
+        "rescaling": [
+            "none"
+        ],
+        "start_padding": [
+            true
+        ]
+    },
+    "model_params": {
+        "max_dilations_per_kernel": {
+            "low": 32,
+            "high": 32,
+            "step": 32
+        },
+        "n_estimators": {
+            "low": 10,
+            "high": 10,
+            "step": 2
+        },
+        "class_weight": [
+            null
+        ],
+        "random_state": [
+            42
+        ]
+    }
+}
