@@ -10,6 +10,6 @@ if os.getcwd().endswith("HRI-Error-Detection-STAI"):
 else:
     pathprefix = "HRI-Error-Detection-STAI/"
 
-trainer = TS_Model_Trainer(folder=pathprefix, n_jobs=8,config="best_model_configs/RandomForest_Feature_Importance.json")
+trainer = TS_Model_Trainer(folder=pathprefix, n_jobs=8,config_name="best_model_configs/RandomForest_Feature_Importance.json")
 
 trainer.get_naive_baseline_stats()
