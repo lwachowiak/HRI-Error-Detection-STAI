@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
+import numpy as np
 
 try:
     import wandb
@@ -24,7 +25,7 @@ REMAPPING = {
     'only_frame': 'Frame Only',
 }
 
-NAIVE_ACC = 0.7626
+NAIVE_ACC = 0.7596
 NAIVE_F1 = 0.43
 
 def plot_feature_importance(runs: list=None, offline=True):
@@ -63,24 +64,31 @@ def plot_feature_importance(runs: list=None, offline=True):
         h[('accuracy', 'mean')] = h[('accuracy', 'mean')].apply(lambda x: x - NAIVE_ACC)
         h[('macro f1', 'mean')] = h[('macro f1', 'mean')].apply(lambda x: x - NAIVE_F1)
 
+    print(grouped_hists)
     # plot accuracy
+    y = np.arange(len(h['columns_to_remove']))
     plt.figure(figsize=(12, 6))
 
     for i, h in enumerate(grouped_hists):
-        plt.errorbar(h['accuracy']['mean'], 
-                     h['columns_to_remove'], 
+        # TODO: shift the points so different model types are on their own y-axis but under the same categorical variable
+        plt.errorbar(h['accuracy']['mean'],
+                     y - 0.4 + 0.267 * i, 
                      xerr=h['accuracy']['std'], 
-                     fmt='o', 
-                     label=['Random Forest', 'MiniRocket', 'ConvTran', 'TST'][i],
-                     color=['blue', 'orange', 'green', 'red'][i]
+                     fmt='o',
+                     markersize=14,
+                     elinewidth=4, 
+                     label=['Random Forest', 'MiniRocket', 'ConvTranPlus', 'TST'][i],
+                     color=['#4a7fa4', '#e1812b', '#3a923a', '#c03d3e'][i]
                      )
-        # plot a horizontal line at 0.7626
-        plt.axvline(x=0., color='black', linestyle='dotted', label='Naive Baseline')
-        #rotate labels
-        plt.yticks(rotation=45)
+    #add shaded areas for every category across the y-axis
+    for i in range(1, len(REMAPPING), 2):
+        plt.axhspan(i - 0.5, i + 0.5, alpha=0.2, color='grey')
+    plt.axvline(x=0., color='black', linestyle='dotted', label='Naive Baseline')
+    #rotate labels
+    plt.yticks(y, grouped_hists[0]['columns_to_remove'],rotation=45)
     # add restric x-axis to 0.6 to 1
-    plt.xlim(-0.03, 0.06)
-    plt.legend(title='Model', loc='lower right')
+    plt.xlim(-0.13, 0.1)
+    plt.legend(title='Model', loc='upper left')
     # add grid with alpha
     plt.grid(alpha=0.25)
     plt.xlabel("Accuracy difference")
@@ -94,21 +102,26 @@ def plot_feature_importance(runs: list=None, offline=True):
     plt.figure(figsize=(12, 6))
 
     for i, h in enumerate(grouped_hists):
+        # TODO: shift the points so they are not plotted on the same x-axis
         plt.errorbar(h['macro f1']['mean'], 
-                     h['columns_to_remove'], 
+                     y - 0.4 + 0.267 * i, 
                      xerr=h['macro f1']['std'], 
-                     fmt='o', 
-                     label=['Random Forest', 'MiniRocket', 'ConvTran', 'TST'][i], 
-                     color=['blue', 'orange', 'green', 'red'][i]
+                     fmt='o',
+                     markersize=14,
+                     elinewidth=4, 
+                     label=['Random Forest', 'MiniRocket', 'ConvTranPlus', 'TST'][i], 
+                     color=['#4a7fa4', '#e1812b', '#3a923a', '#c03d3e'][i]
                      )
-        # plot a horizontal line at 0.43
-        plt.axvline(x=0., color='black', linestyle='dotted', label='Naive Baseline')
-        #rotate labels
-        plt.yticks(rotation=45)
+    #add shaded areas for every category across the y-axis
+    for i in range(1, len(REMAPPING), 2):
+        plt.axhspan(i - 0.5, i + 0.5, alpha=0.2, color='grey')
+    plt.axvline(x=0., color='black', linestyle='dotted', label='Naive Baseline')
+    #rotate labels
+    plt.yticks(y,grouped_hists[0]['columns_to_remove'], rotation=45)
 
-    # add restric x-axis to 0.3 to 0.5
-    plt.xlim(-0.01, 0.3)
-    plt.legend(title='Model', loc='lower right')
+
+    plt.xlim(-0.01, 0.35)
+    plt.legend(title='Model', loc='upper left')
     # add grid with alpha
     plt.grid(alpha=0.25)
     plt.xlabel("Macro F1")
