@@ -26,9 +26,9 @@ def plot_feature_importance(run):
     plt.grid(alpha=0.25)
     plt.xlabel('Accuracy')
     plt.ylabel('Columns to Remove')
-    plt.show()
     # save plot
     plt.savefig('plots/feature_importance.pdf')
+    plt.show()
 
 
 def violin_plots(histories):
@@ -44,13 +44,14 @@ def violin_plots(histories):
         plt.gca().yaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
         # add transparent grid
         plt.grid(alpha=0.25)
-        plt.show()
         # save plot
         plt.savefig(f'plots/{key}_violin_plot.pdf')
+        plt.show()
 
     # make one joint df and add model name as column
     for i, hist in enumerate(histories):
-        hist['model_name'] = ['Random Forest', 'MiniRocket', 'ConvTran'][i]
+        hist['model_name'] = ['Random Forest',
+                              'MiniRocket', 'ConvTran', 'TST'][i]
     df = pd.concat(histories)
     print(df.columns)
     # drop rows were interval_length is nan
@@ -73,5 +74,6 @@ if __name__ == "__main__":
     run = api.run("lennartw/HRI-Errors/pe0z1db0")  # rf
     run2 = api.run("lennartw/HRI-Errors/nk6xvdk2")  # minirocket
     run3 = api.run("lennartw/HRI-Errors/no3vd1bk")  # convtran
-    histories = [run.history(), run2.history(), run3.history()]
+    run4 = api.run("lennartw/HRI-Errors/d8r87xzk")  # tst
+    histories = [run.history(), run2.history(), run3.history(), run4.history()]
     violin_plots(histories)
