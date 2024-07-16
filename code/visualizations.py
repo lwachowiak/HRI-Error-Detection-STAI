@@ -1,37 +1,125 @@
-import wandb
-import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
+import os
 
+try:
+    import wandb
+    import seaborn as sns
+    offline = False
+except ImportError:
+    offline = True
+    print("Seaborn and wandb not installed, running offline")
 
-def plot_feature_importance(run):
-    feature_importance_hist = run_feature_importance.history()
-    feature_importance_hist.head()
+REMAPPING = {
+    'REMOVE_NOTHING': 'All Features',
+    'openface': 'No OpenFace',
+    'openpose': 'No OpenPose',
+    'opensmile': 'No OpenSmile',
+    'speaker': 'No Speaker Diarization',
+    'frame': 'No Frame',
+    'only_openface': 'OpenFace Only',
+    'only_openpose': 'OpenPose Only',
+    'only_opensmile': 'OpenSmile Only',
+    'only_speaker': 'Speaker Diarization Only',
+    'only_frame': 'Frame Only',
+}
+
+NAIVE_ACC = 0.7626
+NAIVE_F1 = 0.43
+
+def plot_feature_importance(runs: list=None, offline=True):
+    if offline:
+        #find and load all files in data folder that have feature_search in name
+        # The files stored in the data folder are already the history dataframes
+        files = [f for f in os.listdir('data') if 'features_search' in f]
+        histories = [pd.read_pickle(f'data/{f}') for f in files]
+    else:
+        histories = [r.history() for r in runs]
+
     # remove rows where accuracy is NaN
-    feature_importance_hist = feature_importance_hist.dropna(subset=[
-                                                             'accuracy'])
-    # sort by accuracy
-    feature_importance_hist = feature_importance_hist.sort_values(
-        'accuracy', ascending=True)
-    plt.figure(figsize=(10, 6))
-    standard_deviation = feature_importance_hist.groupby('columns_to_remove')[
-        'accuracy'].std()
-    standard_deviation = standard_deviation[feature_importance_hist['columns_to_remove']]
-    # sorted by accuracy
-    plt.barh(feature_importance_hist['columns_to_remove'],
-             feature_importance_hist['accuracy'], xerr=standard_deviation)
+    histories = [h.dropna(subset=['accuracy']) for h in histories]
+    histories = [h[['columns_to_remove', 'accuracy', 'macro f1']] for h in histories]
+
+    grouped_hists = [h.groupby('columns_to_remove').agg({
+        'accuracy': ['mean', 'std'],
+        'macro f1': ['mean', 'std']}).reset_index() for h in histories]
+    
+    # which index is every dict key? for each key, get the index
+    keys = {key: i for i, key in enumerate(grouped_hists[0]['columns_to_remove'])}
+    
+    idx = []
+    for key in REMAPPING.keys():
+        idx.append(keys[key])
+
+    idx.reverse()
+    
+    # sort by the remapping dictionary, 1st key is 1st row, 2nd key is 2nd row etc.
+    grouped_hists = [h.reindex(idx) for h in grouped_hists]
+    
+    # replace columns_to_remove with human readable names and subtract naive baseline
+    for h in grouped_hists:
+        h['columns_to_remove'] = h['columns_to_remove'].apply(lambda x: REMAPPING[x])
+        # subtract naive baseline
+        h[('accuracy', 'mean')] = h[('accuracy', 'mean')].apply(lambda x: x - NAIVE_ACC)
+        h[('macro f1', 'mean')] = h[('macro f1', 'mean')].apply(lambda x: x - NAIVE_F1)
+
+    # plot accuracy
+    plt.figure(figsize=(12, 6))
+
+    for i, h in enumerate(grouped_hists):
+        plt.errorbar(h['accuracy']['mean'], 
+                     h['columns_to_remove'], 
+                     xerr=h['accuracy']['std'], 
+                     fmt='o', 
+                     label=['Random Forest', 'MiniRocket', 'ConvTran', 'TST'][i],
+                     color=['blue', 'orange', 'green', 'red'][i]
+                     )
+        # plot a horizontal line at 0.7626
+        plt.axvline(x=0., color='black', linestyle='dotted', label='Naive Baseline')
+        #rotate labels
+        plt.yticks(rotation=45)
     # add restric x-axis to 0.6 to 1
-    plt.xlim(0.6, 0.85)
+    plt.xlim(-0.03, 0.06)
+    plt.legend(title='Model', loc='lower right')
     # add grid with alpha
     plt.grid(alpha=0.25)
-    plt.xlabel('Accuracy')
-    plt.ylabel('Columns to Remove')
+    plt.xlabel("Accuracy difference")
+    plt.ylabel("Feature groups")
+    plt.tight_layout()
     # save plot
-    plt.savefig('plots/feature_importance.pdf')
+    plt.savefig('plots/feature_importance_accuracy.pdf')
+    plt.show()
+
+    # plot f1
+    plt.figure(figsize=(12, 6))
+
+    for i, h in enumerate(grouped_hists):
+        plt.errorbar(h['macro f1']['mean'], 
+                     h['columns_to_remove'], 
+                     xerr=h['macro f1']['std'], 
+                     fmt='o', 
+                     label=['Random Forest', 'MiniRocket', 'ConvTran', 'TST'][i], 
+                     color=['blue', 'orange', 'green', 'red'][i]
+                     )
+        # plot a horizontal line at 0.43
+        plt.axvline(x=0., color='black', linestyle='dotted', label='Naive Baseline')
+        #rotate labels
+        plt.yticks(rotation=45)
+
+    # add restric x-axis to 0.3 to 0.5
+    plt.xlim(-0.01, 0.3)
+    plt.legend(title='Model', loc='lower right')
+    # add grid with alpha
+    plt.grid(alpha=0.25)
+    plt.xlabel("Macro F1")
+    plt.ylabel("Feature Groups")
+    plt.tight_layout()
+    # save plot
+    plt.savefig('plots/feature_importance_f1.pdf')
     plt.show()
 
 
-def violin_plots(histories):
+def violin_plots(histories: list):
 
     def individual_violin_plot(histories, key, x_label, xticks):
         sns.violinplot(x=key, y='accuracy', data=histories,
@@ -72,14 +160,19 @@ def violin_plots(histories):
 
 if __name__ == "__main__":
     # feature importance
-    api = wandb.Api()
-    run_feature_importance = api.run("lennartw/HRI-Errors/9gq8vvou")
-    plot_feature_importance(run_feature_importance)
 
-    # violin plots
-    run = api.run("lennartw/HRI-Errors/pe0z1db0")  # rf
-    run2 = api.run("lennartw/HRI-Errors/nk6xvdk2")  # minirocket
-    run3 = api.run("lennartw/HRI-Errors/no3vd1bk")  # convtran
-    run4 = api.run("lennartw/HRI-Errors/d8r87xzk")  # tst
-    histories = [run.history(), run2.history(), run3.history(), run4.history()]
-    violin_plots(histories)
+    if offline:
+        plot_feature_importance(offline=True)
+
+    else:
+        api = wandb.Api()
+        run_feature_importance = api.run("lennartw/HRI-Errors/9gq8vvou")
+        plot_feature_importance(run_feature_importance)
+
+        # violin plots
+        run = api.run("lennartw/HRI-Errors/pe0z1db0")  # rf
+        run2 = api.run("lennartw/HRI-Errors/nk6xvdk2")  # minirocket
+        run3 = api.run("lennartw/HRI-Errors/no3vd1bk")  # convtran
+        run4 = api.run("lennartw/HRI-Errors/d8r87xzk")  # tst
+        histories = [run.history(), run2.history(), run3.history(), run4.history()]
+        violin_plots(histories)
