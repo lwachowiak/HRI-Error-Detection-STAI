@@ -47,7 +47,7 @@ def plot_feature_importance(runs: list=None, offline=True):
         convtran = [pd.read_pickle(f'data/{f}') for f in files if 'convtran' in f]
         tst = [pd.read_pickle(f'data/{f}') for f in files if 'tst' in f]
         convtran = [pd.concat(convtran)]
-        #tst = pd.concat(tst)
+        tst = [pd.concat(tst)]
         histories = histories + convtran + tst
 
     else:
@@ -104,7 +104,7 @@ def plot_feature_importance(runs: list=None, offline=True):
     plt.yticks(y, grouped_hists[0]['columns_to_remove'],rotation=45)
     # add restric x-axis to 0.6 to 1
     plt.xlim(-0.13, 0.1)
-    plt.legend(title='Model', loc='upper left')
+    plt.legend(title='Model', loc='upper left',prop={'size': 14})
     # add grid with alpha
     plt.grid(alpha=0.25)
     plt.xlabel("Accuracy difference")
@@ -137,7 +137,7 @@ def plot_feature_importance(runs: list=None, offline=True):
 
 
     plt.xlim(-0.01, 0.35)
-    plt.legend(title='Model', loc='upper left')
+    plt.legend(title='Model', loc='upper left', prop={'size': 14})
     # add grid with alpha
     plt.grid(alpha=0.25)
     plt.xlabel("Macro F1")
