@@ -732,3 +732,27 @@ class DataLoader_HRI:
                 sessions_val) | self.all_X['session'].str.endswith("_train")]
             self.all_Y = self.all_Y[self.all_Y['session'].isin(
                 sessions_val) | self.all_Y['session'].str.endswith("_train")]
+            
+    def compute_jaccard_dissimilarity(self, task: int=2):
+        '''
+        Compute the Jaccard dissimilarity between the speaker_diarization data and labels
+        :param task: The task to compute the Jaccard dissimilarity for
+        :return: The Jaccard dissimilarity for the 3 speaker diarization features
+        '''
+        from scipy.spatial.distance import jaccard
+        # Get the speaker diarization data
+        speaker_data = self.all_X[['pause', 'participant', 'robot']]
+        # Get the labels
+        labels = self.all_Y[['UserAwkwardness', 'RobotMistake', 'InteractionRupture']].values
+        # Compute the Jaccard dissimilarity
+        for feature in speaker_data.columns:
+            feature_values = speaker_data[feature].values
+            feature_values = np.where(feature_values == 1, 1, 0)
+            jaccard_dissimilarity = jaccard(labels[:, task], feature_values)
+            print(f"Jaccard dissimilarity for {feature}: {jaccard_dissimilarity}")
+
+
+if __name__ == "__main__":
+
+    dl = DataLoader_HRI(verbose=False)
+    dl.compute_jaccard_dissimilarity()
