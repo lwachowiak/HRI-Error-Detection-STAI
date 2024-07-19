@@ -742,7 +742,7 @@ class DataLoader_HRI:
         from scipy.spatial.distance import jaccard
         # Get the speaker diarization data
         (print(self.all_X.columns))
-        speaker_data = self.all_X[['pause', 'participant', 'robot']]
+        speaker_data = self.all_X[['pause_speaker', 'participant_speaker', 'robot_speaker']]
         # Get the labels
         labels = self.all_Y[['UserAwkwardness', 'RobotMistake', 'InteractionRupture']].values
         # Compute the Jaccard dissimilarity
