@@ -1,1 +1,27 @@
-{"task": 2, "model_type": "MiniRocket", "data_params": {"interval_length": 2500, "stride_train": 600, "stride_eval": 300, "fps": 25, "columns_to_remove": "openpose, c_openface", "label_creation": "stride_eval", "nan_handling": "standard", "oversampling_rate": 0.1, "undersampling_rate": 0.1, "rescaling": "none", "start_padding": true}, "model_params": {"n_estimators": 10, "max_dilations_per_kernel": 32, "class_weight": null, "random_state": 42}, "stats": {"accuracy": 0.8391662831950266, "macro f1": 0.7632290256640791}}
+{
+    "task": 2,
+    "model_type": "MiniRocket",
+    "data_params": {
+        "interval_length": 2500,
+        "stride_train": 600,
+        "stride_eval": 300,
+        "fps": 25,
+        "columns_to_remove": "openpose, c_openface",
+        "label_creation": "stride_eval",
+        "nan_handling": "standard",
+        "oversampling_rate": 0.1,
+        "undersampling_rate": 0.1,
+        "rescaling": "none",
+        "start_padding": true
+    },
+    "model_params": {
+        "n_estimators": 10,
+        "max_dilations_per_kernel": 32,
+        "class_weight": null,
+        "random_state": 42
+    },
+    "stats": {
+        "accuracy": 0.8391662831950266,
+        "macro f1": 0.7632290256640791
+    }
+}
