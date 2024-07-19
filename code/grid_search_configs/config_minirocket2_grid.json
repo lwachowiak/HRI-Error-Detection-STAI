@@ -5,7 +5,7 @@
     "data_params": {
         "interval_length": {
             "low": 2500,
-            "high": 4500,
+            "high": 2500,
             "step": 1000
         },
         "stride_train": {
@@ -28,7 +28,8 @@
             "stride_eval"
         ],
         "columns_to_remove": [
-            "openpose, c_openface"
+            "openpose, c_openface",
+            "only_speaker"
         ],
         "oversampling_rate": {
             "low": 0.1,
