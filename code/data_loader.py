@@ -130,11 +130,15 @@ class DataLoader_HRI:
         if self.verbose:
             print("\nMerged data head:")
             print(self.all_X.head())
+            print("Y head:")
+            print(self.all_Y.head())
             print("X length:" , len(self.all_X))
             print("Y length:" , len(self.all_Y))
             print("Test:", self.test_X.head()) if len(self.test_X) > 0 else None
             print("\nMerged data tail:")
-            print(self.all_X.tail()) 
+            print(self.all_X.tail())
+            print("Y tail:")
+            print(self.all_Y.tail()) 
             print("Test:", self.test_X.tail()) if len(self.test_X) > 0 else None
 
     @staticmethod
