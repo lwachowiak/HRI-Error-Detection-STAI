@@ -74,6 +74,7 @@ class TS_Model_Trainer:
                                     "openface": ["openface"],
                                     "frame": ["frame"],
                                     "openpose, speaker": ["openpose", "speaker"],
+                                    "speaker, opensmile": ["speaker", "opensmile"],
                                     "speaker, openpose, openface": ["speaker", "openpose", "openface"],
                                     "speaker, openface, opensmile": ["speaker", "openface", "opensmile"],
                                     "openpose, openface, opensmile": ["openpose", "openface", "opensmile"],
