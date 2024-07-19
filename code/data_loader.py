@@ -755,5 +755,5 @@ class DataLoader_HRI:
 
 if __name__ == "__main__":
 
-    dl = DataLoader_HRI(verbose=False)
+    dl = DataLoader_HRI(verbose=True)
     dl.compute_jaccard_dissimilarity()
