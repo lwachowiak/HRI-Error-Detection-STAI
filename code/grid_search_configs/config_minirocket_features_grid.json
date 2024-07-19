@@ -54,8 +54,8 @@
             "step": 32
         },
         "n_estimators": {
-            "low": 4,
-            "high": 4,
+            "low": 10,
+            "high": 10,
             "step": 2
         },
         "class_weight": [

@@ -35,7 +35,6 @@ def plot_feature_importance(runs: list=None, offline=True):
         files = [f for f in os.listdir('data') if 'features_search' in f]
         histories = []
         for f in files:
-            print(f)
             p = pd.read_pickle(f'data/{f}')
             if 'tst' in f:
                 pass
@@ -46,8 +45,11 @@ def plot_feature_importance(runs: list=None, offline=True):
         # join convtran and tst histories
         convtran = [pd.read_pickle(f'data/{f}') for f in files if 'convtran' in f]
         tst = [pd.read_pickle(f'data/{f}') for f in files if 'tst' in f]
+        print("ConvTran runs:", len(convtran))
+        print("TST runs:", len(tst))
         convtran = [pd.concat(convtran)]
         tst = [pd.concat(tst)]
+        
         histories = histories + convtran + tst
 
     else:

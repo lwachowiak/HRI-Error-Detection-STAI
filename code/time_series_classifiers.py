@@ -839,6 +839,79 @@ class TS_Model_Trainer:
         test_preds_df = pd.DataFrame(test_preds).T
         test_preds_df.to_csv(self.folder + "code/test_predictions/" +
                              config_name + "_test_preds_trainer.csv")
+        
+    def cross_val_model(self, config_name: str) -> None:
+        '''Tester function that loads a config and validates the selected model. Mirrored from the Optuna Trial function.
+        params: trial: config of the model to load.
+        output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
+        '''
+        config = self.read_config(self.folder+"code/best_model_configs/"+config_name)
+        data_values = config["data_params"]
+        model_values = config["model_params"]
+        columns_to_remove = self.column_removal_dict[data_values["columns_to_remove"]]
+        print(config)
+
+        accuracies = []
+        f1s = []
+
+        # cross validation
+        for fold in range(1, 5):
+            print("\nFold", fold)
+            if config["model_type"] == "RandomForest" or config["model_type"] == "XGBoost":
+                val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
+                        data_values=data_values, format="classic", columns_to_remove=columns_to_remove, fold=fold)
+            
+            else:
+                val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
+                    data_values=data_values, format="timeseries", columns_to_remove=columns_to_remove, fold=fold)
+                
+                if config["model_type"] != "MiniRocket":
+
+                    all_X, all_Y, splits = self.merge_val_train(
+                    val_X_TS_list=val_X_TS_list, val_Y_TS_list=val_Y_TS_list, train_X_TS=train_X_TS, train_Y_TS_task=train_Y_TS_task)
+                    tfms = [None, TSClassification()]
+                    dsets = TSDatasets(all_X, all_Y, splits=splits,
+                               inplace=False, tfms=tfms)
+                    batch_tfms = [TSStandardize(by_sample=True)]
+                    dls = TSDataLoaders.from_dsets(
+                    dsets.train, dsets.valid, bs=config["model_params"]["bs"], batch_tfms=batch_tfms)
+                
+            ### MODEL SPECIFICATION ###
+
+            if config["model_type"] in ["RandomForest", "XGBoost", "MiniRocket"]:
+
+                model = self.get_classic_learner(model_values)
+
+                model.fit(train_X_TS, train_Y_TS_task)
+
+                test_preds = self.get_full_test_preds(
+                    model, val_X_TS_list, data_values["interval_length"], data_values["stride_eval"], model_type="Classic", start_padding=data_values["start_padding"])
+
+                eval_scores = self.get_eval_metrics(
+                    test_preds, dataset="val", verbose=True)
+                
+            else:
+                training_values = {"bs": config["model_params"]["bs"], "lr": config["model_params"]["lr"], "loss_func": config["model_params"]["loss"]}
+
+                torch.cuda.empty_cache()
+                learn = self.get_tsai_learner(
+                dls=dls, model_values=model_values, training_values=training_values)
+
+                learn.fit_one_cycle(100, training_values["lr"])
+
+                ### EVALUATION ###
+                preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, interval_length=data_values[
+                    "interval_length"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms, start_padding=data_values["start_padding"])
+                eval_scores = self.get_eval_metrics(
+                    preds=preds, dataset="val", verbose=False)
+
+            accuracies.append(eval_scores["accuracy"])
+            f1s.append(eval_scores["f1"])
+
+        print("Accuracies:", accuracies)
+
+        return np.mean(accuracies), np.mean(f1s)
+
 
     def train_and_save_best_model(self, model_config: str, name_extension="", fold: int = 4) -> None:
         """Train a model based on the specified configuration and save it to disk. For final submission.
