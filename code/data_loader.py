@@ -130,10 +130,10 @@ class DataLoader_HRI:
         if self.verbose:
             print("\nMerged data head:")
             print(self.all_X.head())
-            print("Test:", self.test_X.head())
+            print("Test:", self.test_X.head()) if len(self.test_X) > 0 else None
             print("\nMerged data tail:")
-            print(self.all_X.tail())
-            print("Test:", self.test_X.tail())
+            print(self.all_X.tail()) 
+            print("Test:", self.test_X.tail()) if len(self.test_X) > 0 else None
 
     @staticmethod
     def extract_file_number(filename: str) -> int:
