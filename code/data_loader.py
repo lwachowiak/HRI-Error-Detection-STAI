@@ -744,11 +744,11 @@ class DataLoader_HRI:
         (print(self.all_X.columns))
         speaker_data = self.all_X[['pause_speaker', 'participant_speaker', 'robot_speaker']]
         # Get the labels
-        labels = self.all_Y[['UserAwkwardness', 'RobotMistake', 'InteractionRupture']].values
+        labels = self.all_Y[['UserAwkwardness', 'RobotMistake', 'InteractionRupture']]
         # Compute the Jaccard dissimilarity
         for feature in speaker_data.columns:
             feature_values = speaker_data[feature].values
-            feature_values = np.where(feature_values == 1, 1, 0)
+            labels = labels.values
             jaccard_dissimilarity = jaccard(labels[:, task], feature_values)
             print(f"Jaccard dissimilarity for {feature}: {jaccard_dissimilarity}")
 
