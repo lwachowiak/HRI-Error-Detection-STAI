@@ -854,6 +854,8 @@ class TS_Model_Trainer:
 
         accuracies = []
         f1s = []
+        tolerant_acccuracies = []
+        tolerant_f1s = []
 
         # cross validation
         for fold in range(1, 5):
@@ -908,11 +910,13 @@ class TS_Model_Trainer:
 
             accuracies.append(eval_scores["accuracy"])
             f1s.append(eval_scores["f1"])
+            tolerant_acccuracies.append(eval_scores["accuracy_tolerant"])
+            tolerant_f1s.append(eval_scores["f1_tolerant"])
 
-        print("Accuracies:", accuracies)
-
-        return np.mean(accuracies), np.mean(f1s)
-
+            print("Accuracy:", np.mean(accuracies))
+            print("F1:", np.mean(f1s))
+            print("Tolerant Accuracy:", np.mean(tolerant_acccuracies))
+            print("Tolerant F1:", np.mean(tolerant_f1s))
 
     def train_and_save_best_model(self, model_config: str, name_extension="", fold: int = 4) -> None:
         """Train a model based on the specified configuration and save it to disk. For final submission.
