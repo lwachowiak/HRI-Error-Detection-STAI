@@ -90,7 +90,7 @@ def plot_feature_importance(runs: list=None, offline=True):
                      fmt='o',
                      markersize=14,
                      elinewidth=4, 
-                     label=['Random Forest', 'MiniRocket', 'ConvTranPlus', 'TST'][i],
+                     label=['Random Forest', 'MiniRocket', 'ConvTran', 'TST'][i],
                      color=['#4a7fa4', '#e1812b', '#3a923a', '#c03d3e'][i]
                      )
     #add shaded areas for every category across the y-axis
@@ -122,7 +122,7 @@ def plot_feature_importance(runs: list=None, offline=True):
                      fmt='o',
                      markersize=14,
                      elinewidth=4, 
-                     label=['Random Forest', 'MiniRocket', 'ConvTranPlus', 'TST'][i], 
+                     label=['Random Forest', 'MiniRocket', 'ConvTran', 'TST'][i], 
                      color=['#4a7fa4', '#e1812b', '#3a923a', '#c03d3e'][i]
                      )
     #add shaded areas for every category across the y-axis
@@ -177,7 +177,7 @@ def violin_plots():
 
     for i, hist in enumerate(histories):
         hist['model_name'] = ['Random Forest',
-                              'MiniRocket', 'ConvTranPlus', 'TST'][i]
+                              'MiniRocket', 'ConvTran', 'TST'][i]
     df = pd.concat(histories)
     print(df.columns)
     # drop rows were interval_length is nan
