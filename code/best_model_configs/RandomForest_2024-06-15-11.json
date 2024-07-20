@@ -12,7 +12,8 @@
         "oversampling_rate": 0.2,
         "undersampling_rate": 0.1,
         "rescaling": "standardization",
-        "summary": "mean"
+        "summary": "mean",
+        "start_padding": false
     },
     "model_params": {
         "n_estimators": 220,
