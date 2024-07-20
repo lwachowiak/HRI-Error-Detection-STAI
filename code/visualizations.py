@@ -13,11 +13,11 @@ REMAPPING = {
     'opensmile': 'No OpenSmile',
     'speaker': 'No Speaker Diarization',
     'frame': 'No Frame',
+    'only_speaker': 'Speaker Diarization only',
+    'only_opensmile': 'OpenSmile only',
     'only_openface': 'OpenFace only',
     'only_openpose': 'OpenPose only',
-    'only_opensmile': 'OpenSmile only',
-    'only_speaker': 'Speaker Diarization only',
-    'only_frame': 'Frame only',
+    'only_frame': 'Frame only'
 }
 
 NAIVE_ACC = 0.7596
