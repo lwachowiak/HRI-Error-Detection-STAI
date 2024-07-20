@@ -544,7 +544,7 @@ class TS_Model_Trainer:
         plt.title("Learning curve")
         plt.grid(alpha=0.2)
         # save as png in plots folder
-        plt.savefig(save_to)
+        plt.savefig(save_to+".pdf")
 
     def get_model_values(self, trial: optuna.Trial) -> tuple:
         '''Get the model values for the trial based on the configuration and the trial parameters.
@@ -1066,10 +1066,10 @@ if __name__ == '__main__':
 
     # learning curve
     # trainer.learning_curve("best_model_configs/MiniRocket_2024-06-25-17.json",
-    #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_MR.pdf")
-    # trainer.learning_curve("best_model_configs/RandomForest_2024-06-15-11.json",
-    #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_RF.pdf")
+    #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_MR")
+    trainer.learning_curve("best_model_configs/RandomForest_2024-06-15-11.json",
+                           iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_RF")
     trainer.learning_curve("best_model_configs/ConvTranPlus_2024-07-13-14.json",
-                           iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_CT.pdf")
+                           iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_CT")
     trainer.learning_curve("best_model_configs/TST_2024-07-16-10.json",
-                           iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_TST.pdf")
+                           iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_TST")
