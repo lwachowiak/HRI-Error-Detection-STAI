@@ -914,15 +914,19 @@ class TS_Model_Trainer:
             f1s.append(eval_scores["f1"])
             tolerant_acccuracies.append(eval_scores["accuracy_tolerant"])
             tolerant_f1s.append(eval_scores["f1_tolerant"])
+            precisions.append(eval_scores["precision"])
+            recalls.append(eval_scores["recall"])
+            tolerant_precisions.append(eval_scores["precision_tolerant"])
+            tolerant_recalls.append(eval_scores["recall_tolerant"])
 
-            print("Accuracy:", np.mean(accuracies))
-            print("F1:", np.mean(f1s))
-            print("Precision:", np.mean(precisions))
-            print("Recall:", np.mean(recalls))
-            print("Tolerant Accuracy:", np.mean(tolerant_acccuracies))
-            print("Tolerant F1:", np.mean(tolerant_f1s))
-            print("Tolerant Precision:", np.mean(tolerant_precisions))
-            print("Tolerant Recall:", np.mean(tolerant_recalls))
+        print("Accuracy:", np.mean(accuracies))
+        print("F1:", np.mean(f1s))
+        print("Precision:", np.mean(precisions))
+        print("Recall:", np.mean(recalls))
+        print("Tolerant Accuracy:", np.mean(tolerant_acccuracies))
+        print("Tolerant F1:", np.mean(tolerant_f1s))
+        print("Tolerant Precision:", np.mean(tolerant_precisions))
+        print("Tolerant Recall:", np.mean(tolerant_recalls))
 
     def train_and_save_best_model(self, model_config: str, name_extension="", fold: int = 4) -> None:
         """Train a model based on the specified configuration and save it to disk. For final submission.
