@@ -66,7 +66,6 @@ class TS_Model_Trainer:
             "TransformerLSTMPlus": self.optuna_objective_tsai
         }
         self.config = self.read_config(folder+"code/"+config_name)
-        # TODO change this to a separate function that just splits based on comma
         self.column_removal_dict = {"REMOVE_NOTHING": ["REMOVE_NOTHING"],
                                     "opensmile": ["opensmile"],
                                     "speaker": ["speaker"],
@@ -109,23 +108,23 @@ class TS_Model_Trainer:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 
-    def get_full_test_preds(self, model: object, val_X_TS_list: list, interval_length: int, stride_eval: int, model_type: str, batch_tfms: list = None, start_padding: bool = False) -> list:
+    def get_full_test_preds(self, model: object, val_X_TS_list: list, interval_length: int, stride_eval: int, api_style: str, batch_tfms: list = None, start_padding: bool = False) -> list:
         '''Get full test predictions by repeating the predictions based on interval_length and stride_eval.
         :param model: The model to evaluate.
         :param val_X_TS_list: List of validation/test data per session.
         :param interval_length: The length of the interval to predict.
         :param stride_eval: The stride to evaluate the model.
-        :param model_type: Either "Classic" or "TSAI", which have different API calls
+        :param api_style: Either "sklearn" or "TSAI", which have different API calls
         :param batch_tfms: List of batch transformations to apply, if any
         '''
-        if model_type not in ["Classic", "TSAI"]:
+        if api_style not in ["sklearn", "TSAI"]:
             raise ValueError(
-                "Model type not supported. Parameter model_type must be either 'Classic' or 'TSAI'.")
+                "Model type not supported. Parameter model_type must be either 'sklearn' or 'TSAI'.")
         test_preds = []
         for val_X_TS in val_X_TS_list:  # per session
-            if model_type == "Classic":
+            if api_style == "sklearn":
                 pred = model.predict(val_X_TS)
-            elif model_type == "TSAI":
+            elif api_style == "TSAI":
                 for tfm in batch_tfms:
                     val_X_TS = tfm(val_X_TS)
                 valid_probas, valid_targets = model.get_X_preds(
@@ -445,39 +444,6 @@ class TS_Model_Trainer:
             removed_col in col for removed_col in columns_to_remove)]
         return new_data_X, new_column_order
 
-    # TODO: rework or remove
-    def feature_importance(self, config: str) -> None:
-        '''Get feature importance values by leaving out the specified features and calculating the change in the performance'''
-        feature_importance = {}
-        model = MINIROCKET.MiniRocketVotingClassifier(
-            n_estimators=10, n_jobs=self.n_jobs, max_dilations_per_kernel=32, class_weight=None)
-        feature_search = [["REMOVE_NOTHING"], ["opensmile"],
-                          ["speaker"], ["openpose"], ["openface"], ["openpose", "speaker"], ["speaker", "openpose", "openface"], ["opensmile", "speaker", "openpose"], ["opensmile", "openpose", "openface"], ["opensmile", "speaker", "openface"]]
-        # per run, remove one or more columns
-        for removed_cols in feature_search:
-            interval_length = 900
-            stride_eval = 500
-            val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data.get_timeseries_format(
-                interval_length=interval_length, stride_train=400, stride_eval=stride_eval, verbose=False, fps=50, label_creation="stride_eval")
-            # remove columns ending, columns are the 2nd dimension
-            train_X_TS, _ = self.remove_columns(
-                columns_to_remove=removed_cols, data_X=train_X_TS, column_order=column_order)
-            print(train_X_TS.shape)
-            model.fit(train_X_TS, train_Y_TS[:, self.task])
-            val_X_TS_list_new, _ = self.remove_columns(
-                columns_to_remove=removed_cols, data_X=val_X_TS_list, column_order=column_order)
-            # eval
-            test_preds = self.get_full_test_preds(
-                model, val_X_TS_list_new, interval_length, stride_eval)
-            eval_scores = self.get_eval_metrics(
-                preds=test_preds, dataset="val", verbose=False)
-            name = " ".join(removed_cols)
-            feature_importance[name] = eval_scores
-
-        for key, value in feature_importance.items():
-            print("Removed:", key)
-            print(value["accuracy"], value["f1"], "\n")
-
     def learning_curve(self, config: str, iterations_per_samplesize: int, stepsize: int, save_to: str) -> None:
         '''Get learning curve of model.
         :param config: The configuration file to use to create the model.
@@ -491,13 +457,28 @@ class TS_Model_Trainer:
 
         # load config and model
         self.config = self.read_config(self.folder+"code/"+config)
-        self.config["model_params"]["random_state"] = random.randint(
-            0, 1000000)
-        # remove ["model_params"]["random_state"] from config dict
+        # remove ["model_params"]["random_state"] from config dict to train different models each time
         self.config["model_params"].pop("random_state", None)
         columns_to_remove = self.column_removal_dict[self.config["data_params"]
                                                      ["columns_to_remove"]]
-        model = self.get_classic_learner(self.config["model_params"])
+        if self.config["model_type"] == "MiniRocket":
+            model = self.get_classic_learner(self.config["model_params"])
+            data_format = "timeseries"
+            api_style = "sklearn"
+        elif self.config["model_type"] == "RandomForest":
+            model = self.get_classic_learner(self.config["model_params"])
+            data_format = "classic"
+            api_style = "sklearn"
+        else:
+            training_values = {"bs": self.config["model_params"]["bs"],
+                               "lr": self.config["model_params"]["lr"],
+                               "loss_func": self.config["model_params"]["loss"]}
+            model_values = self.config["model_params"].copy()
+            model_values.pop("bs", None)
+            model_values.pop("lr", None)
+            model_values.pop("loss", None)
+            data_format = "timeseries"
+            api_style = "TSAI"
 
         max_sessions = 55  # number of training files
         # start with all training data and remove one session per iteration
@@ -510,14 +491,31 @@ class TS_Model_Trainer:
             for j in range(iterations_per_samplesize):
                 # dataprep
                 val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
-                    self.config["data_params"], "timeseries", columns_to_remove, fold=4)
+                    data_values=self.config["data_params"], format=data_format, columns_to_remove=columns_to_remove, fold=4)
                 print("Train X shape", train_X_TS.shape)
                 print("Val X shape", val_X_TS_list[0].shape)
                 # train
-                model.fit(train_X_TS, train_Y_TS_task)
+                if api_style == "sklearn":
+                    model.fit(train_X_TS, train_Y_TS_task)
+                    batch_tfms = None
+                elif api_style == "TSAI":
+                    all_X, all_Y, splits = self.merge_val_train(
+                        val_X_TS_list=val_X_TS_list, val_Y_TS_list=val_Y_TS_list, train_X_TS=train_X_TS, train_Y_TS_task=train_Y_TS_task)
+                    tfms = [None, TSClassification()]
+                    dsets = TSDatasets(all_X, all_Y, splits=splits,
+                                       inplace=False, tfms=tfms)
+                    batch_tfms = [TSStandardize(by_sample=True)]
+                    dls = TSDataLoaders.from_dsets(
+                        dsets.train, dsets.valid, bs=training_values["bs"], batch_tfms=batch_tfms)
+                    ### MODEL SPECIFICATION ###
+                    torch.cuda.empty_cache()
+                    learn = self.get_tsai_learner(
+                        dls=dls, model_values=model_values, training_values=training_values)
+
+                    learn.fit_one_cycle(100, training_values["lr"])
                 # eval
                 test_preds = self.get_full_test_preds(
-                    model, val_X_TS_list, interval_length=self.config["data_params"]["interval_length"], stride_eval=self.config["data_params"]["stride_eval"], model_type="Classic", start_padding=self.config["data_params"]["start_padding"])
+                    model, val_X_TS_list, interval_length=self.config["data_params"]["interval_length"], stride_eval=self.config["data_params"]["stride_eval"], api_style=api_style, start_padding=self.config["data_params"]["start_padding"], batch_tfms=batch_tfms)
                 eval_scores = self.get_eval_metrics(
                     preds=test_preds, dataset="val", verbose=False)
                 scores_iter.append(eval_scores["accuracy"])
@@ -529,7 +527,13 @@ class TS_Model_Trainer:
         scores = scores[::-1]
         scores_mean = np.mean(scores, axis=1)
         print("\n\nMean Scores:", scores_mean)
-
+        # save scores and scores_mean in text file
+        with open(save_to+".txt", "w") as f:
+            f.write("Scores:\n")
+            for s in scores:
+                f.write(str(s)+"\n")
+            f.write("Mean Scores:\n")
+            f.write(str(scores_mean))
         # plot learning curve with standard deviation
         start_step = max_sessions % stepsize
         plt.plot(range(start_step, max_sessions+1, stepsize), scores_mean)
@@ -540,7 +544,7 @@ class TS_Model_Trainer:
         plt.title("Learning curve")
         plt.grid(alpha=0.2)
         # save as png in plots folder
-        plt.savefig(save_to)
+        plt.savefig(save_to+".pdf")
 
     def get_model_values(self, trial: optuna.Trial) -> tuple:
         '''Get the model values for the trial based on the configuration and the trial parameters.
@@ -644,7 +648,7 @@ class TS_Model_Trainer:
         params: training_values: dict: The training values to use for the model training.
         output: object: The tsai learner object to use for training.
         """
-        model_trial_params = {}
+        # model_trial_params = {}
         if self.config["model_type"] == "TST":
             model = TST(dls.vars, dls.c, dls.len, **model_values)
         elif self.config["model_type"] == "LSTM_FCN":
@@ -655,7 +659,7 @@ class TS_Model_Trainer:
                                  **model_values)
         elif self.config["model_type"] == "TransformerLSTMPlus":
             model = TransformerLSTMPlus(dls.vars, dls.c, dls.len,
-                                        **model_trial_params)
+                                        **model_values)
 
         loss_func = self.loss_dict[training_values["loss_func"]]
         cbs = [EarlyStoppingCallback(monitor="accuracy", patience=2)]
@@ -709,7 +713,7 @@ class TS_Model_Trainer:
 
             ### EVALUATION ###
             preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, interval_length=data_values[
-                "interval_length"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms, start_padding=data_values["start_padding"])
+                "interval_length"], stride_eval=data_values["stride_eval"], api_style="TSAI", batch_tfms=batch_tfms, start_padding=data_values["start_padding"])
             outcomes = self.get_eval_metrics(
                 preds=preds, dataset="val", verbose=False)
 
@@ -745,7 +749,7 @@ class TS_Model_Trainer:
             model.fit(train_X_TS, train_Y_TS_task)
 
             test_preds = self.get_full_test_preds(
-                model, val_X_TS_list, data_values["interval_length"], data_values["stride_eval"], model_type="Classic", start_padding=data_values["start_padding"])
+                model, val_X_TS_list, data_values["interval_length"], data_values["stride_eval"], api_style="sklearn", start_padding=data_values["start_padding"])
 
             eval_scores = self.get_eval_metrics(
                 test_preds, dataset="val", verbose=True)
@@ -831,22 +835,23 @@ class TS_Model_Trainer:
         print(test_X_TS_list[0].shape)
 
         test_preds = self.get_full_test_preds(
-            model, test_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, model_type="Classic", start_padding=data_values["start_padding"])
+            model, test_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, api_style="sklearn", start_padding=data_values["start_padding"])
         val_preds = self.get_full_test_preds(
-            model, val_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, model_type="Classic", start_padding=data_values["start_padding"])
+            model, val_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, api_style="sklearn", start_padding=data_values["start_padding"])
         val_scores = self.get_eval_metrics(
             val_preds, dataset="val", verbose=True)
         print("Val Scores:", val_scores)
         test_preds_df = pd.DataFrame(test_preds).T
         test_preds_df.to_csv(self.folder + "code/test_predictions/" +
                              config_name + "_test_preds_trainer.csv")
-        
+
     def cross_val_model(self, config_name: str) -> None:
         '''Tester function that loads a config and validates the selected model. Mirrored from the Optuna Trial function.
         params: trial: config of the model to load.
         output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
         '''
-        config = self.read_config(self.folder+"code/best_model_configs/"+config_name)
+        config = self.read_config(
+            self.folder+"code/best_model_configs/"+config_name)
         data_values = config["data_params"]
         model_values = config["model_params"]
         columns_to_remove = self.column_removal_dict[data_values["columns_to_remove"]]
@@ -864,23 +869,23 @@ class TS_Model_Trainer:
             print("\nFold", fold)
             if config["model_type"] == "RandomForest" or config["model_type"] == "XGBoost":
                 val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
-                        data_values=data_values, format="classic", columns_to_remove=columns_to_remove, fold=fold)
-            
+                    data_values=data_values, format="classic", columns_to_remove=columns_to_remove, fold=fold)
+
             else:
                 val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
                     data_values=data_values, format="timeseries", columns_to_remove=columns_to_remove, fold=fold)
-                
+
                 if config["model_type"] != "MiniRocket":
 
                     all_X, all_Y, splits = self.merge_val_train(
-                    val_X_TS_list=val_X_TS_list, val_Y_TS_list=val_Y_TS_list, train_X_TS=train_X_TS, train_Y_TS_task=train_Y_TS_task)
+                        val_X_TS_list=val_X_TS_list, val_Y_TS_list=val_Y_TS_list, train_X_TS=train_X_TS, train_Y_TS_task=train_Y_TS_task)
                     tfms = [None, TSClassification()]
                     dsets = TSDatasets(all_X, all_Y, splits=splits,
-                               inplace=False, tfms=tfms)
+                                       inplace=False, tfms=tfms)
                     batch_tfms = [TSStandardize(by_sample=True)]
                     dls = TSDataLoaders.from_dsets(
-                    dsets.train, dsets.valid, bs=config["model_params"]["bs"], batch_tfms=batch_tfms)
-                
+                        dsets.train, dsets.valid, bs=config["model_params"]["bs"], batch_tfms=batch_tfms)
+
             ### MODEL SPECIFICATION ###
 
             if config["model_type"] in ["RandomForest", "XGBoost", "MiniRocket"]:
@@ -890,23 +895,24 @@ class TS_Model_Trainer:
                 model.fit(train_X_TS, train_Y_TS_task)
 
                 test_preds = self.get_full_test_preds(
-                    model, val_X_TS_list, data_values["interval_length"], data_values["stride_eval"], model_type="Classic", start_padding=data_values["start_padding"])
+                    model, val_X_TS_list, data_values["interval_length"], data_values["stride_eval"], api_style="sklearn", start_padding=data_values["start_padding"])
 
                 eval_scores = self.get_eval_metrics(
                     test_preds, dataset="val", verbose=True)
-                
+
             else:
-                training_values = {"bs": config["model_params"]["bs"], "lr": config["model_params"]["lr"], "loss_func": config["model_params"]["loss"]}
+                training_values = {"bs": config["model_params"]["bs"],
+                                   "lr": config["model_params"]["lr"], "loss_func": config["model_params"]["loss"]}
 
                 torch.cuda.empty_cache()
                 learn = self.get_tsai_learner(
-                dls=dls, model_values=model_values, training_values=training_values)
+                    dls=dls, model_values=model_values, training_values=training_values)
 
                 learn.fit_one_cycle(100, training_values["lr"])
 
                 ### EVALUATION ###
                 preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, interval_length=data_values[
-                    "interval_length"], stride_eval=data_values["stride_eval"], model_type="TSAI", batch_tfms=batch_tfms, start_padding=data_values["start_padding"])
+                    "interval_length"], stride_eval=data_values["stride_eval"], api_style="TSAI", batch_tfms=batch_tfms, start_padding=data_values["start_padding"])
                 eval_scores = self.get_eval_metrics(
                     preds=preds, dataset="val", verbose=False)
 
@@ -953,7 +959,7 @@ class TS_Model_Trainer:
             model.fit(train_X_TS, train_Y_TS_task)
             if fold in [1, 2, 3, 4]:  # only validate if not trained on all data
                 test_preds = self.get_full_test_preds(
-                    model, val_X_TS_list, self.config["data_params"]["interval_length"], self.config["data_params"]["stride_eval"], model_type="Classic", start_padding=self.config["data_params"]["start_padding"])
+                    model, val_X_TS_list, self.config["data_params"]["interval_length"], self.config["data_params"]["stride_eval"], api_style="sklearn", start_padding=self.config["data_params"]["start_padding"])
                 eval_scores = self.get_eval_metrics(
                     test_preds, dataset="val", verbose=True)
                 print("Val Scores:", eval_scores)
@@ -969,7 +975,7 @@ class TS_Model_Trainer:
 
         else:
             raise Exception("Model type not recognized.")
-        
+
     def get_naive_baseline_stats(self):
         '''Get the naive baseline stats for the dataset.'''
 
@@ -982,7 +988,7 @@ class TS_Model_Trainer:
 
         config = self.read_config(
             self.folder+"code/best_model_configs/RandomForest_Feature_Importance.json")  # sets task automatically
-        
+
         data_values = config["data_params"]
         interval_length = data_values["interval_length"]
         stride_eval = data_values["stride_eval"]
@@ -995,10 +1001,10 @@ class TS_Model_Trainer:
         columns_to_remove = self.column_removal_dict[columns_to_remove]
 
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
-                    data_values=data_values, format="classic", columns_to_remove=columns_to_remove, fold=4)
-        
+            data_values=data_values, format="classic", columns_to_remove=columns_to_remove, fold=4)
+
         val_preds = self.get_full_test_preds(
-            model, val_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, model_type="Classic", start_padding=data_values["start_padding"])
+            model, val_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, api_style="sklearn", start_padding=data_values["start_padding"])
         naive_preds = [[0]*len(pred) for pred in val_preds]
         val_scores = self.get_eval_metrics(
             naive_preds, dataset="val", verbose=True)
@@ -1049,10 +1055,10 @@ if __name__ == '__main__':
     # trainer.load_and_eval("RandomForest_2024-06-05-17")
 
     ########### uncomment to run optuna search ###########
-    study_name = trainer.config["model_type"] + "_" + date
-    gridsearch = "grid" in config_name
-    study = trainer.optuna_study(
-        n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True, gridsearch=gridsearch)
+    # study_name = trainer.config["model_type"] + "_" + date
+    # gridsearch = "grid" in config_name
+    # study = trainer.optuna_study(
+    #    n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True, gridsearch=gridsearch)
 
     # TODO: move to analysis script
     # feature importance
@@ -1060,4 +1066,10 @@ if __name__ == '__main__':
 
     # learning curve
     # trainer.learning_curve("best_model_configs/MiniRocket_2024-06-25-17.json",
-    #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve.pdf")
+    #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_MR")
+    trainer.learning_curve("best_model_configs/RandomForest_2024-06-15-11.json",
+                           iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_RF")
+    trainer.learning_curve("best_model_configs/ConvTranPlus_2024-07-13-14.json",
+                           iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_CT")
+    trainer.learning_curve("best_model_configs/TST_2024-07-16-10.json",
+                           iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_TST")

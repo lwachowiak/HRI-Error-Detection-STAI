@@ -4,18 +4,18 @@
     "n_trials": 65,
     "data_params": {
         "interval_length": {
-            "low": 2500,
+            "low": 1500,
             "high": 2500,
             "step": 1000
         },
         "stride_train": {
-            "low": 500,
-            "high": 700,
+            "low": 600,
+            "high": 600,
             "step": 100
         },
         "stride_eval": {
-            "low": 200,
-            "high": 400,
+            "low": 300,
+            "high": 300,
             "step": 100
         },
         "fps": [
@@ -25,11 +25,13 @@
             "standard"
         ],
         "label_creation": [
-            "stride_eval"
+            "stride_eval",
+            "stride_train",
+            "full"
+
         ],
         "columns_to_remove": [
-            "openpose, c_openface",
-            "only_speaker"
+            "openpose, c_openface"
         ],
         "oversampling_rate": {
             "low": 0.1,
@@ -45,7 +47,8 @@
             "none"
         ],
         "start_padding": [
-            true
+            true,
+            false
         ]
     },
     "model_params": {
@@ -55,8 +58,8 @@
             "step": 32
         },
         "n_estimators": {
-            "low": 10,
-            "high": 10,
+            "low": 5,
+            "high": 5,
             "step": 2
         },
         "class_weight": [
