@@ -2,27 +2,22 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 import numpy as np
-
-try:
-    import wandb
-    import seaborn as sns
-    offline = False
-except ImportError:
-    offline = True
-    print("Seaborn and wandb not installed, running offline")
+import json
+import seaborn as sns
+plt.rcParams.update({'font.size': 20})
 
 REMAPPING = {
-    'REMOVE_NOTHING': 'All Features',
+    'REMOVE_NOTHING': 'All features',
     'openface': 'No OpenFace',
     'openpose': 'No OpenPose',
     'opensmile': 'No OpenSmile',
     'speaker': 'No Speaker Diarization',
     'frame': 'No Frame',
-    'only_openface': 'OpenFace Only',
-    'only_openpose': 'OpenPose Only',
-    'only_opensmile': 'OpenSmile Only',
-    'only_speaker': 'Speaker Diarization Only',
-    'only_frame': 'Frame Only',
+    'only_speaker': 'Speaker Diarization only',
+    'only_opensmile': 'OpenSmile only',
+    'only_openface': 'OpenFace only',
+    'only_openpose': 'OpenPose only',
+    'only_frame': 'Frame only'
 }
 
 NAIVE_ACC = 0.7596
@@ -35,7 +30,6 @@ def plot_feature_importance(runs: list=None, offline=True):
         files = [f for f in os.listdir('data') if 'features_search' in f]
         histories = []
         for f in files:
-            print(f)
             p = pd.read_pickle(f'data/{f}')
             if 'tst' in f:
                 pass
@@ -46,8 +40,11 @@ def plot_feature_importance(runs: list=None, offline=True):
         # join convtran and tst histories
         convtran = [pd.read_pickle(f'data/{f}') for f in files if 'convtran' in f]
         tst = [pd.read_pickle(f'data/{f}') for f in files if 'tst' in f]
+        print("ConvTran runs:", len(convtran))
+        print("TST runs:", len(tst))
         convtran = [pd.concat(convtran)]
         tst = [pd.concat(tst)]
+        
         histories = histories + convtran + tst
 
     else:
@@ -93,7 +90,7 @@ def plot_feature_importance(runs: list=None, offline=True):
                      fmt='o',
                      markersize=14,
                      elinewidth=4, 
-                     label=['Random Forest', 'MiniRocket', 'ConvTranPlus', 'TST'][i],
+                     label=['Random Forest', 'MiniRocket', 'ConvTran', 'TST'][i],
                      color=['#4a7fa4', '#e1812b', '#3a923a', '#c03d3e'][i]
                      )
     #add shaded areas for every category across the y-axis
@@ -125,7 +122,7 @@ def plot_feature_importance(runs: list=None, offline=True):
                      fmt='o',
                      markersize=14,
                      elinewidth=4, 
-                     label=['Random Forest', 'MiniRocket', 'ConvTranPlus', 'TST'][i], 
+                     label=['Random Forest', 'MiniRocket', 'ConvTran', 'TST'][i], 
                      color=['#4a7fa4', '#e1812b', '#3a923a', '#c03d3e'][i]
                      )
     #add shaded areas for every category across the y-axis
@@ -140,7 +137,7 @@ def plot_feature_importance(runs: list=None, offline=True):
     plt.legend(title='Model', loc='upper left', prop={'size': 14})
     # add grid with alpha
     plt.grid(alpha=0.25)
-    plt.xlabel("Macro F1")
+    plt.xlabel("Macro F1 difference")
     plt.ylabel("Feature Groups")
     plt.tight_layout()
     # save plot
@@ -148,26 +145,36 @@ def plot_feature_importance(runs: list=None, offline=True):
     plt.show()
 
 
-def violin_plots(histories: list):
+def violin_plots():
 
-    def individual_violin_plot(histories, key, x_label, xticks):
+    def individual_violin_plot(histories, key, x_label, xticks, legend_loc):
+        plt.figure(figsize=(10, 5))
         sns.violinplot(x=key, y='accuracy', data=histories,
-                       hue="model_name", cut=0)
+                       hue="model_name", cut=0, legend=False if legend_loc == None else True)
         plt.xlabel(x_label)
         plt.ylabel('Accuracy')
         # add legend
-        plt.legend(title='Model', loc='lower right')
+        if legend_loc != None:
+            plt.legend(title='Model', loc=legend_loc, prop={'size': 16})
+
         # y axis with 2 decimal places
         plt.gca().yaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
         # add transparent grid
         plt.grid(alpha=0.25)
         # add xticks list of strings
         plt.xticks(ticks=range(len(xticks)), labels=xticks)
+        plt.tight_layout()
         # save plot
         plt.savefig(f'plots/{key}_violin_plot.pdf')
         plt.show()
 
+    files = [f for f in os.listdir('data') if 'violin' in f]
+    histories = []
+    for f in files:
+        p = pd.read_pickle(f'data/{f}')
+        histories.append(p)
     # make one joint df and add model name as column
+
     for i, hist in enumerate(histories):
         hist['model_name'] = ['Random Forest',
                               'MiniRocket', 'ConvTran', 'TST'][i]
@@ -178,30 +185,46 @@ def violin_plots(histories: list):
 
     # Creating the violin plot
     individual_violin_plot(df, 'interval_length',
-                           'Interval Length in Seconds', ["5s", "15s", "25s"])
+                           'Interval Length [s]', ["5", "15", "25"], None)
     individual_violin_plot(
-        df, 'stride_eval', 'Evaluation Stride in Seconds', ["3s", "6s", "9s"])
+        df, 'stride_eval', 'Evaluation Stride [s]', ["3", "6", "9"], None)
     individual_violin_plot(
-        df, 'stride_train', 'Training Stride in Seconds', ["3s", "6s", "9s"])
+        df, 'stride_train', 'Training Stride [s]', ["3", "6", "9"], None)
     individual_violin_plot(
-        df, 'rescaling', 'With/Without Normalization', ["With", "Without"])
+        df, 'rescaling', 'Normalization', ["With", "Without"], 'lower left')
 
+def plot_learning_curve(scores_file: str="data/learning_curve_study.json"):
+    #read the scores file json and load it
+    with open(scores_file, 'r') as f:
+        scores_file = json.load(f)
+
+    scores = scores_file["scores"]
+    scores_mean = scores_file["mean_scores"]
+    max_sessions = 55 # number of training files
+    stepsize = 3 # stepsize of training files
+
+    scores = np.array(scores)
+    # revert order of scores
+    scores = scores[::-1]
+    scores_mean = np.mean(scores, axis=1)
+    print("\n\nMean Scores:", scores_mean)
+
+    # plot learning curve with standard deviation
+    plt.figure(figsize=(8, 4))
+    start_step = max_sessions % stepsize
+    plt.plot(range(start_step, max_sessions+1, stepsize), scores_mean)
+    plt.fill_between(range(start_step, max_sessions+1, stepsize), scores_mean -
+                        np.std(scores, axis=1), scores_mean + np.std(scores, axis=1), alpha=0.2)
+    plt.xlabel("Number of sessions in training data")
+    plt.xlim([0, max_sessions+1])
+    plt.ylabel("Accuracy")
+    plt.grid(alpha=0.2)
+    plt.tight_layout()
+    # save as pdf in plots folder
+    plt.savefig("plots/learning_curve.pdf")
+    plt.show()
 
 if __name__ == "__main__":
-    # feature importance
-
-    if offline:
         plot_feature_importance(offline=True)
-
-    else:
-        api = wandb.Api()
-        run_feature_importance = api.run("lennartw/HRI-Errors/9gq8vvou")
-        plot_feature_importance(run_feature_importance)
-
-        # violin plots
-        run = api.run("lennartw/HRI-Errors/pe0z1db0")  # rf
-        run2 = api.run("lennartw/HRI-Errors/nk6xvdk2")  # minirocket
-        run3 = api.run("lennartw/HRI-Errors/no3vd1bk")  # convtran
-        run4 = api.run("lennartw/HRI-Errors/d8r87xzk")  # tst
-        histories = [run.history(), run2.history(), run3.history(), run4.history()]
-        violin_plots(histories)
+        plot_learning_curve()
+        violin_plots()

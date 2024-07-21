@@ -29,7 +29,9 @@ class Analysis:
             by="importance", ascending = False if horizontal else True)
 
         if plot:
-            fig = plt.figure(figsize=(20, 10)) if horizontal else plt.figure(figsize=(10, 18))
+            fig = plt.figure(figsize=(24, 10)) if horizontal else plt.figure(figsize=(10, 24))
+            #make the font size bigger for all labels and axes titles
+            plt.rcParams.update({'font.size': 17})
             # only plot the feature importances, and use std as error bars
             # change bar color depending on what dataset the feature belongs to: blue = openpose, orange = openface, green = opensmile, yellow = speaker diarization, red = frame
             color = []
@@ -67,7 +69,7 @@ class Analysis:
                 plt.ylabel("Decrease in impurity")
                 plt.xticks(forest_importances.index, rotation=90)
                 plt.xlim([-1, len(forest_importances)])
-                plt.legend(handles=[blue_patch, orange_patch, green_patch, purple_patch, red_patch], prop={'size': 8})
+                plt.legend(handles=[blue_patch, orange_patch, green_patch, purple_patch, red_patch], prop={'size': 8}, title="Feature group")
 
             else:
                 plt.grid(axis='both', linestyle='--', alpha=0.5)
@@ -75,7 +77,7 @@ class Analysis:
                 plt.xlabel("Decrease in impurity")
                 plt.yticks(forest_importances.index)
                 plt.ylim([-1, len(forest_importances)])
-                plt.legend(handles=[blue_patch, orange_patch, green_patch, purple_patch, red_patch], loc='lower right', prop={'size': 20})
+                plt.legend(handles=[blue_patch, orange_patch, green_patch, purple_patch, red_patch], loc='lower right', prop={'size': 20}, title="Feature group")
             
             # ensure the labels are readable
             plt.tight_layout()
