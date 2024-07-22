@@ -20,6 +20,13 @@ REMAPPING = {
     'only_frame': 'Frame only'
 }
 
+NAME_REMAPPING = {
+    "minirocket": "MiniRocket",
+    "rf": "Random Forest",
+    "convtran": "ConvTran",
+    "tst": "TST"
+}
+
 NAIVE_ACC = 0.7596
 NAIVE_F1 = 0.43
 
@@ -211,27 +218,32 @@ def plot_learning_curve(scores_file: str = "plots/run_histories/learning_curve_s
     with open(scores_file, 'r') as f:
         scores_file = json.load(f)
 
-    scores = scores_file["scores"]
-    scores_mean = scores_file["mean_scores"]
+    scores = [scores_file[key] for key in scores_file.keys()]
+    names = [NAME_REMAPPING[key] for key in scores_file.keys()]
     max_sessions = 55  # number of training files
     stepsize = 3  # stepsize of training files
 
-    scores = np.array(scores)
-    # revert order of scores
-    scores = scores[::-1]
-    scores_mean = np.mean(scores, axis=1)
-    print("\n\nMean Scores:", scores_mean)
+    scores = [np.array(s) for s in scores]
+    # revert order of the first array in the list
+    scores[0] = np.flip(scores[0], axis=0)
+    scores_mean = [np.mean(s, axis=1) for s in scores]
+    print(scores_mean)
 
     # plot learning curve with standard deviation
     plt.figure(figsize=(8, 4))
     start_step = max_sessions % stepsize
-    plt.plot(range(start_step, max_sessions+1, stepsize), scores_mean)
-    plt.fill_between(range(start_step, max_sessions+1, stepsize), scores_mean -
-                     np.std(scores, axis=1), scores_mean + np.std(scores, axis=1), alpha=0.2)
+    for i, sc in enumerate(scores_mean):
+        plt.plot(range(start_step, max_sessions+1, stepsize), sc, label=names[i])
+        plt.fill_between(range(start_step, max_sessions+1, stepsize), 
+                     sc - np.std(scores[i], axis=1), 
+                     sc + np.std(scores[i], axis=1), 
+                     alpha=0.2
+                     )
     plt.xlabel("Number of sessions in training data")
     plt.xlim([0, max_sessions+1])
     plt.ylabel("Accuracy")
     plt.grid(alpha=0.2)
+    plt.legend(title='Model', loc='lower right', prop={'size': 12})
     plt.tight_layout()
     # save as pdf in plots folder
     plt.savefig("plots/learning_curve.pdf")
