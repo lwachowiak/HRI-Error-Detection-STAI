@@ -509,10 +509,10 @@ class TS_Model_Trainer:
                         dsets.train, dsets.valid, bs=training_values["bs"], batch_tfms=batch_tfms)
                     ### MODEL SPECIFICATION ###
                     torch.cuda.empty_cache()
-                    learn = self.get_tsai_learner(
+                    model = self.get_tsai_learner(
                         dls=dls, model_values=model_values, training_values=training_values)
 
-                    learn.fit_one_cycle(100, training_values["lr"])
+                    model.fit_one_cycle(100, training_values["lr"])
                 # eval
                 test_preds = self.get_full_test_preds(
                     model, val_X_TS_list, interval_length=self.config["data_params"]["interval_length"], stride_eval=self.config["data_params"]["stride_eval"], api_style=api_style, start_padding=self.config["data_params"]["start_padding"], batch_tfms=batch_tfms)
@@ -662,7 +662,7 @@ class TS_Model_Trainer:
                                         **model_values)
 
         loss_func = self.loss_dict[training_values["loss_func"]]
-        cbs = [EarlyStoppingCallback(monitor="accuracy", patience=2)]
+        cbs = [EarlyStoppingCallback(monitor="accuracy", patience=4)]
         learn = Learner(dls, model, metrics=[
             accuracy, F1Score()], cbs=cbs, loss_func=loss_func)
         return learn
@@ -1067,9 +1067,9 @@ if __name__ == '__main__':
     # learning curve
     # trainer.learning_curve("best_model_configs/MiniRocket_2024-06-25-17.json",
     #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_MR")
-    trainer.learning_curve("best_model_configs/RandomForest_2024-06-15-11.json",
-                           iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_RF")
-    trainer.learning_curve("best_model_configs/ConvTranPlus_2024-07-13-14.json",
-                           iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_CT")
+    #trainer.learning_curve("best_model_configs/RandomForest_2024-06-15-11.json",
+    #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_RF")
+    #trainer.learning_curve("best_model_configs/ConvTranPlus_2024-07-13-14.json",
+    #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_CT")
     trainer.learning_curve("best_model_configs/TST_2024-07-16-10.json",
                            iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_TST")
