@@ -1055,18 +1055,18 @@ if __name__ == '__main__':
     # trainer.load_and_eval("RandomForest_2024-06-05-17")
 
     ########### uncomment to run optuna search ###########
-    study_name = trainer.config["model_type"] + "_" + date
+    #study_name = trainer.config["model_type"] + "_" + date
     gridsearch = "grid" in config_name
-    study = trainer.optuna_study(
-        n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True, gridsearch=gridsearch)
+    #study = trainer.optuna_study(
+    #    n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True, gridsearch=gridsearch)
 
     # TODO: move to analysis script
     # feature importance
     # trainer.feature_importance()
 
     # learning curve
-    # trainer.learning_curve("best_model_configs/MiniRocket_2024-06-25-17.json",
-    #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_MR")
+    trainer.learning_curve("best_model_configs/MiniRocket_2024-07-18-06.json",
+                           iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_MR")
     #trainer.learning_curve("best_model_configs/RandomForest_2024-06-15-11.json",
     #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_RF")
     #trainer.learning_curve("best_model_configs/ConvTranPlus_2024-07-13-14.json",
