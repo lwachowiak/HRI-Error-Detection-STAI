@@ -13,6 +13,7 @@ REMAPPING = {
     'opensmile': 'No OpenSmile',
     'speaker': 'No Speaker Diarization',
     'frame': 'No Frame',
+    'openpose, c_openface': 'No pose and binary AUs',
     'only_speaker': 'Speaker Diarization only',
     'only_opensmile': 'OpenSmile only',
     'only_openface': 'OpenFace only',
@@ -224,8 +225,6 @@ def plot_learning_curve(scores_file: str = "plots/run_histories/learning_curve_s
     stepsize = 3  # stepsize of training files
 
     scores = [np.array(s) for s in scores]
-    # revert order of the first array in the list
-    scores[0] = np.flip(scores[0], axis=0)
     scores_mean = [np.mean(s, axis=1) for s in scores]
     print(scores_mean)
 
