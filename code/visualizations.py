@@ -238,6 +238,7 @@ def plot_learning_curve(scores_file: str = "plots/run_histories/learning_curve_s
                      sc + np.std(scores[i], axis=1), 
                      alpha=0.2
                      )
+    plt.hlines(NAIVE_ACC, 0, max_sessions, linestyles='dotted', colors='black', label='Naive Baseline', linewidth=3)
     plt.xlabel("Number of sessions in training data")
     plt.xlim([0, max_sessions+1])
     plt.ylabel("Accuracy")
