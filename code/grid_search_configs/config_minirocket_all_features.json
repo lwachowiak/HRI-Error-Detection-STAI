@@ -1,0 +1,134 @@
+{
+    "task": 2,
+    "model_type": "MiniRocket",
+    "n_trials": 200,
+    "data_params": {
+        "interval_length": {
+            "low": 2500,
+            "high": 2500,
+            "step": 100
+        },
+        "stride_train": {
+            "low": 600,
+            "high": 600,
+            "step": 100
+        },
+        "stride_eval": {
+            "low": 300,
+            "high": 300,
+            "step": 100
+        },
+        "fps": [
+            25
+        ],
+        "nan_handling": [
+            "standard"
+        ],
+        "label_creation": [
+            "stride_eval"
+        ],
+        "columns_to_remove": [
+        "REMOVE_NOTHING",
+        "openpose", 
+        "r_openface,", 
+        "c_openface,", 
+        "opensmile,", 
+        "speaker,", 
+        "frame,",
+        "r_openface,c_openface", 
+        "openpose,r_openface", 
+        "openpose,c_openface", 
+        "openpose,opensmile", 
+        "openpose,speaker", 
+        "openpose,frame", 
+        "r_openface,opensmile", 
+        "r_openface,speaker", 
+        "r_openface,frame", 
+        "c_openface,opensmile", 
+        "c_openface,speaker", 
+        "c_openface,frame", 
+        "opensmile,speaker", 
+        "opensmile,frame", 
+        "speaker,frame", 
+        "openpose,r_openface,c_openface", 
+        "openpose,r_openface,opensmile", 
+        "openpose,r_openface,speaker", 
+        "openpose,r_openface,frame", 
+        "openpose,c_openface,opensmile", 
+        "openpose,c_openface,speaker", 
+        "openpose,c_openface,frame", 
+        "openpose,opensmile,speaker", 
+        "openpose,opensmile,frame", 
+        "openpose,speaker,frame", 
+        "r_openface,c_openface,opensmile", 
+        "r_openface,c_openface,speaker", 
+        "r_openface,c_openface,frame", 
+        "r_openface,opensmile,speaker", 
+        "r_openface,opensmile,frame", 
+        "r_openface,speaker,frame", 
+        "c_openface,opensmile,speaker", 
+        "c_openface,opensmile,frame", 
+        "c_openface,speaker,frame", 
+        "opensmile,speaker,frame", 
+        "openpose,r_openface,c_openface,opensmile", 
+        "openpose,r_openface,c_openface,speaker", 
+        "openpose,r_openface,c_openface,frame", 
+        "openpose,r_openface,opensmile,speaker", 
+        "openpose,r_openface,opensmile,frame", 
+        "openpose,r_openface,speaker,frame", 
+        "openpose,c_openface,opensmile,speaker", 
+        "openpose,c_openface,opensmile,frame", 
+        "openpose,c_openface,speaker,frame", 
+        "openpose,opensmile,speaker,frame", 
+        "r_openface,c_openface,opensmile,speaker", 
+        "r_openface,c_openface,opensmile,frame", 
+        "r_openface,c_openface,speaker,frame", 
+        "r_openface,opensmile,speaker,frame", 
+        "c_openface,opensmile,speaker,frame", 
+        "openpose,r_openface,c_openface,opensmile,speaker", 
+        "openpose,r_openface,c_openface,opensmile,frame", 
+        "openpose,r_openface,c_openface,speaker,frame", 
+        "openpose,r_openface,opensmile,speaker,frame", 
+        "openpose,c_openface,opensmile,speaker,frame", 
+        "r_openface,c_openface,opensmile,speaker,frame"
+    ],
+        "oversampling_rate": {
+            "low": 0.1,
+            "high": 0.1,
+            "step": 0.1
+        },
+        "undersampling_rate": {
+            "low": 0.1,
+            "high": 0.1,
+            "step": 0.1
+        },
+        "rescaling": [
+            "none"
+        ],
+        "start_padding": [
+            true
+        ]
+    },
+    "model_params": {
+        "max_dilations_per_kernel": {
+            "low": 32,
+            "high": 32,
+            "step": 32
+        },
+        "n_estimators": {
+            "low": 10,
+            "high": 10,
+            "step": 2
+        },
+        "class_weight": [
+            null
+        ],
+        "random_state": [
+            0,
+            1,
+            2,
+            3,
+            42
+        ]
+    }
+}

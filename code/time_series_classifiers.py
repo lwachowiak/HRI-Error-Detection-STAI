@@ -31,13 +31,6 @@ import pandas as pd
 import pickle
 import random
 
-# TODO:
-# Models:
-#   - Try annotation/outlier processing: https://www.sktime.net/en/stable/api_reference/annotation.html
-#   - Try prediction/forcasting --> unlikely sequence --> outlier --> label 1
-#   - Foundation Models
-
-
 class TS_Model_Trainer:
     """
     A class for training individual models, doing optuna hyperparamter search, and inference with already trained models.
@@ -66,26 +59,15 @@ class TS_Model_Trainer:
             "TransformerLSTMPlus": self.optuna_objective_tsai
         }
         self.config = self.read_config(folder+"code/"+config_name)
-        self.column_removal_dict = {"REMOVE_NOTHING": ["REMOVE_NOTHING"],
-                                    "opensmile": ["opensmile"],
-                                    "speaker": ["speaker"],
-                                    "openpose": ["openpose"],
-                                    "openface": ["openface"],
-                                    "frame": ["frame"],
-                                    "openpose, speaker": ["openpose", "speaker"],
-                                    "speaker, opensmile": ["speaker", "opensmile"],
-                                    "speaker, openpose, openface": ["speaker", "openpose", "openface"],
-                                    "speaker, openface, opensmile": ["speaker", "openface", "opensmile"],
-                                    "openpose, openface, opensmile": ["openpose", "openface", "opensmile"],
-                                    "c_openface": ["c_openface"],
-                                    "openpose, c_openface": ["openpose", "c_openface"],
-                                    "vel_dist": ["vel_dist"],
-                                    "vel_dist, c_openface": ["vel_dist", "c_openface"],
+        # this is a dict that works with legacy code, where the names remap to these columns to remove. Consider using full column names to remove in the future configs.
+        self.column_removal_dict = {                                    
                                     "only_openpose": ["opensmile", "speaker", "openface", "frame"],
-                                    "only_openface": ["opensmile", "speaker", "openpose", "frame"],
+                                    "only_c_openface": ["opensmile", "speaker", "openpose", "frame", "r_openface"],
+                                    "only_r_openface": ["opensmile", "speaker", "openpose", "frame", "c_openface"],
                                     "only_speaker": ["opensmile", "openpose", "openface", "frame"],
                                     "only_opensmile": ["openpose", "speaker", "openface", "frame"],
                                     "only_frame": ["opensmile", "speaker", "openpose", "openface"],
+                                    "only_openface": ["opensmile", "speaker", "openpose", "frame"],
                                     }
         self.loss_dict = {"CrossEntropyLossFlat": CrossEntropyLossFlat(),
                           "FocalLossFlat": FocalLossFlat()}
@@ -182,7 +164,7 @@ class TS_Model_Trainer:
 
         return eval_scores
 
-    def data_from_config(self, data_values: dict, format: str, columns_to_remove: list, fold: int) -> tuple:
+    def data_from_config(self, data_values: dict, format: str, columns_to_remove: str, fold: int) -> tuple:
         """
         create the datasets for training based on the configuration and the trial parameters.
         params: data_values: dict: The data values to use for the data creation.
@@ -423,13 +405,21 @@ class TS_Model_Trainer:
             study, target=lambda t: t.values[target_index], target_name=target_name)
         wandb.log({"optuna_slice_"+target_name: fig})
 
-    def remove_columns(self, columns_to_remove: list, data_X: np.array, column_order: list) -> tuple:
+    def remove_columns(self, columns_to_remove: str, data_X: np.array, column_order: list) -> tuple:
         '''Remove columns from the data.
         :param columns_to_remove: List of columns to remove.
         :param data_X: The data to remove the columns from. Either a list of np.arrays or a np.array.
         :param column_order: The order of the columns in the data.
         :output new_data_X: The data with the specified columns removed and the new column order.
         '''
+        # read the string and separate by comma if multiple words
+        try:
+            columns_to_remove = columns_to_remove.split(", ")
+        except AttributeError:
+            if columns_to_remove == "REMOVE_NOTHING":
+                return data_X, column_order
+            elif "only" in columns_to_remove: # translate the only description to the right columns to remove
+                columns_to_remove = self.column_removal_dict[columns_to_remove]
         # depending on whether data_X is list or np.array
         if isinstance(data_X, list):  # val/test
             new_data_X = [val_X_TS[:, [
@@ -787,8 +777,7 @@ class TS_Model_Trainer:
         task = config["task"]
         rescaling = data_values["rescaling"]
         columns_to_remove = data_values["columns_to_remove"]
-        columns_to_remove = self.column_removal_dict[columns_to_remove]
-
+        
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(interval_length=interval_length, stride_train=stride_train,
                                                                                                              stride_eval=stride_eval, fps=fps, verbose=True, label_creation=label_creation, task=task, rescaling=rescaling, fold=4)
 
@@ -1010,7 +999,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "--njobs", type=int, help="Number of cpu cores to use for training.", default=8)
     parser.add_argument(
-        "--type", type=str, help="Indicates what to run: 'traing_singe' (trains and saves a single model), 'search' (runs a optuna hyperparamter search), 'learning_curve' (computes the learning curves for all models), 'competition_eval' (evaluates models on the hidden test set).", default="search")
+        "--type", type=str, help="Indicates what to run: 'traing_single' (trains and saves a single model), 'search' (runs a optuna hyperparamter search), 'learning_curve' (computes the learning curves for all models), 'competition_eval' (evaluates models on the hidden test set).", default="search")
     args = parser.parse_args()
     print(args)
     if args.config:
@@ -1032,7 +1021,7 @@ if __name__ == '__main__':
 
     date = datetime.datetime.now().strftime("%Y-%m-%d-%H")
 
-    ########### uncomment to run a single training ###########
+    ########### run single model training ###########
     if job_type == "train_single":
         trainer.train_and_save_best_model(
             "MiniRocket_2024-06-19-08.json", name_extension="trained_on_all_data", fold=4)
