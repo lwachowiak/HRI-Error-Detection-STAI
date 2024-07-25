@@ -16,7 +16,7 @@ Moreover, the files can be used for:
 
 Model searches can be easily specified via json files. We provide many examples for the [genetic searches](https://github.com/lwachowiak/HRI-Error-Detection-STAI/tree/main/code/search_configs) and [grid searches](https://github.com/lwachowiak/HRI-Error-Detection-STAI/tree/main/code/grid_search_configs) we used ourselves.
 
-For example, to run a gridsearch you could run 
+For example, to run a gridsearch you could run:
 ```
 python HRI-Error-Detection-STAI/code/time_series_classifiers.py --config grid_search_configs/config_minirocket_grid.json --njobs -1 --type search
 ```
