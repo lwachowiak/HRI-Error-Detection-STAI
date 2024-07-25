@@ -420,6 +420,8 @@ class TS_Model_Trainer:
             return data_X, column_order
         elif "only" in columns_to_remove: # translate the only description to the right columns to remove
                 columns_to_remove = self.column_removal_dict[columns_to_remove]
+        else:
+            columns_to_remove = [columns_to_remove]
 
         print("Columns to remove", columns_to_remove)
         # depending on whether data_X is list or np.array
