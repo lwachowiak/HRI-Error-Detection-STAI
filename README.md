@@ -4,14 +4,22 @@
 Forthcoming
 
 ## Usage
-To get the test predictions, use [time_series_classifiers.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/time_series_classifiers.py) and specify the model you want to get predictions from. 
+To get the test predictions for the hidden competition test sets, use [time_series_classifiers.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/time_series_classifiers.py) and specify the model you want to get predictions from in the file:
+```
+python HRI-Error-Detection-STAI/code/time_series_classifiers.py --njobs -1 --type competition_eval
+```
 
 Moreover, the files can be used for: 
-- time_series_classifiers.py: run Optuna search for models and save the best one; use models for inference
-- data_loader.py: preprocessing & loading of datasets
-- get_metrics.py: official competition metrics script
+- [time_series_classifiers.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/time_series_classifiers.py): run Optuna search / train single model / evaluate on competition test set / create learing curve
+- [data_loader.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/data_loader.py): preprocessing & loading of datasets
+- [get_metrics.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/get_metrics.py): official competition metrics script
 
 Model searches can be easily specified via json files. We provide many examples for the [genetic searches](https://github.com/lwachowiak/HRI-Error-Detection-STAI/tree/main/code/search_configs) and [grid searches](https://github.com/lwachowiak/HRI-Error-Detection-STAI/tree/main/code/grid_search_configs) we used ourselves.
+
+For example, to run a gridsearch you could run 
+```
+python HRI-Error-Detection-STAI/code/time_series_classifiers.py --config grid_search_configs/config_minirocket_grid.json --njobs -1 --type search
+```
 
 ## Dependencies
 We used Python 3.11.9. All the Python packages we used can be installed from the requirements.txt. 
