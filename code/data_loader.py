@@ -433,7 +433,7 @@ class DataLoader_HRI:
                 "label_creation must be one of 'full', 'stride_eval, 'stride_train'")
 
         if verbose:
-            print(f"Test sessions: {len(self.test_X["session"].unique())}")
+            print(f"Test sessions: {len(self.test_X['session'].unique())}")
             print(self.test_X["session"].unique())
 
         test_Y_TS_list = []
