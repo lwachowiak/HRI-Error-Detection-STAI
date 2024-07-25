@@ -413,13 +413,16 @@ class TS_Model_Trainer:
         :output new_data_X: The data with the specified columns removed and the new column order.
         '''
         # read the string and separate by comma if multiple words
-        try:
+        print("Columns to remove", columns_to_remove)
+        if "," in columns_to_remove:
             columns_to_remove = columns_to_remove.split(", ")
-        except AttributeError:
-            if columns_to_remove == "REMOVE_NOTHING":
-                return data_X, column_order
-            elif "only" in columns_to_remove: # translate the only description to the right columns to remove
+    
+        elif columns_to_remove == "REMOVE_NOTHING":
+            return data_X, column_order
+        elif "only" in columns_to_remove: # translate the only description to the right columns to remove
                 columns_to_remove = self.column_removal_dict[columns_to_remove]
+
+        print("Columns to remove", columns_to_remove)
         # depending on whether data_X is list or np.array
         if isinstance(data_X, list):  # val/test
             new_data_X = [val_X_TS[:, [
