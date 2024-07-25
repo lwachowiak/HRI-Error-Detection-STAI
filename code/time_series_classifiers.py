@@ -413,7 +413,6 @@ class TS_Model_Trainer:
         :output new_data_X: The data with the specified columns removed and the new column order.
         '''
         # read the string and separate by comma if multiple words
-        print("Columns to remove", columns_to_remove)
         if "," in columns_to_remove:
             columns_to_remove = columns_to_remove.split(",")
     
