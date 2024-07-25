@@ -534,17 +534,6 @@ class TS_Model_Trainer:
                 f.write(str(s)+"\n")
             f.write("Mean Scores:\n")
             f.write(str(scores_mean))
-        # plot learning curve with standard deviation
-        start_step = max_sessions % stepsize
-        plt.plot(range(start_step, max_sessions+1, stepsize), scores_mean)
-        plt.fill_between(range(0, max_sessions+1, stepsize), scores_mean -
-                         np.std(scores, axis=1), scores_mean + np.std(scores, axis=1), alpha=0.2)
-        plt.xlabel("Number of sessions in training data")
-        plt.ylabel("Accuracy")
-        plt.title("Learning curve")
-        plt.grid(alpha=0.2)
-        # save as png in plots folder
-        plt.savefig(save_to+".pdf")
 
     def get_model_values(self, trial: optuna.Trial) -> tuple:
         '''Get the model values for the trial based on the configuration and the trial parameters.
@@ -761,9 +750,9 @@ class TS_Model_Trainer:
 
         return np.mean(accuracies), np.mean(f1s)
 
-    def load_and_eval(self, config_name: str, saved_model_name: str = "") -> None:
+    def competition_test_set_eval(self, config_name: str, saved_model_name: str = "") -> None:
         """
-        Load a model from disk and evaluate it on the test data.
+        Load a model from disk and evaluate it on the hidden test data (only available to competition organizers).
         params: model_name: str: The name of the model to load.
         params: save_name: str: The file name to save the test predictions to.
         """
@@ -1016,16 +1005,20 @@ if __name__ == '__main__':
     print(platform.platform())
     # parse arguments (config file, n_jobs)
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, help="Path to the configuration file.",
+    parser.add_argument("--config", type=str, help="Path to the configuration file used for a optuna hyperparamter search.",
                         default="search_configs/config_minirocket_grid.json")
     parser.add_argument(
         "--njobs", type=int, help="Number of cpu cores to use for training.", default=8)
+    parser.add_argument(
+        "--type", type=str, help="Indicates what to run: 'traing_singe' (trains and saves a single model), 'search' (runs a optuna hyperparamter search), 'learning_curve' (computes the learning curves for all models), 'competition_eval' (evaluates models on the hidden test set).", default="search")
     args = parser.parse_args()
     print(args)
     if args.config:
         config_name = args.config
     if args.njobs:
         n_jobs = args.njobs
+    if args.type:
+        job_type = args.type
 
     print("n_jobs:", n_jobs, "\nconfig:", config_name)
 
@@ -1040,36 +1033,35 @@ if __name__ == '__main__':
     date = datetime.datetime.now().strftime("%Y-%m-%d-%H")
 
     ########### uncomment to run a single training ###########
-    # trainer.train_and_save_best_model(
-    #    "MiniRocket_2024-06-19-08.json", name_extension="trained_on_all_data", fold=5)
+    if job_type == "train_single":
+        trainer.train_and_save_best_model(
+            "MiniRocket_2024-06-19-08.json", name_extension="trained_on_all_data", fold=4)
 
     ######### get test predictions for best model ###########
-    # TASK 0
-    # trainer.load_and_eval("MiniRocket_UA-Submission")
-    # TASK 1
-    # trainer.load_and_eval("MiniRocket_RM-Submission")
-    # TASK 2
-    # newer: "MiniRocket_2024-06-19-08"
-    # trainer.load_and_eval("MiniRocket_IR-Submission1")
-    # trainer.load_and_eval("MiniRocket_IR-Submission2")
-    # trainer.load_and_eval("RandomForest_2024-06-05-17")
+    elif job_type == "competition_eval":
 
-    ########### uncomment to run optuna search ###########
-    study_name = trainer.config["model_type"] + "_" + date
-    gridsearch = "grid" in config_name
-    study = trainer.optuna_study(
-        n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True, gridsearch=gridsearch)
+        # TASK 0
+        trainer.competition_test_set_eval("MiniRocket_UA-Submission")
+        # TASK 1
+        trainer.competition_test_set_eval("MiniRocket_RM-Submission")
+        # TASK 2
+        trainer.competition_test_set_eval("MiniRocket_IR-Submission1")
+        trainer.competition_test_set_eval("MiniRocket_IR-Submission2")
 
-    # TODO: move to analysis script
-    # feature importance
-    # trainer.feature_importance()
+    ########### run optuna search ###########
+    elif job_type == "search":
+        study_name = trainer.config["model_type"] + "_" + date
+        gridsearch = "grid" in config_name
+        study = trainer.optuna_study(
+            n_trials=trainer.config["n_trials"], model_type=trainer.config["model_type"], study_name=study_name, verbose=True, gridsearch=gridsearch)
 
-    # learning curve
-    #trainer.learning_curve("best_model_configs/MiniRocket_2024-07-18-06.json",
-    #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_MR")
-    #trainer.learning_curve("best_model_configs/RandomForest_2024-06-15-11.json",
-    #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_RF")
-    #trainer.learning_curve("best_model_configs/ConvTranPlus_2024-07-13-14.json",
-    #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_CT")
-    #trainer.learning_curve("best_model_configs/TST_2024-07-16-10.json",
-    #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_TST")
+    ########### compute learning curve for different models ###########
+    elif job_type == "learning_curve":
+        trainer.learning_curve("best_model_configs/MiniRocket_2024-07-18-06.json",
+                               iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_MR")
+        trainer.learning_curve("best_model_configs/RandomForest_2024-06-15-11.json",
+                               iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_RF")
+        trainer.learning_curve("best_model_configs/ConvTranPlus_2024-07-13-14.json",
+                               iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_CT")
+        trainer.learning_curve("best_model_configs/TST_2024-07-16-10.json",
+                               iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_TST")
