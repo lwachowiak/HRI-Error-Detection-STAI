@@ -1,8 +1,9 @@
-import os
-import pandas as pd
-import numpy as np
-import re
 import math
+import os
+import re
+
+import numpy as np
+import pandas as pd
 
 
 class DataLoader_HRI:
@@ -41,7 +42,7 @@ class DataLoader_HRI:
         speaker_data = self.load_data(data_dir+'speaker_diarization/')
         label_data = self.load_labels(data_dir+'labels/', expand=True)
         self.fold_info = self.load_fold_info(data_dir)
-        print("\nfold_info", self.fold_info)
+        print(f"\nfold_info: {self.fold_info}")
 
         # align datastructures
         for filename, df in openpose_data:
@@ -91,10 +92,10 @@ class DataLoader_HRI:
                 self.test_Y.append(df)
 
         if verbose:
-            print("\n\nNumber of sessions (data) parsed:",
-                  len(self.all_X), len(self.test_X))
-            print("Number of sessions (labels) parsed:",
-                  len(self.all_Y), len(self.test_Y))
+            print(
+                f"\n\nNumber of sessions (data) parsed: {len(self.all_X)}, {len(self.test_X)}")
+            print(
+                f"Number of sessions (labels) parsed: {len(self.all_Y)}, {len(self.test_Y)}")
 
         # concatenate into one single dataframe
         self.all_X = pd.concat(self.all_X)
@@ -147,35 +148,29 @@ class DataLoader_HRI:
             print("Y length:", len(self.all_Y))
             print("Test:", self.test_X.head()) if len(
                 self.test_X) > 0 else None
-            print("\nMerged data tail:")
-            print(self.all_X.tail())
-            print("Y tail:")
-            print(self.all_Y.tail())
-            print("Test:", self.test_X.tail()) if len(
-                self.test_X) > 0 else None
 
     @staticmethod
     def extract_file_number(filename: str) -> int:
-        '''extract the number from the filename, e.g. 1 from 1_train.csv
+        """extract the number from the filename, e.g. 1 from 1_train.csv
 
         Args:
             filename: the filename to extract the number from
 
         Returns:
             the number extracted from the filename
-        '''
+        """
         match = re.search(r'\d+', filename)
         return int(match.group()) if match else None
 
     def load_fold_info(self, data_dir: str) -> list:
-        ''' Load dict with session numbers for each fold
+        """Load dict with session numbers for each fold
 
         Args:
             data_dir: the directory where the fold_split.csv is stored
 
         Returns:
             dict with fold number as key and list of session numbers as values
-        '''
+        """
         fold_info = {}
         # load from fold_split.csv' with columns "id" and and "fold-subject-independent"
         fold_split = pd.read_csv(data_dir+'fold_split.csv')
@@ -185,14 +180,14 @@ class DataLoader_HRI:
         return fold_info
 
     def load_data(self, data_dir: str) -> list:
-        '''load the data from the data_dir into a list of dataframes
+        """Load the data from the data_dir into a list of dataframes
 
         Args:
             data_dir: the directory where the data is stored
 
-        Returns: 
+        Returns:
             a list of tuples with the filename and the dataframe
-        '''
+        """
         data_frames = []
         print(sorted(os.listdir(data_dir), key=self.extract_file_number)
               ) if self.verbose else None
@@ -205,7 +200,7 @@ class DataLoader_HRI:
         return data_frames
 
     def process_speaker_data(self, speaker_data: list, label_data: list, rows_per_second=100, opensmile_data: list = None) -> list:
-        '''Similar to the labels, the speaker data is originally not presented frame by frame but as time intervals. The speaker data is mapped to the frame number based on the label data with 100 frames per second
+        """Similar to the labels, the speaker data is originally not presented frame by frame but as time intervals. The speaker data is mapped to the frame number based on the label data with 100 frames per second
 
         Args:
             speaker_data: list of tuples with filename and dataframe of the speaker data
@@ -213,9 +208,9 @@ class DataLoader_HRI:
             rows_per_second: corresponds to fps
             opensmile_data: opensmile data used as reference for the frame number (for test data where labels are not available)
 
-        Returns: 
+        Returns:
             a list of tuples with filename and dataframe of speaker data in frame by frame format
-        '''
+        """
         i_val_train = 0
         i_test = 0
         data_frames = []
@@ -255,16 +250,16 @@ class DataLoader_HRI:
         return data_frames
 
     def load_labels(self, data_dir: str, expand: bool, rows_per_second: int = 100) -> list:
-        '''Load the labels from the data_dir into a list of dataframes
+        """Load the labels from the data_dir into a list of dataframes
 
         Args:
             data_dir: the directory where the labels are stored
             expand: if True, the labels are expanded to frame by frame format, which is needed for the timeseries format. Otherwise, the labels are kept as they are (time intervals)
             rows_per_second: corresponds to fps
 
-        Returns: 
+        Returns:
             a list of tuples with the filename and the dataframe of the labels
-        '''
+        """
         data_frames = []
         print(sorted(os.listdir(data_dir), key=self.extract_file_number))
         for filename in sorted(os.listdir(data_dir), key=self.extract_file_number):
@@ -317,7 +312,7 @@ class DataLoader_HRI:
             speaker_data: list of tuples with filename and dataframe of speaker data
             filename: the filename of the session to merge
 
-        Returns: 
+        Returns:
             the merged dataframe
         """
         # get the dataframes for the specified session
@@ -355,22 +350,27 @@ class DataLoader_HRI:
 
         return merged_df.reset_index()
 
-    def get_summary_format(self, interval_length, stride_train, stride_eval, fps=100, label_creation="full", summary='mean', oversampling_rate=0, undersampling_rate=0, task=2, fold: int = 4, rescaling: str = None, start_padding: bool = False) -> tuple:
-        """
-        Convert the data to summary form. Split the data from the dfs into intervals of length interval_length with stride stride.
-        Split takes place of adjacent frames of the same session.
-        :param interval_length: The length of the intervals
-        :param stride_train: The stride for the training data (oversampling technique)
-        :param stride_eval: The stride for the evaluation data (eval update frequency)
-        :param fps: The desired fps of the data. Original is 100 fps
-        :param label_creation: Either 'full' or 'stride_eval' or 'stride_train'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
-        :param summary: The summary type. One of 'mean', 'max', 'min', 'median'
-        :param oversampling_rate: x% of the minority class replicated in the training data as oversampling
-        :param undersampling_rate: x% of the majority class removed from the training data as undersampling
-        :param task: The task to load the data for. 1 for UserAwkwardness, 2 for RobotMistake, 3 for InteractionRupture
-        :param fold: Fold which the validation data belongs to
-        :param rescaling: The rescaling method. One of 'standardization', 'normalization', "none"
-        :return: The data in summary format
+    def get_summary_format(self, interval_length: int, stride_train: int, stride_eval: int, fps: int = 100, label_creation: str = "full", summary: str = 'mean', oversampling_rate: float = 0, undersampling_rate: float = 0, task: int = 2, fold: int = 4, rescaling: str = None, start_padding: bool = False) -> tuple:
+        """Convert the data to summary form. Split the data from the dfs into intervals of length interval_length with stride stride. Split takes place of adjacent frames of the same session.
+
+        Args:
+            interval_length: The length of the intervals
+            stride_train: The stride for the training data (oversampling technique)
+            stride_eval: The stride for the evaluation data (eval update frequency)
+            fps: The desired fps of the data. Original is 100 fps
+            label_creation: Either 'full' or 'stride_eval' or 'stride_train'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
+            summary: The summary type. One of 'mean', 'max', 'min', 'median'
+            oversampling_rate: x% of the minority class replicated in the training data as oversampling
+            undersampling_rate: x% of the majority class removed from the training data as undersampling
+            task: The task to load the data for. 1 for UserAwkwardness, 2 for RobotMistake, 3 for InteractionRupture
+            fold: Fold which the validation data belongs to
+            rescaling: The rescaling method. One of 'standardization', 'normalization', "none"
+
+        Returns:
+            The data in summary format
+
+        Raises:
+            ValueError: If the summary is not one of 'mean', 'max', 'min', 'median
         """
 
         val_X_TS, val_Y_summary_list, train_X_TS, train_Y_summary, column_order = self.get_timeseries_format(
@@ -409,18 +409,24 @@ class DataLoader_HRI:
         return val_X_summary_list, val_Y_summary_list, train_X_summary, train_Y_summary, column_order
 
     def get_timeseries_format_test_data(self, interval_length: int, stride_eval: int, fps: int = 100, verbose: bool = False, label_creation: str = "full", task: int = 2, rescaling: str = "none", start_padding: bool = False) -> tuple:
-        """
-        Convert the data to timeseries form. Split the data from the dfs into intervals of length interval_length with stride stride.
-        Split takes place of adjacent frames of the same session.
-        :param interval_length: The length of the intervals
-        :param stride_train: The stride for the training data (oversampling technique)
-        :param stride_eval: The stride for the evaluation data (eval update frequency)
-        :param fps: The desired fps of the data. Original is 100 fps
-        :param verbose: Print debug information
-        :param label_creation: Either 'full' or 'stride_eval' or 'stride_train'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
-        :param rescaling: The rescaling method. One of 'standardization', 'normalization', 'none'
-        :param start_padding: If True, the data is padded at the start with 0s, and the actual data starting for the last stride elements
-        :return: The data in timeseries format and the column order for feature importance analysis
+        """ Convert the data to timeseries form. Split the data from the dfs into intervals of length interval_length with stride stride. Split takes place of adjacent frames of the same session.
+
+        Args:
+            interval_length: The length of the intervals
+            stride_train: The stride for the training data (oversampling technique)
+            stride_eval: The stride for the evaluation data (eval update frequency)
+            fps: The desired fps of the data. Original is 100 fps
+            verbose: Print debug information
+            label_creation: Either 'full' or 'stride_eval' or 'stride_train'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
+            rescaling: The rescaling method. One of 'standardization', 'normalization', 'none'
+            start_padding: If True, the data is padded at the start with 0s, and the actual data starting for the last stride elements
+
+        Returns:
+            The data in timeseries format and the column order for feature importance analysis
+
+        Raises:
+            ValueError: If the label_creation is not one of 'full', 'stride_eval', 'stride_train'
+            ValueError: If the rescaling is not one of 'standardization', 'normalization', 'none
         """
         if rescaling not in ['standardization', 'normalization', 'none']:
             raise ValueError(
@@ -430,7 +436,7 @@ class DataLoader_HRI:
                 "label_creation must be one of 'full', 'stride_eval, 'stride_train'")
 
         if verbose:
-            print("Test sessions: ", len(self.test_X["session"].unique()))
+            print(f"Test sessions: {len(self.test_X["session"].unique())}")
             print(self.test_X["session"].unique())
 
         test_Y_TS_list = []
@@ -438,16 +444,10 @@ class DataLoader_HRI:
 
         cut_length = 10  # drop the last x rows to avoid too many NaNs when individual modalities start dropping out
 
-        if label_creation not in ['full', 'stride_eval', 'stride_train']:
-            raise ValueError(
-                "label_creation must be one of 'full' or 'stride'")
-
         # test data, stride is equal to stride_eval
         for session in self.test_X['session'].unique():
             test_X_TS = []
             test_Y_TS = []
-            # if verbose:
-            #    print("TS Processing for session: ", session)
             session_df = self.test_X[self.test_X['session'] == session]
             session_df = session_df.drop(columns=['session'])
             # drop last 10 rows to avoid NaNs
@@ -455,11 +455,9 @@ class DataLoader_HRI:
                 session_df = session_df[:-cut_length]
             # Normalize/Standardize
             if rescaling == 'standardization':
-                # per column
                 session_df = (session_df - session_df.mean()) / \
                     session_df.std()
             elif rescaling == 'normalization':
-                # per column
                 session_df = (session_df - session_df.min()) / \
                     (session_df.max() - session_df.min())
             if start_padding:
@@ -504,22 +502,28 @@ class DataLoader_HRI:
         return test_X_TS_list, test_Y_TS_list
 
     def get_timeseries_format(self, interval_length: int, stride_train: int, stride_eval: int, fps: int = 100, verbose: bool = False, label_creation: str = "full", oversampling_rate: float = 0, undersampling_rate: float = 0, task: int = 2, fold: int = 4, rescaling=None, start_padding: bool = False) -> tuple:
-        """
-        Convert the data to timeseries form. Split the data from the dfs into intervals of length interval_length with stride stride.
-        Split takes place of adjacent frames of the same session.
-        :param interval_length: The length of the intervals
-        :param stride_train: The stride for the training data (oversampling technique)
-        :param stride_eval: The stride for the evaluation data (eval update frequency)
-        :param fps: The desired fps of the data. Original is 100 fps
-        :param verbose: Print debug information
-        :param label_creation: Either 'full' or 'stride_eval' or 'stride_train'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
-        :param oversampling_rate: x% of the minority class replicated in the training data as oversampling
-        :param undersampling_rate: x% of the majority class removed from the training data as undersampling
-        :param task: The task to load the data for. 1 for UserAwkwardness, 2 for RobotMistake, 3 for InteractionRupture
-        :param fold: Fold which the validation data belongs to
-        :param rescaling: The rescaling method. One of 'standardization', 'normalization', None
-        :param start_padding: If True, the data is padded at the start with 0s, and the actual data starting for the last stride elements
-        :return: The data in timeseries format and the column order for feature importance analysis
+        """Convert the data to timeseries form. Split the data from the dfs into intervals of length interval_length with stride stride. Split takes place of adjacent frames of the same session.
+
+        Args:
+            interval_length: The length of the intervals
+            stride_train: The stride for the training data (oversampling technique)
+            stride_eval: The stride for the evaluation data (eval update frequency)
+            fps: The desired fps of the data. Original is 100 fps
+            verbose: Print debug information
+            label_creation: Either 'full' or 'stride_eval' or 'stride_train'. If 'full' the labels are based on mean of the whole interval, if 'stride' the labels are based on the mean of the stride. This does not affect the final eval but just the optimization goal during training.
+            oversampling_rate: x% of the minority class replicated in the training data as oversampling
+            undersampling_rate: x% of the majority class removed from the training data as undersampling
+            task: The task to load the data for. 1 for UserAwkwardness, 2 for RobotMistake, 3 for InteractionRupture
+            fold: Fold which the validation data belongs to
+            rescaling: The rescaling method. One of 'standardization', 'normalization', None
+            start_padding: If True, the data is padded at the start with 0s, and the actual data starting for the last stride elements
+
+        Returns:
+            The data in timeseries format and the column order for feature importance analysis
+
+        Raises:
+            ValueError: If the label_creation is not one of 'full', 'stride_eval', 'stride_train'
+            ValueError: If the rescaling is not one of 'standardization', 'normalization', 'none'
         """
         if rescaling not in ['standardization', 'normalization', 'none']:
             raise ValueError(
@@ -544,8 +548,8 @@ class DataLoader_HRI:
         self.val_Y = self.all_Y[self.all_Y['session'].isin(val_sessions)]
 
         if verbose:
-            print("Train sessions: ", len(train_sessions))
-            print("\nVal sessions fold ", fold, ":", len(val_sessions))
+            print(f"Train sessions: {len(train_sessions)}")
+            print(f"\nVal sessions fold {fold}: {len(val_sessions)}")
             print(self.train_X["session"].unique())
             print(self.val_X["session"].unique())
 
@@ -675,11 +679,10 @@ class DataLoader_HRI:
         minority_class = np.argmin(np.bincount(train_Y_TS[:, task]))
         majority_class = np.argmax(np.bincount(train_Y_TS[:, task]))
         if verbose:
-            print("Minority class: ", minority_class)
-            print("Majority class: ", majority_class)
+            print(f"Minority class: {minority_class}")
+            print(f"Majority class: {majority_class}")
         if oversampling_rate > 0:  # float indicating the percentage of oversampling # TODO make this work with more than one class
             # oversample the minority class in the training data
-            # get the indexes of the minority class
             minority_indexes = np.where(
                 train_Y_TS[:, task] == minority_class)[0]
             # oversample the minority class by the oversampling rate
@@ -690,11 +693,10 @@ class DataLoader_HRI:
             train_Y_TS = np.concatenate(
                 (train_Y_TS, train_Y_TS[oversampling_indices]))
             if verbose:
-                print("From minority class: ", len(minority_indexes),
-                      " oversampled: ", len(oversampling_indices))
+                print(
+                    f"From minority class: {len(minority_indexes)}, oversampled: {len(oversampling_indices)}")
         if undersampling_rate > 0:  # float indicating the percentage of undersampling
             # undersample the majority class in the training data
-            # get the indexes of the majority class
             majority_indexes = np.where(
                 train_Y_TS[:, task] == majority_class)[0]
             # undersample the majority class by the undersampling rate
@@ -703,19 +705,22 @@ class DataLoader_HRI:
             train_X_TS = np.delete(train_X_TS, undersampling_indices, axis=0)
             train_Y_TS = np.delete(train_Y_TS, undersampling_indices, axis=0)
             if verbose:
-                print("From majority class: ", len(majority_indexes),
-                      " undersampled: ", len(undersampling_indices))
+                print(
+                    f"From majority class: {len(majority_indexes)}, undersampled: {len(undersampling_indices)}")
 
         return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order
 
     def resample(self, interval: list, fps: int, style: str) -> list:
-        '''
-        Resample the interval to the desired fps. Original framerate is 100 fps
-        :param interval: The interval to downsample
-        :param fps: The desired fps
-        :param style: The style of resampling. One of 'mean', 'max', 'min'
-        :return: The downsampled interval
-        '''
+        """Resample the interval to the desired fps. Original framerate is 100 fps.
+
+        Args:
+            interval: The interval to downsample
+            fps: The desired fps
+            style: The style of resampling. One of 'mean', 'max', 'min'
+
+        Returns:
+            The downsampled interval
+        """
         # Validate style
         if style not in ['mean', 'max', 'min']:
             raise ValueError("Style must be one of 'mean', 'max', 'min'")
@@ -742,6 +747,14 @@ class DataLoader_HRI:
 
     @ staticmethod
     def impute_nan_with_feature_mean(data: np.ndarray) -> np.ndarray:
+        """Impute NaN values in the data with the mean of the respective feature
+
+        Args:
+            data: The data to impute NaN values in
+
+        Returns:
+            The data with mean values replacing NaN values
+        """
         for i in range(data.shape[0]):  # Iterate over each sample
             for j in range(data.shape[1]):  # Iterate over each feature
                 feature_values = data[i, j, :]
@@ -752,29 +765,31 @@ class DataLoader_HRI:
         return data
 
     def exclude_columns(self, columns: list) -> None:
-        """
-        Exclude columns from the data
-        :param columns: The columns to exclude
+        """Exclude columns from the data
+
+        Args:
+        columns: The columns to exclude
         """
         for col in columns:
             try:
                 self.all_X = self.all_X.drop(columns=col, axis=1)
             except:
-                print("Error excluding column with name", col)
+                print(f"Error excluding column with name {col}")
             try:
                 self.test_X = self.test_X.drop(columns=col, axis=1)
             except:
-                print("Error excluding test column with name", col)
+                print(f"Error excluding test column with name {col}")
 
     def limit_to_sessions(self, sessions_train: list = None, sessions_val: list = None) -> None:
-        """
-        Limit the data to the specified sessions
-        :param sessions_train: The sessions to include in the training data
-        :param sessions_val: The sessions to include in the validation data
+        """Limit the data to the specified sessions
+
+        Args:
+            sessions_train: The sessions to include in the training data
+            sessions_val: The sessions to include in the validation data
         """
         if sessions_train is not None:
-            print("Original sessions:", self.all_X['session'].unique())
-            print("Sessions kept:", sessions_train)
+            print(f"Original sessions: {self.all_X['session'].unique()}")
+            print(f"Sessions kept: {sessions_train}")
             self.all_X = self.all_X[self.all_X['session'].isin(
                 sessions_train) | self.all_X['session'].str.endswith("_val")]
             self.all_Y = self.all_Y[self.all_Y['session'].isin(
