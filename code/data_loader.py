@@ -140,12 +140,10 @@ class DataLoader_HRI:
         self.exclude_columns(columns_to_drop)
 
         if self.verbose:
-            print("\nMerged data head:")
-            print(self.all_X.head())
-            print("Y head:")
-            print(self.all_Y.head())
-            print("X length:", len(self.all_X))
-            print("Y length:", len(self.all_Y))
+            print(f"\nMerged data head:\n{self.all_X.head()}")
+            print(f"Y head:\n{self.all_Y.head()}")
+            print(f"X length: {len(self.all_X)}")
+            print(f"Y length: {len(self.all_Y)}")
             print("Test:", self.test_X.head()) if len(
                 self.test_X) > 0 else None
 
@@ -240,7 +238,6 @@ class DataLoader_HRI:
                 end_frame = min(
                     math.ceil(end_time * rows_per_second), frames_count)
                 speaker = row['speaker']
-                # print(filename, begin_frame, end_frame, len(new_data))
                 for j in range(begin_frame, end_frame):
                     new_data[j][speaker] = 1
                     if speaker != "pause":
@@ -493,7 +490,6 @@ class DataLoader_HRI:
             if len(self.test_Y) > 0:
                 test_Y_TS_list.append(test_Y_TS)
 
-        # convert to numpy arrays
         for i in range(len(test_X_TS_list)):
             test_X_TS_list[i] = np.array(test_X_TS_list[i])
             if len(self.test_Y) > 0:
@@ -560,10 +556,6 @@ class DataLoader_HRI:
 
         cut_length = 10  # drop the last x rows to avoid NaNs
 
-        if label_creation not in ['full', 'stride_eval', 'stride_train']:
-            raise ValueError(
-                "label_creation must be one of 'full' or 'stride'")
-
         ##### TRAIN DATA #####
         # Split the data into intervals, if the session changes, start a new interval
         for session in self.train_X['session'].unique():
@@ -576,11 +568,9 @@ class DataLoader_HRI:
                 session_df = session_df[:-cut_length]
             # Normalize/Standardize
             if rescaling == 'standardization':
-                # per column
                 session_df = (session_df - session_df.mean()) / \
                     session_df.std()
             elif rescaling == 'normalization':
-                # per column
                 session_df = (session_df - session_df.min()) / \
                     (session_df.max() - session_df.min())
             session_labels = self.train_Y[self.train_Y['session'] == session]
@@ -633,11 +623,9 @@ class DataLoader_HRI:
                 session_df = session_df[:-cut_length]
             # Normalize/Standardize
             if rescaling == 'standardization':
-                # per column
                 session_df = (session_df - session_df.mean()) / \
                     session_df.std()
             elif rescaling == 'normalization':
-                # per column
                 session_df = (session_df - session_df.min()) / \
                     (session_df.max() - session_df.min())
             session_labels = self.val_Y[self.val_Y['session'] == session]
@@ -720,6 +708,9 @@ class DataLoader_HRI:
 
         Returns:
             The downsampled interval
+
+        Raises:
+            ValueError: If the style is not one of 'mean', 'max', 'min'
         """
         # Validate style
         if style not in ['mean', 'max', 'min']:
