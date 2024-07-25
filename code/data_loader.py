@@ -6,8 +6,20 @@ import math
 
 
 class DataLoader_HRI:
-    """
-    Class for loading data from the data folder
+    """Class for loading input data and labels from the data folder
+
+    Attributes:
+        data_dir: The directory where the data is stored
+        verbose: If True, print debug information
+        val_X: Contains validation data depending on selected fold
+        val_Y: Contains validation labels depending on selected fold
+        train_Y: Contains training labels depending on selected fold
+        train_X: Contains training data depending on selected fold
+        test_X: Contains test data (only available to competition organizers)
+        test_Y: Contains test labels (only available to competition organizers)
+        all_X: Contains all data (train + val)
+        all_Y: Contains all labels (train + val)
+        fold_info: Contains the fold information (which session numbers belong to which fold)
     """
 
     def __init__(self, data_dir: str = "data/", verbose: bool = False):
@@ -78,10 +90,11 @@ class DataLoader_HRI:
             elif filename.endswith("_test.csv"):
                 self.test_Y.append(df)
 
-        print("\n\nNumber of sessions (data) parsed:",
-              len(self.all_X), len(self.test_X))
-        print("Number of sessions (labels) parsed:",
-              len(self.all_Y), len(self.test_Y))
+        if verbose:
+            print("\n\nNumber of sessions (data) parsed:",
+                  len(self.all_X), len(self.test_X))
+            print("Number of sessions (labels) parsed:",
+                  len(self.all_Y), len(self.test_Y))
 
         # concatenate into one single dataframe
         self.all_X = pd.concat(self.all_X)
@@ -91,7 +104,7 @@ class DataLoader_HRI:
         if len(self.test_Y) > 0:
             self.test_Y = pd.concat(self.test_Y)
 
-        # COLUMN CLEANUP
+        # Column cleanup
         # remove trailing whitespace from column names
         self.all_X.columns = self.all_X.columns.str.strip()
         self.all_Y.columns = self.all_Y.columns.str.strip()
@@ -99,8 +112,6 @@ class DataLoader_HRI:
             self.test_X.columns = self.test_X.columns.str.strip()
         if len(self.test_Y) > 0:
             self.test_Y.columns = self.test_Y.columns.str.strip()
-
-        # for X drop columns with names: 'person_id_openpose', 'week_id_openpose', 'robot_group_openpose', 'end_opensmile', 'start_opensmile' PT: week_id_openpose passes its presence check but fails the drop function, implying it's not in the dataframe
         columns_to_drop = ['person_id_openpose',
                            'week_id_openpose',
                            'robot_group_openpose',
@@ -145,29 +156,42 @@ class DataLoader_HRI:
 
     @staticmethod
     def extract_file_number(filename: str) -> int:
-        '''extract the number from the filename, e.g. 1 from 1_train.csv'''
+        '''extract the number from the filename, e.g. 1 from 1_train.csv
+
+        Args:
+            filename: the filename to extract the number from
+
+        Returns:
+            the number extracted from the filename
+        '''
         match = re.search(r'\d+', filename)
         return int(match.group()) if match else None
 
     def load_fold_info(self, data_dir: str) -> list:
-        """ loads a dict with 1,2,3,4 as keys and the corresponding sessions as values """
+        ''' Load dict with session numbers for each fold
+
+        Args:
+            data_dir: the directory where the fold_split.csv is stored
+
+        Returns:
+            dict with fold number as key and list of session numbers as values
+        '''
         fold_info = {}
         # load from fold_split.csv' with columns "id" and and "fold-subject-independent"
         fold_split = pd.read_csv(data_dir+'fold_split.csv')
         for i in range(1, 5):
             fold_info[i] = fold_split[fold_split['fold-subject-independent']
                                       == i]['id'].values.tolist()
-        # ids are strings in the form "10_train" -> just keept the number
-        # for i in range(1, 5):
-        #    fold_info[i] = [int(re.search(r'\d+', x).group())
-        #                    for x in fold_info[i]]
         return fold_info
 
     def load_data(self, data_dir: str) -> list:
-        '''
-        load the data from the data_dir into a list of dataframes
-        param data_dir: the directory where the data is stored
-        return: a list of tuples with the filename and the dataframe
+        '''load the data from the data_dir into a list of dataframes
+
+        Args:
+            data_dir: the directory where the data is stored
+
+        Returns: 
+            a list of tuples with the filename and the dataframe
         '''
         data_frames = []
         print(sorted(os.listdir(data_dir), key=self.extract_file_number)
@@ -181,9 +205,16 @@ class DataLoader_HRI:
         return data_frames
 
     def process_speaker_data(self, speaker_data: list, label_data: list, rows_per_second=100, opensmile_data: list = None) -> list:
-        '''
-        similar to the labels, the speaker data is originally not presented frame by frame but as time intervals
-        the speaker data is mapped to the frame number based on the label data with 100 frames per second
+        '''Similar to the labels, the speaker data is originally not presented frame by frame but as time intervals. The speaker data is mapped to the frame number based on the label data with 100 frames per second
+
+        Args:
+            speaker_data: list of tuples with filename and dataframe of the speaker data
+            label_data: labels used as reference for the frame number (for train and val data)
+            rows_per_second: corresponds to fps
+            opensmile_data: opensmile data used as reference for the frame number (for test data where labels are not available)
+
+        Returns: 
+            a list of tuples with filename and dataframe of speaker data in frame by frame format
         '''
         i_val_train = 0
         i_test = 0
@@ -194,13 +225,9 @@ class DataLoader_HRI:
                 reference_df = label_data[i_val_train][1]
                 i_val_train += 1
             elif filename.endswith("_test.csv"):
-                # reference_df = opensmile_data[i_test][1]
                 # do next until filename equals the opensmile filename
                 reference_df = next(
                     df for fname, df in opensmile_data if fname == filename)
-                # print("names:", opensmile_data[i_test][0], filename)
-                # print(i_test, filename, len(reference_df))
-                # i_test += 3
             frames_count = len(reference_df)
             new_data = []
             # initialize the data with speech pauses
@@ -228,8 +255,15 @@ class DataLoader_HRI:
         return data_frames
 
     def load_labels(self, data_dir: str, expand: bool, rows_per_second: int = 100) -> list:
-        '''
-        load the labels from the data_dir into a list of dataframes
+        '''Load the labels from the data_dir into a list of dataframes
+
+        Args:
+            data_dir: the directory where the labels are stored
+            expand: if True, the labels are expanded to frame by frame format, which is needed for the timeseries format. Otherwise, the labels are kept as they are (time intervals)
+            rows_per_second: corresponds to fps
+
+        Returns: 
+            a list of tuples with the filename and the dataframe of the labels
         '''
         data_frames = []
         print(sorted(os.listdir(data_dir), key=self.extract_file_number))
@@ -274,9 +308,19 @@ class DataLoader_HRI:
         return data_frames
 
     def merge_X_data(self, openface_data, openpose_data, opensmile_data, speaker_data, filename) -> pd.DataFrame:
+        """For a specific session (filename), merge the data from the different modalities.
+
+        Args:
+            openface_data: list of tuples with filename and dataframe of openface data
+            openpose_data: list of tuples with filename and dataframe of openpose data
+            opensmile_data: list of tuples with filename and dataframe of opensmile data
+            speaker_data: list of tuples with filename and dataframe of speaker data
+            filename: the filename of the session to merge
+
+        Returns: 
+            the merged dataframe
         """
-        For a specific session (filename), merge the data from the three dataframes.
-        """
+        # get the dataframes for the specified session
         df_openface = next(
             df for fname, df in openface_data if fname == filename)
         df_openpose = next(
@@ -290,7 +334,7 @@ class DataLoader_HRI:
             print(len(df_openface), len(df_openpose),
                   len(df_opensmile), len(df_speaker), filename)
 
-        # Merge the dataframes
+        ### Merge ###
         # merge df_speaker and df_opensmile based on index, if one is longer than the other, the extra rows are dropped
         merged_df = df_speaker.add_suffix("_speaker").join(
             df_opensmile.add_suffix('_opensmile'), how='inner')
@@ -306,7 +350,7 @@ class DataLoader_HRI:
         if self.verbose:
             print(len(merged_df), "after merge")
 
-        # Add session id (split at ".")
+        # Add session id
         merged_df.insert(1, 'session', filename.split('.')[0])
 
         return merged_df.reset_index()
