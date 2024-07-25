@@ -249,7 +249,7 @@ class TS_Model_Trainer:
             "fps", data_params["fps"])
         data_values["columns_to_remove"] = trial.suggest_categorical("columns_to_remove",
                                                                      data_params["columns_to_remove"])
-        columns_to_remove = self.column_removal_dict[data_values["columns_to_remove"]]
+        columns_to_remove = data_values["columns_to_remove"]
         data_values["label_creation"] = trial.suggest_categorical(
             "label_creation", data_params["label_creation"])
         data_values["nan_handling"] = trial.suggest_categorical(
@@ -449,8 +449,7 @@ class TS_Model_Trainer:
         self.config = self.read_config(self.folder+"code/"+config)
         # remove ["model_params"]["random_state"] from config dict to train different models each time
         self.config["model_params"].pop("random_state", None)
-        columns_to_remove = self.column_removal_dict[self.config["data_params"]
-                                                     ["columns_to_remove"]]
+        columns_to_remove = self.config["data_params"]["columns_to_remove"]
         if self.config["model_type"] == "MiniRocket":
             model = self.get_classic_learner(self.config["model_params"])
             data_format = "timeseries"
@@ -832,7 +831,7 @@ class TS_Model_Trainer:
             self.folder+"code/best_model_configs/"+config_name)
         data_values = config["data_params"]
         model_values = config["model_params"]
-        columns_to_remove = self.column_removal_dict[data_values["columns_to_remove"]]
+        columns_to_remove = data_values["columns_to_remove"]
         print(config)
 
         accuracies = []
@@ -921,8 +920,7 @@ class TS_Model_Trainer:
             self.folder+"code/best_model_configs/"+model_config)
         print(self.config)
 
-        columns_to_remove = self.column_removal_dict[self.config["data_params"]
-                                                     ["columns_to_remove"]]
+        columns_to_remove = self.config["data_params"]["columns_to_remove"]
 
         if any(s in self.config["model_type"] for s in ["TST", "LSTM_FCN", "ConvTranPlus", "TransformerLSTMPlus"]):
             return NotImplementedError
@@ -976,7 +974,6 @@ class TS_Model_Trainer:
         task = config["task"]
         rescaling = data_values["rescaling"]
         columns_to_remove = data_values["columns_to_remove"]
-        columns_to_remove = self.column_removal_dict[columns_to_remove]
 
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
             data_values=data_values, format="classic", columns_to_remove=columns_to_remove, fold=4)
