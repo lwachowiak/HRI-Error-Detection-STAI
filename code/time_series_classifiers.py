@@ -1,17 +1,23 @@
-### OWN CODE IMPORTS ###
-from get_metrics import get_metrics
-from data_loader import DataLoader_HRI
+### GENERAL IMPORTS ###
+import argparse
+import datetime
+import json
+import os
+import pickle
+import platform
 
 ### ML IMPORTS ###
+import numpy as np
+import pandas as pd
 from tsai.data.all import *
 from tsai.models.utils import *
-from tsai.models import MINIROCKET, MINIROCKET_Pytorch
-from tsai.all import my_setup, accuracy, F1Score, CrossEntropyLossFlat, FocalLossFlat, Learner, TST, LSTM_FCN, TransformerLSTMPlus, HydraMultiRocketPlus, ConvTranPlus
+from tsai.models import MINIROCKET
+from tsai.all import my_setup, accuracy, F1Score, CrossEntropyLossFlat, FocalLossFlat, Learner, TST, LSTM_FCN, TransformerLSTMPlus, ConvTranPlus
 from fastai.callback.all import EarlyStoppingCallback
 from sklearn.metrics import confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
-from xgboost import XGBClassifier
 import torch
+from xgboost import XGBClassifier
 
 ### TRACKING IMPORTS ###
 import optuna
@@ -19,17 +25,10 @@ import optuna.study.study
 from optuna.integration import WeightsAndBiasesCallback
 import wandb
 
-### OTHER IMPORTS ###
-import json
-import datetime
-import platform
-import numpy as np
-import matplotlib.pyplot as plt
-import argparse
-import os
-import pandas as pd
-import pickle
-import random
+### OWN CODE IMPORTS ###
+from data_loader import DataLoader_HRI
+from get_metrics import get_metrics
+
 
 class TS_Model_Trainer:
     """
@@ -60,15 +59,15 @@ class TS_Model_Trainer:
         }
         self.config = self.read_config(folder+"code/"+config_name)
         # this is a dict that works with legacy code, where the names remap to these columns to remove. Consider using full column names to remove in the future configs.
-        self.column_removal_dict = {                                    
-                                    "only_openpose": ["opensmile", "speaker", "openface", "frame"],
-                                    "only_c_openface": ["opensmile", "speaker", "openpose", "frame", "r_openface"],
-                                    "only_r_openface": ["opensmile", "speaker", "openpose", "frame", "c_openface"],
-                                    "only_speaker": ["opensmile", "openpose", "openface", "frame"],
-                                    "only_opensmile": ["openpose", "speaker", "openface", "frame"],
-                                    "only_frame": ["opensmile", "speaker", "openpose", "openface"],
-                                    "only_openface": ["opensmile", "speaker", "openpose", "frame"],
-                                    }
+        self.column_removal_dict = {
+            "only_openpose": ["opensmile", "speaker", "openface", "frame"],
+            "only_c_openface": ["opensmile", "speaker", "openpose", "frame", "r_openface"],
+            "only_r_openface": ["opensmile", "speaker", "openpose", "frame", "c_openface"],
+            "only_speaker": ["opensmile", "openpose", "openface", "frame"],
+            "only_opensmile": ["openpose", "speaker", "openface", "frame"],
+            "only_frame": ["opensmile", "speaker", "openpose", "openface"],
+            "only_openface": ["opensmile", "speaker", "openpose", "frame"],
+        }
         self.loss_dict = {"CrossEntropyLossFlat": CrossEntropyLossFlat(),
                           "FocalLossFlat": FocalLossFlat()}
 
@@ -415,11 +414,11 @@ class TS_Model_Trainer:
         # read the string and separate by comma if multiple words
         if "," in columns_to_remove:
             columns_to_remove = columns_to_remove.split(",")
-    
+
         elif columns_to_remove == "REMOVE_NOTHING":
             return data_X, column_order
-        elif "only" in columns_to_remove: # translate the only description to the right columns to remove
-                columns_to_remove = self.column_removal_dict[columns_to_remove]
+        elif "only" in columns_to_remove:  # translate the only description to the right columns to remove
+            columns_to_remove = self.column_removal_dict[columns_to_remove]
         else:
             columns_to_remove = [columns_to_remove]
 
@@ -780,7 +779,7 @@ class TS_Model_Trainer:
         task = config["task"]
         rescaling = data_values["rescaling"]
         columns_to_remove = data_values["columns_to_remove"]
-        
+
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(interval_length=interval_length, stride_train=stride_train,
                                                                                                              stride_eval=stride_eval, fps=fps, verbose=True, label_creation=label_creation, task=task, rescaling=rescaling, fold=4)
 
