@@ -415,7 +415,7 @@ class TS_Model_Trainer:
         # read the string and separate by comma if multiple words
         print("Columns to remove", columns_to_remove)
         if "," in columns_to_remove:
-            columns_to_remove = columns_to_remove.split(", ")
+            columns_to_remove = columns_to_remove.split(",")
     
         elif columns_to_remove == "REMOVE_NOTHING":
             return data_X, column_order
