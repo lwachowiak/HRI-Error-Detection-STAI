@@ -1,23 +1,17 @@
-### GENERAL IMPORTS ###
-import argparse
-import datetime
-import json
-import os
-import pickle
-import platform
+### OWN CODE IMPORTS ###
+from get_metrics import get_metrics
+from data_loader import DataLoader_HRI
 
 ### ML IMPORTS ###
-import numpy as np
-import pandas as pd
 from tsai.data.all import *
 from tsai.models.utils import *
-from tsai.models import MINIROCKET
-from tsai.all import my_setup, accuracy, F1Score, CrossEntropyLossFlat, FocalLossFlat, Learner, TST, LSTM_FCN, TransformerLSTMPlus, ConvTranPlus
+from tsai.models import MINIROCKET, MINIROCKET_Pytorch
+from tsai.all import my_setup, accuracy, F1Score, CrossEntropyLossFlat, FocalLossFlat, Learner, TST, LSTM_FCN, TransformerLSTMPlus, HydraMultiRocketPlus, ConvTranPlus
 from fastai.callback.all import EarlyStoppingCallback
 from sklearn.metrics import confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
-import torch
 from xgboost import XGBClassifier
+import torch
 
 ### TRACKING IMPORTS ###
 import optuna
@@ -25,9 +19,23 @@ import optuna.study.study
 from optuna.integration import WeightsAndBiasesCallback
 import wandb
 
-### OWN CODE IMPORTS ###
-from data_loader import DataLoader_HRI
-from get_metrics import get_metrics
+### OTHER IMPORTS ###
+import json
+import datetime
+import platform
+import numpy as np
+import matplotlib.pyplot as plt
+import argparse
+import os
+import pandas as pd
+import pickle
+import random
+
+# TODO:
+# Models:
+#   - Try annotation/outlier processing: https://www.sktime.net/en/stable/api_reference/annotation.html
+#   - Try prediction/forcasting --> unlikely sequence --> outlier --> label 1
+#   - Foundation Models
 
 
 class TS_Model_Trainer:
@@ -58,16 +66,27 @@ class TS_Model_Trainer:
             "TransformerLSTMPlus": self.optuna_objective_tsai
         }
         self.config = self.read_config(folder+"code/"+config_name)
-        # this is a dict that works with legacy code, where the names remap to these columns to remove. Consider using full column names to remove in the future configs.
-        self.column_removal_dict = {
-            "only_openpose": ["opensmile", "speaker", "openface", "frame"],
-            "only_c_openface": ["opensmile", "speaker", "openpose", "frame", "r_openface"],
-            "only_r_openface": ["opensmile", "speaker", "openpose", "frame", "c_openface"],
-            "only_speaker": ["opensmile", "openpose", "openface", "frame"],
-            "only_opensmile": ["openpose", "speaker", "openface", "frame"],
-            "only_frame": ["opensmile", "speaker", "openpose", "openface"],
-            "only_openface": ["opensmile", "speaker", "openpose", "frame"],
-        }
+        self.column_removal_dict = {"REMOVE_NOTHING": ["REMOVE_NOTHING"],
+                                    "opensmile": ["opensmile"],
+                                    "speaker": ["speaker"],
+                                    "openpose": ["openpose"],
+                                    "openface": ["openface"],
+                                    "frame": ["frame"],
+                                    "openpose, speaker": ["openpose", "speaker"],
+                                    "speaker, opensmile": ["speaker", "opensmile"],
+                                    "speaker, openpose, openface": ["speaker", "openpose", "openface"],
+                                    "speaker, openface, opensmile": ["speaker", "openface", "opensmile"],
+                                    "openpose, openface, opensmile": ["openpose", "openface", "opensmile"],
+                                    "c_openface": ["c_openface"],
+                                    "openpose, c_openface": ["openpose", "c_openface"],
+                                    "vel_dist": ["vel_dist"],
+                                    "vel_dist, c_openface": ["vel_dist", "c_openface"],
+                                    "only_openpose": ["opensmile", "speaker", "openface", "frame"],
+                                    "only_openface": ["opensmile", "speaker", "openpose", "frame"],
+                                    "only_speaker": ["opensmile", "openpose", "openface", "frame"],
+                                    "only_opensmile": ["openpose", "speaker", "openface", "frame"],
+                                    "only_frame": ["opensmile", "speaker", "openpose", "openface"],
+                                    }
         self.loss_dict = {"CrossEntropyLossFlat": CrossEntropyLossFlat(),
                           "FocalLossFlat": FocalLossFlat()}
 
@@ -163,7 +182,7 @@ class TS_Model_Trainer:
 
         return eval_scores
 
-    def data_from_config(self, data_values: dict, format: str, columns_to_remove: str, fold: int) -> tuple:
+    def data_from_config(self, data_values: dict, format: str, columns_to_remove: list, fold: int) -> tuple:
         """
         create the datasets for training based on the configuration and the trial parameters.
         params: data_values: dict: The data values to use for the data creation.
@@ -248,7 +267,7 @@ class TS_Model_Trainer:
             "fps", data_params["fps"])
         data_values["columns_to_remove"] = trial.suggest_categorical("columns_to_remove",
                                                                      data_params["columns_to_remove"])
-        columns_to_remove = data_values["columns_to_remove"]
+        columns_to_remove = self.column_removal_dict[data_values["columns_to_remove"]]
         data_values["label_creation"] = trial.suggest_categorical(
             "label_creation", data_params["label_creation"])
         data_values["nan_handling"] = trial.suggest_categorical(
@@ -404,25 +423,13 @@ class TS_Model_Trainer:
             study, target=lambda t: t.values[target_index], target_name=target_name)
         wandb.log({"optuna_slice_"+target_name: fig})
 
-    def remove_columns(self, columns_to_remove: str, data_X: np.array, column_order: list) -> tuple:
+    def remove_columns(self, columns_to_remove: list, data_X: np.array, column_order: list) -> tuple:
         '''Remove columns from the data.
         :param columns_to_remove: List of columns to remove.
         :param data_X: The data to remove the columns from. Either a list of np.arrays or a np.array.
         :param column_order: The order of the columns in the data.
         :output new_data_X: The data with the specified columns removed and the new column order.
         '''
-        # read the string and separate by comma if multiple words
-        if "," in columns_to_remove:
-            columns_to_remove = columns_to_remove.split(",")
-
-        elif columns_to_remove == "REMOVE_NOTHING":
-            return data_X, column_order
-        elif "only" in columns_to_remove:  # translate the only description to the right columns to remove
-            columns_to_remove = self.column_removal_dict[columns_to_remove]
-        else:
-            columns_to_remove = [columns_to_remove]
-
-        print("Columns to remove", columns_to_remove)
         # depending on whether data_X is list or np.array
         if isinstance(data_X, list):  # val/test
             new_data_X = [val_X_TS[:, [
@@ -452,7 +459,8 @@ class TS_Model_Trainer:
         self.config = self.read_config(self.folder+"code/"+config)
         # remove ["model_params"]["random_state"] from config dict to train different models each time
         self.config["model_params"].pop("random_state", None)
-        columns_to_remove = self.config["data_params"]["columns_to_remove"]
+        columns_to_remove = self.column_removal_dict[self.config["data_params"]
+                                                     ["columns_to_remove"]]
         if self.config["model_type"] == "MiniRocket":
             model = self.get_classic_learner(self.config["model_params"])
             data_format = "timeseries"
@@ -520,7 +528,7 @@ class TS_Model_Trainer:
         scores_mean = np.mean(scores, axis=1)
         print("\n\nMean Scores:", scores_mean)
         # save scores and scores_mean in text file
-        with open(save_to+".txt", "w") as f:
+        with open(save_to+"_"+str(self.task)+".txt", "w") as f:
             f.write("Scores:\n")
             for s in scores:
                 f.write(str(s)+"\n")
@@ -779,6 +787,7 @@ class TS_Model_Trainer:
         task = config["task"]
         rescaling = data_values["rescaling"]
         columns_to_remove = data_values["columns_to_remove"]
+        columns_to_remove = self.column_removal_dict[columns_to_remove]
 
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_timeseries_format(interval_length=interval_length, stride_train=stride_train,
                                                                                                              stride_eval=stride_eval, fps=fps, verbose=True, label_creation=label_creation, task=task, rescaling=rescaling, fold=4)
@@ -834,7 +843,7 @@ class TS_Model_Trainer:
             self.folder+"code/best_model_configs/"+config_name)
         data_values = config["data_params"]
         model_values = config["model_params"]
-        columns_to_remove = data_values["columns_to_remove"]
+        columns_to_remove = self.column_removal_dict[data_values["columns_to_remove"]]
         print(config)
 
         accuracies = []
@@ -923,7 +932,8 @@ class TS_Model_Trainer:
             self.folder+"code/best_model_configs/"+model_config)
         print(self.config)
 
-        columns_to_remove = self.config["data_params"]["columns_to_remove"]
+        columns_to_remove = self.column_removal_dict[self.config["data_params"]
+                                                     ["columns_to_remove"]]
 
         if any(s in self.config["model_type"] for s in ["TST", "LSTM_FCN", "ConvTranPlus", "TransformerLSTMPlus"]):
             return NotImplementedError
@@ -977,6 +987,7 @@ class TS_Model_Trainer:
         task = config["task"]
         rescaling = data_values["rescaling"]
         columns_to_remove = data_values["columns_to_remove"]
+        columns_to_remove = self.column_removal_dict[columns_to_remove]
 
         val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
             data_values=data_values, format="classic", columns_to_remove=columns_to_remove, fold=4)
@@ -999,7 +1010,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "--njobs", type=int, help="Number of cpu cores to use for training.", default=8)
     parser.add_argument(
-        "--type", type=str, help="Indicates what to run: 'traing_single' (trains and saves a single model), 'search' (runs a optuna hyperparamter search), 'learning_curve' (computes the learning curves for all models), 'competition_eval' (evaluates models on the hidden test set).", default="search")
+        "--type", type=str, help="Indicates what to run: 'traing_singe' (trains and saves a single model), 'search' (runs a optuna hyperparamter search), 'learning_curve' (computes the learning curves for all models), 'competition_eval' (evaluates models on the hidden test set).", default="search")
     args = parser.parse_args()
     print(args)
     if args.config:
@@ -1021,7 +1032,7 @@ if __name__ == '__main__':
 
     date = datetime.datetime.now().strftime("%Y-%m-%d-%H")
 
-    ########### run single model training ###########
+    ########### uncomment to run a single training ###########
     if job_type == "train_single":
         trainer.train_and_save_best_model(
             "MiniRocket_2024-06-19-08.json", name_extension="trained_on_all_data", fold=4)
@@ -1048,9 +1059,9 @@ if __name__ == '__main__':
     elif job_type == "learning_curve":
         trainer.learning_curve("best_model_configs/MiniRocket_2024-07-18-06.json",
                                iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_MR")
-        trainer.learning_curve("best_model_configs/RandomForest_2024-06-15-11.json",
-                               iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_RF")
-        trainer.learning_curve("best_model_configs/ConvTranPlus_2024-07-13-14.json",
-                               iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_CT")
-        trainer.learning_curve("best_model_configs/TST_2024-07-16-10.json",
-                               iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_TST")
+        #trainer.learning_curve("best_model_configs/RandomForest_2024-06-15-11.json",
+        #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_RF")
+        #trainer.learning_curve("best_model_configs/ConvTranPlus_2024-07-13-14.json",
+        #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_CT")
+        #trainer.learning_curve("best_model_configs/TST_2024-07-16-10.json",
+        #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_TST")
