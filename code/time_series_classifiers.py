@@ -5,8 +5,8 @@ from data_loader import DataLoader_HRI
 ### ML IMPORTS ###
 from tsai.data.all import *
 from tsai.models.utils import *
-from tsai.models import MINIROCKET, MINIROCKET_Pytorch
-from tsai.all import my_setup, accuracy, F1Score, CrossEntropyLossFlat, FocalLossFlat, Learner, TST, LSTM_FCN, TransformerLSTMPlus, HydraMultiRocketPlus, ConvTranPlus
+from tsai.models import MINIROCKET
+from tsai.all import my_setup, accuracy, F1Score, CrossEntropyLossFlat, FocalLossFlat, Learner, TST, LSTM_FCN, TransformerLSTMPlus, ConvTranPlus
 from fastai.callback.all import EarlyStoppingCallback
 from sklearn.metrics import confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
@@ -24,30 +24,21 @@ import json
 import datetime
 import platform
 import numpy as np
-import matplotlib.pyplot as plt
 import argparse
 import os
 import pandas as pd
 import pickle
-import random
-
-# TODO:
-# Models:
-#   - Try annotation/outlier processing: https://www.sktime.net/en/stable/api_reference/annotation.html
-#   - Try prediction/forcasting --> unlikely sequence --> outlier --> label 1
-#   - Foundation Models
-
 
 class TS_Model_Trainer:
     """
     A class for training individual models, doing optuna hyperparamter search, and inference with already trained models.
     """
-
-    def __init__(self, folder: str, n_jobs: int, config_name: str):
+    def __init__(self, folder: str, n_jobs: int, config_name: str) -> None:
         '''
         Initialize the TS_Model_Trainer with the data folder and the task to be trained on.
-        :param data_folder: The folder containing the data.
-        :param n_jobs: CPU usage parameter
+        :param data_folder: The folder containing the data which is used for training and evaluation.
+        :param n_jobs: Number of CPU threads to use for MiniRocket training.
+        :param config_name: The name of the configuration file to use for training/search.
         '''
         self.folder = folder
         self.data = DataLoader_HRI(folder+"data/")
@@ -91,7 +82,10 @@ class TS_Model_Trainer:
                           "FocalLossFlat": FocalLossFlat()}
 
     def read_config(self, file_path: str) -> dict:
-        """Reads a JSON configuration file and returns the configuration as a dictionary."""
+        """
+        Reads a JSON configuration file and returns the configuration as a dictionary.
+        :param file_path: The path to the configuration file.
+        :output config: dict: The configuration as a dictionary."""
         try:
             with open(file_path, 'r') as file:
                 config = json.load(file)
@@ -109,13 +103,16 @@ class TS_Model_Trainer:
             print(f"An unexpected error occurred: {e}")
 
     def get_full_test_preds(self, model: object, val_X_TS_list: list, interval_length: int, stride_eval: int, api_style: str, batch_tfms: list = None, start_padding: bool = False) -> list:
-        '''Get full test predictions by repeating the predictions based on interval_length and stride_eval.
+        '''
+        Get full test predictions by repeating the predictions based on interval_length and stride_eval.
         :param model: The model to evaluate.
         :param val_X_TS_list: List of validation/test data per session.
         :param interval_length: The length of the interval to predict.
         :param stride_eval: The stride to evaluate the model.
-        :param api_style: Either "sklearn" or "TSAI", which have different API calls
-        :param batch_tfms: List of batch transformations to apply, if any
+        :param api_style: Either "sklearn" or "TSAI", which have different API calls.
+        :param batch_tfms: List of batch transformations to apply, if any.
+        :param start_padding: Whether to pad context at the start of the session with zeros.
+        :output test_preds: List of predictions per session.
         '''
         if api_style not in ["sklearn", "TSAI"]:
             raise ValueError(
@@ -143,10 +140,11 @@ class TS_Model_Trainer:
             test_preds.append(processed_preds)
         return test_preds
 
-    def get_eval_metrics(self, preds: list, dataset="val", verbose=False) -> dict:
-        '''Evaluate model on self.data.val_X and self.data.val_Y. The final missing values in preds are filled with 0s.
+    def get_eval_metrics(self, preds: list, verbose: bool = False) -> dict:
+        '''
+        Evaluate model on self.data.val_X and self.data.val_Y. The final missing values in preds are filled with 0s.
         :param preds: List of predictions per session. Per session there is one list of prediction labels.
-        :param dataset: The dataset to evaluate on (val or test)
+        :param verbose: Whether to print the confusion matrix and evaluation scores.
         :output eval_scores: Dictionary containing the evaluation scores (accuracy, macro f1, macro precision, macro recall)
         '''
         y_true = []
@@ -184,12 +182,17 @@ class TS_Model_Trainer:
 
     def data_from_config(self, data_values: dict, format: str, columns_to_remove: list, fold: int) -> tuple:
         """
-        create the datasets for training based on the configuration and the trial parameters.
-        params: data_values: dict: The data values to use for the data creation.
-        params: format: str: The format of the data to return. Either "timeseries" or "classic".
-        params: columns_to_remove: list: The columns to remove from the data.
-        params: fold: int: The fold to use for validation data
-        output: tuple: Tuple containing the validation and training datasets.
+        Create the datasets for training based on the configuration and the trial parameters.
+        :param data_values: The data values to use for the data creation.
+        :param format: The format of the data to return. Either "timeseries" or "classic".
+        :param columns_to_remove: The columns to remove from the data.
+        :param fold: The fold to use for validation data
+        :output val_X_TS_list: validation X data.
+        :output val_Y_TS_list: validation Y data.
+        :output train_X_TS: training X data.
+        :output train_Y_TS: training Y data.
+        :output new_column_order: column order.
+        :output train_Y_TS_task: training Y data.
         """
         if fold not in range(1, 5):
             print("Warning: Training on all data, including validation set.")
@@ -249,10 +252,11 @@ class TS_Model_Trainer:
         return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, new_column_order, train_Y_TS_task
 
     def get_data_values(self, trial: optuna.Trial) -> tuple:
-        """ Get the data values for the trial based on the configuration and the trial parameters.
+        """ 
+        Get the data values for the trial based on the configuration and the trial parameters.
         :param trial: optuna.Trial: The trial object.
-        :output data_values: dict: The data values to use for the data creation.
-        :output columns_to_remove: list: The columns to remove from the data.
+        :output data_values: The data values to use for the data creation.
+        :output columns_to_remove: The columns to remove from the data.
         """
         data_params = self.config["data_params"]
         data_values = {}
@@ -288,6 +292,12 @@ class TS_Model_Trainer:
     def merge_val_train(self, val_X_TS_list: list, val_Y_TS_list: list, train_X_TS: np.array, train_Y_TS_task: np.array) -> tuple:
         """
         Merge the training and all validation sets (per session) into one dataset so that the Torch models can be trained on it.
+        :param val_X_TS_list: List of validation/test data per session.
+        :param val_Y_TS_list: List of validation/test labels per session.
+        :param train_X_TS: The training data.
+        :param train_Y_TS_task: The training labels.
+        :output all_X: The merged data.
+        :output all_Y: The merged labels.
         """
         all_X = train_X_TS
         for val_X_TS in val_X_TS_list:
@@ -333,9 +343,14 @@ class TS_Model_Trainer:
         return grid
 
     def optuna_study(self, n_trials: int, model_type: str, study_name: str, verbose=False, gridsearch=False) -> optuna.study.Study:
-        """Performs an Optuna study to optimize the hyperparameters of the model.
+        """
+        Performs an Optuna study to optimize the hyperparameters of the model.
         :param n_trials: The number of search trials to perform.
-        :param model_type: The type of model to optimize (MiniRocket, TST).
+        :param model_type: The type of model to optimize (MiniRocket, RF, ConvTran, TST).
+        :param study_name: The name of the study.
+        :param verbose: Whether to print the best trial parameters.
+        :param gridsearch: Whether to perform a grid search instead of a random search.
+        :output study: The optuna study object.
         """
         wandb_kwargs = {"project": "HRI-Errors",
                         "name": study_name+"_task_"+str(self.task), "group": model_type}
@@ -405,7 +420,8 @@ class TS_Model_Trainer:
         return study
 
     def get_trials_figures(self, study: optuna.study.Study, target_index: int, target_name: str) -> None:
-        '''Get optuna visualization figures and log them to wandb. Summary visualizations for full search.
+        '''
+        Get optuna visualization figures and log them to wandb. Summary visualizations for full search.
         params: study: optuna.study.Study: The optuna study object.
         params: target_index: int: The index of the target value to plot, 0 for accuracy, 1 for macro f1.
         params: target_name: str: The name of the target value to plot, used for the wandb log.
@@ -424,11 +440,13 @@ class TS_Model_Trainer:
         wandb.log({"optuna_slice_"+target_name: fig})
 
     def remove_columns(self, columns_to_remove: list, data_X: np.array, column_order: list) -> tuple:
-        '''Remove columns from the data.
+        '''
+        Remove columns from the data.
         :param columns_to_remove: List of columns to remove.
         :param data_X: The data to remove the columns from. Either a list of np.arrays or a np.array.
         :param column_order: The order of the columns in the data.
-        :output new_data_X: The data with the specified columns removed and the new column order.
+        :output new_data_X: The data with the specified columns removed.
+        :output new_column_order: The new column order after removing the columns.
         '''
         # depending on whether data_X is list or np.array
         if isinstance(data_X, list):  # val/test
@@ -445,7 +463,8 @@ class TS_Model_Trainer:
         return new_data_X, new_column_order
 
     def learning_curve(self, config: str, iterations_per_samplesize: int, stepsize: int, save_to: str) -> None:
-        '''Get learning curve of model.
+        '''
+        Get learning curve of the model as a function of the amount of training data.
         :param config: The configuration file to use to create the model.
         :param iterations_per_samplesize: Number of iterations per sample size to create an average score.
         :param stepsize: Step size for the sample sizes used for learning curve.
@@ -517,7 +536,7 @@ class TS_Model_Trainer:
                 test_preds = self.get_full_test_preds(
                     model, val_X_TS_list, interval_length=self.config["data_params"]["interval_length"], stride_eval=self.config["data_params"]["stride_eval"], api_style=api_style, start_padding=self.config["data_params"]["start_padding"], batch_tfms=batch_tfms)
                 eval_scores = self.get_eval_metrics(
-                    preds=test_preds, dataset="val", verbose=False)
+                    preds=test_preds, verbose=False)
                 scores_iter.append(eval_scores["accuracy"])
             scores.append(scores_iter)
             print("\t", scores)
@@ -536,7 +555,8 @@ class TS_Model_Trainer:
             f.write(str(scores_mean))
 
     def get_model_values(self, trial: optuna.Trial) -> tuple:
-        '''Get the model values for the trial based on the configuration and the trial parameters.
+        '''
+        Get the model values for the trial based on the configuration and the trial parameters.
         params: trial: optuna.Trial: The trial object.
         output: model_values: dict: The model values to use for the model creation.
         output: training_values: dict: The training values to use for the model training.
@@ -631,7 +651,8 @@ class TS_Model_Trainer:
         return model_values, training_values
 
     def get_tsai_learner(self, dls: object, model_values: dict, training_values: dict) -> object:
-        """Get a tsai learner based on the configuration and the trial parameters.
+        """
+        Get a tsai learner based on the configuration and the trial parameters.
         params: dls: object: The dataloaders object passed to the model and learner.
         params: model_values: dict: The model values to use for the model creation.
         params: training_values: dict: The training values to use for the model training.
@@ -657,7 +678,8 @@ class TS_Model_Trainer:
         return learn
 
     def get_classic_learner(self, model_values: dict) -> object:
-        '''Get a classic learner following sklearn conventions based on the configuration and the trial parameters.
+        '''
+        Get a classic learner following sklearn conventions based on the configuration and the trial parameters.
         params: model_values: dict: The model values to use for the model creation.
         output: object: The classic learner object to use for training.
         '''
@@ -671,9 +693,11 @@ class TS_Model_Trainer:
         return model
 
     def optuna_objective_tsai(self, trial: optuna.Trial) -> tuple:
-        '''Optuna objective function for all tsai style models. Optimizes for accuracy and macro f1 score.
+        '''
+        Optuna objective function for all tsai style models. Optimizes for accuracy and macro f1 score.
         params: trial: optuna.Trial: The optuna trial runnning.
-        output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
+        output: accuracy: The mean accuracy of the trial across all folds for cross-validarion.
+        output: f1: The mean macro f1 score of the trial across all folds for cross-validation.
         '''
         accuracies = []
         f1s = []
@@ -704,7 +728,7 @@ class TS_Model_Trainer:
             preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, interval_length=data_values[
                 "interval_length"], stride_eval=data_values["stride_eval"], api_style="TSAI", batch_tfms=batch_tfms, start_padding=data_values["start_padding"])
             outcomes = self.get_eval_metrics(
-                preds=preds, dataset="val", verbose=False)
+                preds=preds, verbose=False)
 
             accuracies.append(outcomes["accuracy"])
             f1s.append(outcomes["f1"])
@@ -712,9 +736,11 @@ class TS_Model_Trainer:
         return np.mean(accuracies), np.mean(f1s)
 
     def optuna_objective_classic(self, trial: optuna.Trial) -> tuple:
-        '''Optuna objective function for all classic (sklearn API style) models. Optimizes for accuracy and macro f1 score.
+        '''
+        Optuna objective function for all classic (sklearn API style) models. Optimizes for accuracy and macro f1 score.
         params: trial: optuna.Trial: The optuna trial runnning.
-        output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
+        output: accuracy: The mean accuracy of the trial across all folds for cross-validarion.
+        output: f1: The mean macro f1 score of the trial across all folds for cross-validation.
         '''
         accuracies = []
         f1s = []
@@ -741,7 +767,7 @@ class TS_Model_Trainer:
                 model, val_X_TS_list, data_values["interval_length"], data_values["stride_eval"], api_style="sklearn", start_padding=data_values["start_padding"])
 
             eval_scores = self.get_eval_metrics(
-                test_preds, dataset="val", verbose=True)
+                test_preds, verbose=True)
 
             accuracies.append(eval_scores["accuracy"])
             f1s.append(eval_scores["f1"])
@@ -753,8 +779,8 @@ class TS_Model_Trainer:
     def competition_test_set_eval(self, config_name: str, saved_model_name: str = "") -> None:
         """
         Load a model from disk and evaluate it on the hidden test data (only available to competition organizers).
-        params: model_name: str: The name of the model to load.
-        params: save_name: str: The file name to save the test predictions to.
+        params: config_name: str: The name of the model config to load.
+        params: saved_model_name: str: The name of the saved model. If the name is the same as the config, leave as empty string.
         """
         if saved_model_name == "":
             saved_model_name = config_name
@@ -828,16 +854,17 @@ class TS_Model_Trainer:
         val_preds = self.get_full_test_preds(
             model, val_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, api_style="sklearn", start_padding=data_values["start_padding"])
         val_scores = self.get_eval_metrics(
-            val_preds, dataset="val", verbose=True)
+            val_preds, verbose=True)
         print("Val Scores:", val_scores)
         test_preds_df = pd.DataFrame(test_preds).T
         test_preds_df.to_csv(self.folder + "code/test_predictions/" +
                              config_name + "_test_preds_trainer.csv")
 
     def cross_val_model(self, config_name: str) -> None:
-        '''Tester function that loads a config and validates the selected model. Mirrored from the Optuna Trial function.
-        params: trial: config of the model to load.
-        output: tuple: Tuple containing the accuracy and macro f1 score of that trial run.
+        '''
+        Load a config and validate the selected model. Mirrored from the Optuna Trial function, 
+        but independent from it for the purpose of running a single cross-validation run.
+        params: config_name: config of the model to load.
         '''
         config = self.read_config(
             self.folder+"code/best_model_configs/"+config_name)
@@ -887,7 +914,7 @@ class TS_Model_Trainer:
                     model, val_X_TS_list, data_values["interval_length"], data_values["stride_eval"], api_style="sklearn", start_padding=data_values["start_padding"])
 
                 eval_scores = self.get_eval_metrics(
-                    test_preds, dataset="val", verbose=True)
+                    test_preds, verbose=True)
 
             else:
                 training_values = {"bs": config["model_params"]["bs"],
@@ -903,7 +930,7 @@ class TS_Model_Trainer:
                 preds = self.get_full_test_preds(model=learn, val_X_TS_list=val_X_TS_list, interval_length=data_values[
                     "interval_length"], stride_eval=data_values["stride_eval"], api_style="TSAI", batch_tfms=batch_tfms, start_padding=data_values["start_padding"])
                 eval_scores = self.get_eval_metrics(
-                    preds=preds, dataset="val", verbose=False)
+                    preds=preds, verbose=False)
 
             accuracies.append(eval_scores["accuracy"])
             f1s.append(eval_scores["f1"])
@@ -924,8 +951,11 @@ class TS_Model_Trainer:
         print("Tolerant Recall:", np.mean(tolerant_recalls))
 
     def train_and_save_best_model(self, model_config: str, name_extension="", fold: int = 4) -> None:
-        """Train a model based on the specified configuration and save it to disk. For final submission.
+        """
+        Train a model based on the specified configuration and save it to disk. For final submission.
         params: model_config: str: The name of the model configuration file to use for training.
+        params: name_extension: str: The name extension to add to the saved model.
+        params: fold: int: The fold to train the model on. If Fold is 5, train on all data.
         """
 
         self.config = self.read_config(
@@ -950,7 +980,7 @@ class TS_Model_Trainer:
                 test_preds = self.get_full_test_preds(
                     model, val_X_TS_list, self.config["data_params"]["interval_length"], self.config["data_params"]["stride_eval"], api_style="sklearn", start_padding=self.config["data_params"]["start_padding"])
                 eval_scores = self.get_eval_metrics(
-                    test_preds, dataset="val", verbose=True)
+                    test_preds, verbose=True)
                 print("Val Scores:", eval_scores)
 
             # save model and column order
@@ -965,8 +995,10 @@ class TS_Model_Trainer:
         else:
             raise Exception("Model type not recognized.")
 
-    def get_naive_baseline_stats(self):
-        '''Get the naive baseline stats for the dataset.'''
+    def get_naive_baseline_stats(self) -> None:
+        '''
+        Get the naive baseline stats for the dataset. Produces a majority classifier that outputs all zeros and evaluates it.
+        '''
 
         with open(self.folder + "code/trained_models/RandomForest.pkl", "rb") as f:
             model = pickle.load(f)
@@ -996,7 +1028,7 @@ class TS_Model_Trainer:
             model, val_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, api_style="sklearn", start_padding=data_values["start_padding"])
         naive_preds = [[0]*len(pred) for pred in val_preds]
         val_scores = self.get_eval_metrics(
-            naive_preds, dataset="val", verbose=True)
+            naive_preds, verbose=True)
         print("Val Scores:", val_scores)
 
 
