@@ -308,7 +308,7 @@ def plot_feature_groups_performance() -> None:
     # rotate labels
     plt.yticks(y, grouped_hists[0]['columns_to_remove'], rotation=45)
 
-    plt.xlim(-0.01, 0.35)
+    plt.xlim(-0.05, 0.35)
     plt.legend(title='Model', loc='upper left', prop={'size': 14})
     # add grid with alpha
     plt.grid(alpha=0.25)
@@ -444,14 +444,18 @@ def plot_all_features() -> None:
         markersize=14, 
         elinewidth=4
         )
+    for i in range(1, len(ALL_COMBINATIONS_REMAPPING), 2):
+        plt.axhspan(i - 0.5, i + 0.5, alpha=0.2, color='grey')
+
     plt.axvline(x=NAIVE_ACC[2], color='black', linestyle='dotted',
                 label='Naive Baseline')
 
     plt.yticks(y, all_features['columns_to_remove'], rotation=0)
-    plt.xticks(np.arange(0.68, 0.84, 0.01))
+    plt.xlim(0.68, 0.84)
+    plt.xticks(np.arange(0.68, 0.84, 0.005), minor=True)
     plt.xlabel('Accuracy')
     plt.ylabel('Feature groups')
-    plt.grid(alpha=0.25)
+    plt.grid(which="both", alpha=0.25)
     plt.tight_layout()
     plt.savefig('plots/all_feature_importance.pdf')
     plt.show()
@@ -508,7 +512,7 @@ def plot_minirocket_all_tasks() -> None:
     for i, h in enumerate(grouped_hists):
         # TODO: shift the points so different model types are on their own y-axis but under the same categorical variable
         plt.errorbar(h['accuracy']['mean'],
-                     y - 0.35 + 0.233 * i,
+                     y - 0.35 + 0.35 * i,
                      xerr=h['accuracy']['std'],
                      fmt='o',
                      markersize=14,
@@ -542,7 +546,7 @@ def plot_minirocket_all_tasks() -> None:
     for i, h in enumerate(grouped_hists):
         # TODO: shift the points so they are not plotted on the same x-axis
         plt.errorbar(h['macro f1']['mean'],
-                     y - 0.35 + 0.233 * i,
+                     y - 0.35 + 0.35 * i,
                      xerr=h['macro f1']['std'],
                      fmt='o',
                      markersize=14,
@@ -563,7 +567,7 @@ def plot_minirocket_all_tasks() -> None:
     plt.legend(title='Task', loc='upper left', prop={'size': 14})
     # add grid with alpha
     plt.grid(alpha=0.25)
-    plt.xlabel("Macro F1")
+    plt.xlabel("Macro F1 difference")
     plt.ylabel("Feature Groups")
     plt.tight_layout()
     # save plot
