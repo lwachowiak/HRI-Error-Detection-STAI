@@ -106,7 +106,9 @@ NAIVE_ACC = {0: 0.8444,
              1: 0.8403,
              2: 0.7581}
 
-NAIVE_F1 = {2: 0.43}
+NAIVE_F1 = {0: 0.46,
+            1: 0.46,
+            2: 0.43}
 
 def plot_mdi() -> None:
     """
@@ -496,6 +498,8 @@ def plot_minirocket_all_tasks() -> None:
         # subtract naive baseline
         h[('accuracy', 'mean')] = h[('accuracy', 'mean')].apply(
             lambda x: x - NAIVE_ACC[keys[i]])
+        h[('macro f1', 'mean')] = h[('macro f1', 'mean')].apply(
+            lambda x: x - NAIVE_F1[keys[i]])
 
     # plot accuracy
     y = np.arange(len(h['columns_to_remove']))
@@ -550,10 +554,12 @@ def plot_minirocket_all_tasks() -> None:
     # add shaded areas for every category across the y-axis
     for i in range(1, len(REMAPPING), 2):
         plt.axhspan(i - 0.5, i + 0.5, alpha=0.2, color='grey')
+    plt.axvline(x=0., color='black', linestyle='dotted',
+            label='Naive Baseline')
     # rotate labels
     plt.yticks(y, grouped_hists[0]['columns_to_remove'], rotation=45)
 
-    plt.xlim(0.45, 0.8)
+    plt.xlim(-0.01, 0.35)
     plt.legend(title='Task', loc='upper left', prop={'size': 14})
     # add grid with alpha
     plt.grid(alpha=0.25)
