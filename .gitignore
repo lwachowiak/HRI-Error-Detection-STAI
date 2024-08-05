@@ -10,3 +10,4 @@ wandb/
 models/
 old/
 .DS_Store
+.vscode/
