@@ -104,7 +104,7 @@ NAME_REMAPPING = {
 TASK_REMAPPING = {
     "task_0": "User awkwardness",
     "task_2": "Interaction rupture",
-    "task_1": "Robot mistake"
+    "task_1": "Robot error"
 }
 
 # Accuracies and F1 scores for naive baseline. key is task, value is score.
@@ -524,7 +524,7 @@ def plot_minirocket_all_tasks() -> None:
                      markersize=14,
                      elinewidth=4,
                      label=['User awkwardness', 'Interaction rupture',
-                            'Robot mistake'][i],
+                            'Robot error'][i],
                      color=['#4a7fa4', '#e1812b', '#3a923a'][i]
                      )
     # add shaded areas for every category across the y-axis
@@ -558,7 +558,7 @@ def plot_minirocket_all_tasks() -> None:
                      markersize=14,
                      elinewidth=4,
                      label=['User awkwardness', 'Interaction rupture',
-                            'Robot mistake'][i],
+                            'Robot error'][i],
                      color=['#4a7fa4', '#e1812b', '#3a923a'][i]
                      )
     # add shaded areas for every category across the y-axis
