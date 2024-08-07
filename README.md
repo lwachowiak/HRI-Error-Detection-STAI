@@ -5,7 +5,7 @@
 **Abstract:** To be able to react to interaction ruptures such as errors, a robot needs a way of realizing such a rupture occurred. We test whether it is possible to detect interaction ruptures from the user's anonymized speech, posture, and facial features. We showcase how to approach this task, presenting a time series classification pipeline that works well with various machine learning models. A sliding window is applied to the data and the continuously updated predictions make it suitable for detecting ruptures in real-time.
 Our best model, an ensemble of MiniRocket classifiers, is the winning approach to the ICMI ERR@HRI challenge. A feature importance analysis shows that the model heavily relies on speaker diarization data that indicates who spoke when. Posture data, on the other hand, impedes performance.
 
-![alt text](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/plots/feature_importance_accuracy.pdf)
+![alt text](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/readme_image.png)
 *Change in model accuracy compared to baseline for different feature combinations*
 
 ## Reference
