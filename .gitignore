@@ -11,3 +11,4 @@ models/
 old/
 .DS_Store
 .vscode/
+code/__pycache__/
