@@ -214,7 +214,6 @@ class DataLoader_HRI:
         data_frames = []
         for filename, df in speaker_data:
             if filename.endswith("_train.csv") or filename.endswith("_val.csv"):
-                # TODO THIS WON'T WORK IF TEST LABELS ARE ADDED
                 reference_df = label_data[i_val_train][1]
                 i_val_train += 1
             elif filename.endswith("_test.csv"):
@@ -398,7 +397,7 @@ class DataLoader_HRI:
             val_X_summary_list = [
                 np.median(val_X_TS[i], axis=2) for i in range(len(val_X_TS))]
 
-        # replace NaNs with 0 # TODO do we have this twice??
+        # replace NaNs with 0
         train_X_summary = np.nan_to_num(train_X_summary)
         for i in range(len(val_X_summary_list)):
             val_X_summary_list[i] = np.nan_to_num(val_X_summary_list[i])
