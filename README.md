@@ -6,7 +6,7 @@
 Our best model, an ensemble of MiniRocket classifiers, is the winning approach to the ICMI ERR@HRI challenge. A feature importance analysis shows that the model heavily relies on speaker diarization data that indicates who spoke when. Posture data, on the other hand, impedes performance.
 
 ![alt text](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/readme_image.png)
-*Change in model accuracy compared to baseline for different feature combinations*
+<center>*Change in model accuracy compared to baseline for different feature combinations*</center>
 
 ## Reference
 
