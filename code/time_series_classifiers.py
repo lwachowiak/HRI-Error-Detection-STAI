@@ -29,16 +29,29 @@ import os
 import pandas as pd
 import pickle
 
+
 class TS_Model_Trainer:
+    """ A class for training individual models, doing optuna hyperparamter search, and inference with already trained models.
+
+    Attributes:
+        folder: The folder path containing the data and code.
+        data: The data loader object based on the DataLoader_HRI class.
+        task: The task to be trained for (0: UserAwkwardness, 1: RobotMistake, 2: InteractionRupture).
+        TASK_TO_COLUMN: Dictionary mapping the task to the column name in the data.
+        n_jobs: Number of CPU threads to use for MiniRocket training.
+        objective_per_model: Dictionary mapping the model type to the corresponding objective function for optuna.
+        config: The configuration dictionary loaded from the configuration file.
+        column_removal_dict: Dictionary mapping the column removal options from the config to the actual columns to remove.
+        loss_dict: Dictionary mapping the loss function names from the config to the actual loss functions.
     """
-    A class for training individual models, doing optuna hyperparamter search, and inference with already trained models.
-    """
+
     def __init__(self, folder: str, n_jobs: int, config_name: str) -> None:
-        '''
-        Initialize the TS_Model_Trainer with the data folder and the task to be trained on.
-        :param data_folder: The folder containing the data which is used for training and evaluation.
-        :param n_jobs: Number of CPU threads to use for MiniRocket training.
-        :param config_name: The name of the configuration file to use for training/search.
+        '''Initialize the TS_Model_Trainer with the data folder and the task to be trained on.
+
+        Args:
+            data_folder: The folder containing the data which is used for training and evaluation.
+            n_jobs: Number of CPU threads to use for MiniRocket training.
+            config_name: The name of the configuration file to use for training/search.
         '''
         self.folder = folder
         self.data = DataLoader_HRI(folder+"data/")
@@ -82,10 +95,14 @@ class TS_Model_Trainer:
                           "FocalLossFlat": FocalLossFlat()}
 
     def read_config(self, file_path: str) -> dict:
+        """Reads a JSON configuration file and returns the configuration as a dictionary.
+
+        Args:
+            file_path: The path to the configuration file.
+
+        Returns:
+            The configuration as a dictionary.
         """
-        Reads a JSON configuration file and returns the configuration as a dictionary.
-        :param file_path: The path to the configuration file.
-        :output config: dict: The configuration as a dictionary."""
         try:
             with open(file_path, 'r') as file:
                 config = json.load(file)
@@ -103,16 +120,19 @@ class TS_Model_Trainer:
             print(f"An unexpected error occurred: {e}")
 
     def get_full_test_preds(self, model: object, val_X_TS_list: list, interval_length: int, stride_eval: int, api_style: str, batch_tfms: list = None, start_padding: bool = False) -> list:
-        '''
-        Get full test predictions by repeating the predictions based on interval_length and stride_eval.
-        :param model: The model to evaluate.
-        :param val_X_TS_list: List of validation/test data per session.
-        :param interval_length: The length of the interval to predict.
-        :param stride_eval: The stride to evaluate the model.
-        :param api_style: Either "sklearn" or "TSAI", which have different API calls.
-        :param batch_tfms: List of batch transformations to apply, if any.
-        :param start_padding: Whether to pad context at the start of the session with zeros.
-        :output test_preds: List of predictions per session.
+        ''' Get full test predictions by repeating the predictions based on interval_length and stride_eval.
+
+        Args:
+            model: The model to evaluate.
+            val_X_TS_list: List of validation/test data per session.
+            interval_length: The length of the interval to predict.
+            stride_eval: The stride to evaluate the model.
+            api_style: Either "sklearn" or "TSAI", which have different API calls.
+            batch_tfms: List of batch transformations to apply, if any.
+            start_padding: Whether to pad context at the start of the session with zeros.
+
+        Returns:
+            test_preds: List of predictions per session.
         '''
         if api_style not in ["sklearn", "TSAI"]:
             raise ValueError(
@@ -141,17 +161,19 @@ class TS_Model_Trainer:
         return test_preds
 
     def get_eval_metrics(self, preds: list, verbose: bool = False) -> dict:
-        '''
-        Evaluate model on self.data.val_X and self.data.val_Y. The final missing values in preds are filled with 0s.
-        :param preds: List of predictions per session. Per session there is one list of prediction labels.
-        :param verbose: Whether to print the confusion matrix and evaluation scores.
-        :output eval_scores: Dictionary containing the evaluation scores (accuracy, macro f1, macro precision, macro recall)
+        ''' Evaluate model on self.data.val_X and self.data.val_Y. The final missing values in preds are filled with 0s.
+
+        Args:
+            preds: List of predictions per session. Per session there is one list of prediction labels.
+            verbose: Whether to print the confusion matrix and evaluation scores.
+
+        Returns:
+            eval_scores: Dictionary containing the evaluation scores (accuracy, macro f1, macro precision, macro recall)
         '''
         y_true = []
         # iterate over all preds (per session) and append 0s if necessary
         session_ids = self.data.val_Y["session"].unique()
         print("Session IDs Val:", session_ids)
-        # TODO is preds in the same order as session_ids????
         for i, session_id in enumerate(session_ids):
             y_true.append(
                 self.data.val_Y[self.data.val_Y['session'] == session_id][self.TASK_TO_COLUMN[self.task]].values)
@@ -173,7 +195,6 @@ class TS_Model_Trainer:
 
         eval_scores = get_metrics(y_pred=preds, y_true=y_true, tolerance=50)
 
-        # print confusion matrix
         if verbose:
             print(confusion_matrix(y_true, preds, normalize='all'))
             print(eval_scores)
@@ -181,22 +202,25 @@ class TS_Model_Trainer:
         return eval_scores
 
     def data_from_config(self, data_values: dict, format: str, columns_to_remove: list, fold: int) -> tuple:
-        """
-        Create the datasets for training based on the configuration and the trial parameters.
-        :param data_values: The data values to use for the data creation.
-        :param format: The format of the data to return. Either "timeseries" or "classic".
-        :param columns_to_remove: The columns to remove from the data.
-        :param fold: The fold to use for validation data
-        :output val_X_TS_list: validation X data.
-        :output val_Y_TS_list: validation Y data.
-        :output train_X_TS: training X data.
-        :output train_Y_TS: training Y data.
-        :output new_column_order: column order.
-        :output train_Y_TS_task: training Y data.
+        """Create the datasets for training based on the configuration and the trial parameters.
+
+        Args:
+            data_values: The data values to use for the data creation.
+            format: The format of the data to return. Either "timeseries" or "classic".
+            columns_to_remove: The columns to remove from the data.
+            fold: The fold to use for validation data
+
+        Returns:
+            val_X_TS_list: validation X data.
+            val_Y_TS_list: validation Y data.
+            train_X_TS: training X data.
+            train_Y_TS: training Y data.
+            new_column_order: column order.
+            train_Y_TS_task: training Y data.
         """
         if fold not in range(1, 5):
             print("Warning: Training on all data, including validation set.")
-        # TODO change variable names from TS to sth generic
+
         if format == "classic":
             # get summary format for classic models
             val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order = self.data.get_summary_format(
@@ -252,11 +276,14 @@ class TS_Model_Trainer:
         return val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, new_column_order, train_Y_TS_task
 
     def get_data_values(self, trial: optuna.Trial) -> tuple:
-        """ 
-        Get the data values for the trial based on the configuration and the trial parameters.
-        :param trial: optuna.Trial: The trial object.
-        :output data_values: The data values to use for the data creation.
-        :output columns_to_remove: The columns to remove from the data.
+        """Get the data values for the trial based on the configuration and the trial parameters.
+
+        Args:
+            trial: optuna.Trial: The trial object.
+
+        Returns:
+            data_values: The data values to use for the data creation.
+            columns_to_remove: The columns to remove from the data.
         """
         data_params = self.config["data_params"]
         data_values = {}
@@ -290,14 +317,17 @@ class TS_Model_Trainer:
         return data_values, columns_to_remove
 
     def merge_val_train(self, val_X_TS_list: list, val_Y_TS_list: list, train_X_TS: np.array, train_Y_TS_task: np.array) -> tuple:
-        """
-        Merge the training and all validation sets (per session) into one dataset so that the Torch models can be trained on it.
-        :param val_X_TS_list: List of validation/test data per session.
-        :param val_Y_TS_list: List of validation/test labels per session.
-        :param train_X_TS: The training data.
-        :param train_Y_TS_task: The training labels.
-        :output all_X: The merged data.
-        :output all_Y: The merged labels.
+        """Merge the training and all validation sets (per session) into one dataset so that the Torch models can be trained on it.
+
+        Args:
+            val_X_TS_list: List of validation/test data per session.
+            val_Y_TS_list: List of validation/test labels per session.
+            train_X_TS: The training data.
+            train_Y_TS_task: The training labels.
+
+        Returns:
+            all_X: The merged data.
+            all_Y: The merged labels.
         """
         all_X = train_X_TS
         for val_X_TS in val_X_TS_list:
@@ -313,7 +343,11 @@ class TS_Model_Trainer:
         return all_X, all_Y, splits
 
     def create_grid_from_config(self) -> dict:
-        '''Create a grid of hyperparameters based on the configuration file.'''
+        '''Create a grid of hyperparameters based on the configuration file.'
+
+        Returns:
+            grid: The grid of hyperparameters to search over.
+        '''
         grid = {}
         dicts = [self.config["model_params"], self.config["data_params"]]
         grid_length = 1
@@ -343,14 +377,17 @@ class TS_Model_Trainer:
         return grid
 
     def optuna_study(self, n_trials: int, model_type: str, study_name: str, verbose=False, gridsearch=False) -> optuna.study.Study:
-        """
-        Performs an Optuna study to optimize the hyperparameters of the model.
-        :param n_trials: The number of search trials to perform.
-        :param model_type: The type of model to optimize (MiniRocket, RF, ConvTran, TST).
-        :param study_name: The name of the study.
-        :param verbose: Whether to print the best trial parameters.
-        :param gridsearch: Whether to perform a grid search instead of a random search.
-        :output study: The optuna study object.
+        """Performs an Optuna study to optimize the hyperparameters of the model.
+
+        Args:
+            n_trials: The number of search trials to perform.
+            model_type: The type of model to optimize (MiniRocket, RF, ConvTran, TST).
+            study_name: The name of the study.
+            verbose: Whether to print the best trial parameters.
+            gridsearch: Whether to perform a grid search instead of a random search.
+
+        Returns:
+            study: The optuna study object.
         """
         wandb_kwargs = {"project": "HRI-Errors",
                         "name": study_name+"_task_"+str(self.task), "group": model_type}
@@ -382,7 +419,6 @@ class TS_Model_Trainer:
 
         # attach optuna visualization to wandb
         self.get_trials_figures(study, 0, "accuracy")
-        # self.get_trials_figures(study, 1, "macro f1")
 
         # save best params to json
         best_params = {}
@@ -400,10 +436,6 @@ class TS_Model_Trainer:
             elif param_name in self.config["model_params"]:
                 best_params["model_params"][param_name] = param_value
 
-        # for value_name, value in zip(study.directions, trial_with_highest_accuracy.values):
-        #    wandb.run.summary[f(value_name)] = value
-        #    best_params["stats"][value_name] = value
-
         wandb.run.summary["best accuracy"] = trial_with_highest_accuracy.values[0]
         wandb.run.summary["best macro f1"] = trial_with_highest_accuracy.values[1]
         best_params["stats"]["accuracy"] = trial_with_highest_accuracy.values[0]
@@ -413,22 +445,20 @@ class TS_Model_Trainer:
 
         with open(self.folder+"code/best_model_configs/"+str(study_name)+".json", "w") as f:
             json.dump(best_params, f)
-        # safe the best model overall to pkl (based on fold 4 for validation)
+        # safe the best model overall (based on fold 4 for validation)
         self.train_and_save_best_model(
             model_config=str(study_name)+".json", name_extension="best_"+str(study_name))
 
         return study
 
     def get_trials_figures(self, study: optuna.study.Study, target_index: int, target_name: str) -> None:
+        '''Get optuna visualization figures and log them to wandb. Summary visualizations for full search.
+
+        Args:
+            study: optuna.study.Study: The optuna study object.
+            target_index: int: The index of the target value to plot, 0 for accuracy, 1 for macro f1.
+            target_name: str: The name of the target value to plot, used for the wandb log.
         '''
-        Get optuna visualization figures and log them to wandb. Summary visualizations for full search.
-        params: study: optuna.study.Study: The optuna study object.
-        params: target_index: int: The index of the target value to plot, 0 for accuracy, 1 for macro f1.
-        params: target_name: str: The name of the target value to plot, used for the wandb log.
-        '''
-        # fig = optuna.visualization.plot_optimization_history(
-        #    study, target=lambda t: t.values[target_index], target_name=target_name)
-        # wandb.log({"optuna_optimization_history_"+target_name: fig})
         fig = optuna.visualization.plot_parallel_coordinate(
             study, target=lambda t: t.values[target_index], target_name=target_name)
         wandb.log({"optuna_parallel_coordinate_"+target_name: fig})
@@ -440,13 +470,16 @@ class TS_Model_Trainer:
         wandb.log({"optuna_slice_"+target_name: fig})
 
     def remove_columns(self, columns_to_remove: list, data_X: np.array, column_order: list) -> tuple:
-        '''
-        Remove columns from the data.
-        :param columns_to_remove: List of columns to remove.
-        :param data_X: The data to remove the columns from. Either a list of np.arrays or a np.array.
-        :param column_order: The order of the columns in the data.
-        :output new_data_X: The data with the specified columns removed.
-        :output new_column_order: The new column order after removing the columns.
+        '''Remove columns from the data.
+
+        Args:
+            columns_to_remove: List of columns to remove.
+            data_X: The data to remove the columns from. Either a list of np.arrays or a np.array.
+            column_order: The order of the columns in the data.
+
+        Returns:
+            new_data_X: The data with the specified columns removed.
+            new_column_order: The new column order after removing the columns.
         '''
         # depending on whether data_X is list or np.array
         if isinstance(data_X, list):  # val/test
@@ -463,12 +496,13 @@ class TS_Model_Trainer:
         return new_data_X, new_column_order
 
     def learning_curve(self, config: str, iterations_per_samplesize: int, stepsize: int, save_to: str) -> None:
-        '''
-        Get learning curve of the model as a function of the amount of training data.
-        :param config: The configuration file to use to create the model.
-        :param iterations_per_samplesize: Number of iterations per sample size to create an average score.
-        :param stepsize: Step size for the sample sizes used for learning curve.
-        :param save_to: The path to save the learning curve plot to.
+        '''Get learning curve of the model as a function of the amount of training data.
+
+        Args:
+            config: The configuration file to use to create the model.
+            iterations_per_samplesize: Number of iterations per sample size to create an average score.
+            stepsize: Step size for the sample sizes used for learning curve.
+            save_to: The path to save the learning curve plot to.
         '''
         print("Learning curve run started with stepsize", stepsize, "and",
               iterations_per_samplesize, "iterations per sample size.")
@@ -546,20 +580,26 @@ class TS_Model_Trainer:
         scores = scores[::-1]
         scores_mean = np.mean(scores, axis=1)
         print("\n\nMean Scores:", scores_mean)
-        # save scores and scores_mean in text file
-        with open(save_to+"_"+str(self.task)+".txt", "w") as f:
-            f.write("Scores:\n")
-            for s in scores:
-                f.write(str(s)+"\n")
-            f.write("Mean Scores:\n")
-            f.write(str(scores_mean))
+        # save scores to json
+        # TODO
+
+        # TODO old remove
+        # with open(save_to+"_"+str(self.task)+".txt", "w") as f:
+        #     f.write("Scores:\n")
+        #     for s in scores:
+        #         f.write(str(s)+"\n")
+        #     f.write("Mean Scores:\n")
+        #     f.write(str(scores_mean))
 
     def get_model_values(self, trial: optuna.Trial) -> tuple:
-        '''
-        Get the model values for the trial based on the configuration and the trial parameters.
-        params: trial: optuna.Trial: The trial object.
-        output: model_values: dict: The model values to use for the model creation.
-        output: training_values: dict: The training values to use for the model training.
+        '''Get the model values for the trial based on the configuration and the trial parameters.
+
+        Args:
+            trial: optuna.Trial: The trial object.
+
+        Returns:
+            model_values: dict: The model values to use for the model creation.
+            training_values: dict: The training values to use for the model training.
         '''
         model_params = self.config["model_params"]
         model_values = {}
@@ -651,14 +691,16 @@ class TS_Model_Trainer:
         return model_values, training_values
 
     def get_tsai_learner(self, dls: object, model_values: dict, training_values: dict) -> object:
+        """Get a tsai learner based on the configuration and the trial parameters.
+
+        Args:
+            dls: object: The dataloaders object passed to the model and learner.
+            model_values: dict: The model values to use for the model creation.
+            training_values: dict: The training values to use for the model training.
+
+        Returns:
+            object: The tsai learner object to use for training.
         """
-        Get a tsai learner based on the configuration and the trial parameters.
-        params: dls: object: The dataloaders object passed to the model and learner.
-        params: model_values: dict: The model values to use for the model creation.
-        params: training_values: dict: The training values to use for the model training.
-        output: object: The tsai learner object to use for training.
-        """
-        # model_trial_params = {}
         if self.config["model_type"] == "TST":
             model = TST(dls.vars, dls.c, dls.len, **model_values)
         elif self.config["model_type"] == "LSTM_FCN":
@@ -678,10 +720,13 @@ class TS_Model_Trainer:
         return learn
 
     def get_classic_learner(self, model_values: dict) -> object:
-        '''
-        Get a classic learner following sklearn conventions based on the configuration and the trial parameters.
-        params: model_values: dict: The model values to use for the model creation.
-        output: object: The classic learner object to use for training.
+        '''Get a classic learner following sklearn conventions based on the configuration and the trial parameters.
+
+        Args:
+            model_values: dict: The model values to use for the model creation.
+
+        Returns:
+            model: The classic learner object to use for training.
         '''
         if self.config["model_type"] == "RandomForest":
             model = RandomForestClassifier(**model_values, n_jobs=self.n_jobs)
@@ -693,11 +738,14 @@ class TS_Model_Trainer:
         return model
 
     def optuna_objective_tsai(self, trial: optuna.Trial) -> tuple:
-        '''
-        Optuna objective function for all tsai style models. Optimizes for accuracy and macro f1 score.
-        params: trial: optuna.Trial: The optuna trial runnning.
-        output: accuracy: The mean accuracy of the trial across all folds for cross-validarion.
-        output: f1: The mean macro f1 score of the trial across all folds for cross-validation.
+        '''Optuna objective function for all tsai style models. Optimizes for accuracy and macro f1 score.
+
+        Args:
+            trial: optuna.Trial: The optuna trial runnning.
+
+        Returns:
+            accuracy: The mean accuracy of the trial across all folds for cross-validarion.
+            f1: The mean macro f1 score of the trial across all folds for cross-validation.
         '''
         accuracies = []
         f1s = []
@@ -736,11 +784,14 @@ class TS_Model_Trainer:
         return np.mean(accuracies), np.mean(f1s)
 
     def optuna_objective_classic(self, trial: optuna.Trial) -> tuple:
-        '''
-        Optuna objective function for all classic (sklearn API style) models. Optimizes for accuracy and macro f1 score.
-        params: trial: optuna.Trial: The optuna trial runnning.
-        output: accuracy: The mean accuracy of the trial across all folds for cross-validarion.
-        output: f1: The mean macro f1 score of the trial across all folds for cross-validation.
+        '''Optuna objective function for all classic (sklearn API style) models. Optimizes for accuracy and macro f1 score.
+
+        Args:
+            trial: optuna.Trial: The optuna trial runnning.
+
+        Returns:
+            accuracy: The mean accuracy of the trial across all folds for cross-validarion.
+            f1: The mean macro f1 score of the trial across all folds for cross-validation.
         '''
         accuracies = []
         f1s = []
@@ -777,10 +828,11 @@ class TS_Model_Trainer:
         return np.mean(accuracies), np.mean(f1s)
 
     def competition_test_set_eval(self, config_name: str, saved_model_name: str = "") -> None:
-        """
-        Load a model from disk and evaluate it on the hidden test data (only available to competition organizers).
-        params: config_name: str: The name of the model config to load.
-        params: saved_model_name: str: The name of the saved model. If the name is the same as the config, leave as empty string.
+        """Load a model from disk and evaluate it on the hidden test data (only available to competition organizers).
+
+        Args:
+            config_name: str: The name of the model config to load.
+            saved_model_name: str: The name of the saved model. If the name is the same as the config, leave as empty string.
         """
         if saved_model_name == "":
             saved_model_name = config_name
@@ -798,8 +850,6 @@ class TS_Model_Trainer:
             features = pickle.load(f)
 
         # load config to get data preprocessing parameters
-        # with open(self.folder + "code/best_model_configs/" + model_name + ".json", "r") as f:
-        #    config = json.load(f)
         config = self.read_config(
             self.folder+"code/best_model_configs/"+config_name+".json")  # sets task automatically
         print("Task active:", self.task)
@@ -861,10 +911,10 @@ class TS_Model_Trainer:
                              config_name + "_test_preds_trainer.csv")
 
     def cross_val_model(self, config_name: str) -> None:
-        '''
-        Load a config and validate the selected model. Mirrored from the Optuna Trial function, 
-        but independent from it for the purpose of running a single cross-validation run.
-        params: config_name: config of the model to load.
+        '''Load a config and validate the selected model. Mirrored from the Optuna Trial function, but independent from it for the purpose of running a single cross-validation run.
+
+        Args:
+            config_name: config of the model to load.
         '''
         config = self.read_config(
             self.folder+"code/best_model_configs/"+config_name)
@@ -951,11 +1001,12 @@ class TS_Model_Trainer:
         print("Tolerant Recall:", np.mean(tolerant_recalls))
 
     def train_and_save_best_model(self, model_config: str, name_extension="", fold: int = 4) -> None:
-        """
-        Train a model based on the specified configuration and save it to disk. For final submission.
-        params: model_config: str: The name of the model configuration file to use for training.
-        params: name_extension: str: The name extension to add to the saved model.
-        params: fold: int: The fold to train the model on. If Fold is 5, train on all data.
+        """Train a model based on the specified configuration and save it to disk. For final submission.
+
+        Args:
+            model_config: str: The name of the model configuration file to use for training.
+            name_extension: str: The name extension to add to the saved model.
+            fold: int: The fold to train the model on. If Fold is 5, train on all data.
         """
 
         self.config = self.read_config(
@@ -994,42 +1045,6 @@ class TS_Model_Trainer:
 
         else:
             raise Exception("Model type not recognized.")
-
-    def get_naive_baseline_stats(self) -> None:
-        '''
-        Get the naive baseline stats for the dataset. Produces a majority classifier that outputs all zeros and evaluates it.
-        '''
-
-        with open(self.folder + "code/trained_models/RandomForest.pkl", "rb") as f:
-            model = pickle.load(f)
-
-        # features the model was trained on
-        with open(self.folder + "code/trained_models/RandomForest_columns.pkl", "rb") as f:
-            features = pickle.load(f)
-
-        config = self.read_config(
-            self.folder+"code/best_model_configs/RandomForest_Feature_Importance.json")  # sets task automatically
-
-        data_values = config["data_params"]
-        interval_length = data_values["interval_length"]
-        stride_eval = data_values["stride_eval"]
-        stride_train = data_values["stride_train"]
-        fps = data_values["fps"]
-        label_creation = data_values["label_creation"]
-        task = config["task"]
-        rescaling = data_values["rescaling"]
-        columns_to_remove = data_values["columns_to_remove"]
-        columns_to_remove = self.column_removal_dict[columns_to_remove]
-
-        val_X_TS_list, val_Y_TS_list, train_X_TS, train_Y_TS, column_order, train_Y_TS_task = self.data_from_config(
-            data_values=data_values, format="classic", columns_to_remove=columns_to_remove, fold=4)
-
-        val_preds = self.get_full_test_preds(
-            model, val_X_TS_list, interval_length=interval_length, stride_eval=stride_eval, api_style="sklearn", start_padding=data_values["start_padding"])
-        naive_preds = [[0]*len(pred) for pred in val_preds]
-        val_scores = self.get_eval_metrics(
-            naive_preds, verbose=True)
-        print("Val Scores:", val_scores)
 
 
 if __name__ == '__main__':
@@ -1091,9 +1106,9 @@ if __name__ == '__main__':
     elif job_type == "learning_curve":
         trainer.learning_curve("best_model_configs/MiniRocket_2024-07-18-06.json",
                                iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_MR")
-        #trainer.learning_curve("best_model_configs/RandomForest_2024-06-15-11.json",
-        #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_RF")
-        #trainer.learning_curve("best_model_configs/ConvTranPlus_2024-07-13-14.json",
-        #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_CT")
-        #trainer.learning_curve("best_model_configs/TST_2024-07-16-10.json",
-        #                       iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_TST")
+        trainer.learning_curve("best_model_configs/RandomForest_2024-06-15-11.json",
+                               iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_RF")
+        trainer.learning_curve("best_model_configs/ConvTranPlus_2024-07-13-14.json",
+                               iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_CT")
+        trainer.learning_curve("best_model_configs/TST_2024-07-16-10.json",
+                               iterations_per_samplesize=4, stepsize=3, save_to=pathprefix+"plots/learning_curve_TST")
