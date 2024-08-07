@@ -1,28 +1,21 @@
 # HRI Error Detection: STAI Team Contribution
 
+**TL;DR:** Careful feature selection and models that utilize convolutions are key to successful interaction rupture predictions!
+
+**Abstract:** To be able to react to interaction ruptures such as errors, a robot needs a way of realizing such a rupture occurred. We test whether it is possible to detect interaction ruptures from the user's anonymized speech, posture, and facial features. We showcase how to approach this task, presenting a time series classification pipeline that works well with various machine learning models. A sliding window is applied to the data and the continuously updated predictions make it suitable for detecting ruptures in real-time.
+Our best model, an ensemble of MiniRocket classifiers, is the winning approach to the ICMI ERR@HRI challenge. A feature importance analysis shows that the model heavily relies on speaker diarization data that indicates who spoke when. Posture data, on the other hand, impedes performance.
+
+![alt text](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/plots/feature_importance_accuracy.pdf)
+*Change in model accuracy compared to baseline for different feature combinations*
+
 ## Reference
-Forthcoming
 
-## Usage
-To get the test predictions for the hidden competition test sets, use [time_series_classifiers.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/time_series_classifiers.py) and specify the model you want to get predictions from in the file:
-```
-python HRI-Error-Detection-STAI/code/time_series_classifiers.py --njobs -1 --type competition_eval
-```
+If you use our research in your work, please consider citing our paper:
+Bibtex forthcoming!
 
-Moreover, the files can be used for: 
-- [time_series_classifiers.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/time_series_classifiers.py): run Optuna search / train single model / evaluate on competition test set / create learing curve
-- [data_loader.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/data_loader.py): preprocessing & loading of datasets
-- [get_metrics.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/get_metrics.py): official competition metrics script
+## Environment Setup
 
-Model searches can be easily specified via json files. We provide many examples for the [genetic searches](https://github.com/lwachowiak/HRI-Error-Detection-STAI/tree/main/code/search_configs) and [grid searches](https://github.com/lwachowiak/HRI-Error-Detection-STAI/tree/main/code/grid_search_configs) we used ourselves.
-
-For example, to run a gridsearch you could run:
-```
-python HRI-Error-Detection-STAI/code/time_series_classifiers.py --config grid_search_configs/config_minirocket_grid.json --njobs -1 --type search
-```
-
-## Dependencies
-We used Python 3.11.9. All the Python packages we used can be installed from the requirements.txt. 
+We used Python 3.11.9. All required Python packages can be installed from the requirements.txt. 
 The easiest way is to create a virtual environment like this: 
 ```
 python3.11.9 -m venv venv_hri_err
@@ -31,7 +24,70 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-As we are not allowed to re-publish the dataset, you need to request it from the competition organizers in case you want to reproduce our work. To facilitate reproduction, [this](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/data/tree.txt) text file indicates the necessary data folder structure to run the code as is. 
+Alternatively, if you have [Apptainer](https://apptainer.org/) installed, we provide our container definition file [here](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/hri_cont.def).
+To build the container, run the following command in your terminal:
+```
+sudo apptainer build <CONTAINER_NAME>.sif hri_cont.def
+```
+Once built, you can run the container, which will start a new terminal shell from which you can then run the scripts. To train the deep learning models, make sure to run the container with the ```--nv``` flag.
+```
+apptainer run --nv <CONTAINER_NAME>.sif
+```
+## Usage
+
+As we are not allowed to re-publish the dataset, you need to request it from the competition organizers in case you want to reproduce our work. To facilitate reproduction, [this](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/data/tree.txt) text file indicates the necessary data folder structure to run the code as is.
+
+We offer several scripts which perform different steps of our pipeline:
+- [time_series_classifiers.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/time_series_classifiers.py): run Optuna search / train single model / evaluate on competition test set / create learing curve
+- [data_loader.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/data_loader.py): preprocessing & loading of datasets
+- [get_metrics.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/get_metrics.py): official competition metrics script
+- [visualizations.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/visualizations.py): plotting script used to generate all plots contained in the main paper and the appendix
+- [evaluate_best_model.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/evaluate_best_model.py): helper script to evaluate one of the saved best model configs
+
+### Model Search
+
+Model searches can be easily specified via json files. We provide many examples for the [genetic searches](https://github.com/lwachowiak/HRI-Error-Detection-STAI/tree/main/code/search_configs) and [grid searches](https://github.com/lwachowiak/HRI-Error-Detection-STAI/tree/main/code/grid_search_configs).
+
+Both genetic and grid searches use the same config structure, but the grid search configs must contain ```grid``` in their name.
+
+To run a (grid) search, use the following command:
+```
+python HRI-Error-Detection-STAI/code/time_series_classifiers.py --config grid_search_configs/config_minirocket_grid.json --njobs -1 --type search
+```
+### Train Best Model
+
+To the best MiniRocket model we found (as specified in the table below), set the ```--type``` argument to be ```train_single```.
+```
+python HRI-Error-Detection-STAI/code/time_series_classifiers.py  --njobs -1 --type train_single
+```
+
+### Get Predictions on Test Data
+
+To get the test predictions for the hidden competition test sets, use [time_series_classifiers.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/time_series_classifiers.py) and specify the ```type``` flag to be ```competition_eval```. This will generate predictions from MiniRocket models that were submitted to the competition:
+```
+python HRI-Error-Detection-STAI/code/time_series_classifiers.py --njobs -1 --type competition_eval
+```
+
+### Get Learning Curves
+
+To run the learning curve experiment, use [time_series_classifiers.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/time_series_classifiers.py) and specify the ```type``` flag to be ```learning_curve```. This will produce a learning curve for each of the 4 models considered in the paper.
+```
+python HRI-Error-Detection-STAI/code/time_series_classifiers.py --njobs -1 --type learning_curve
+```
+
+### Evaluate Your Model
+
+If you wish to evaluate one of the models you trained and saved in the ```best_model_configs/``` folder, use the [evaluate_best_model.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/evaluate_best_model.py) script. Specify the name of the config using the ```--file``` flag.
+```
+python HRI-Error-Detection-STAI/code/evaluate_best_model.py --file <YOUR_MODEL_CONFIG>.json
+```
+
+### Reproduce Plots
+
+If you would like to reproduce all plots in the paper and the appendix, simply run the [visualization.py](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/code/visualization.py) script which will create the plots in approximate order of appearance and store PDFs into the ```plots/``` folder. All data used to generate plots is available in ```plots/run_histories/```.
+```
+python HRI-Error-Detection-STAI/code/visualizations.py
+```
 
 ## Configs of Submitted and Best Models
 Submitted models still missed the zero padding. The last column on the right shows our final best model, trained after the competition ended:
