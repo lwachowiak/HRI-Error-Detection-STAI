@@ -611,7 +611,7 @@ def plot_minirocket_learning_curve(scores_file: str = "plots/run_histories/minir
                      )
     plt.hlines(NAIVE_ACC[2], 0, max_sessions, linestyles='dotted', colors='#4a7fa4', label='IR Baseline', linewidth=3)
     plt.hlines(NAIVE_ACC[0], 0, max_sessions, linestyles='dotted', colors='#e1812b', label='UA Baseline', linewidth=3)
-    plt.hlines(NAIVE_ACC[1], 0, max_sessions, linestyles='dotted', colors='#3a923a', label='RM Baseline', linewidth=3)
+    plt.hlines(NAIVE_ACC[1], 0, max_sessions, linestyles='dotted', colors='#3a923a', label='RE Baseline', linewidth=3)
     plt.xlabel("Number of sessions in training data")
     plt.xlim([0, max_sessions+1])
     plt.ylabel("Accuracy")
