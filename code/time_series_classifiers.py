@@ -495,14 +495,13 @@ class TS_Model_Trainer:
             removed_col in col for removed_col in columns_to_remove)]
         return new_data_X, new_column_order
 
-    def learning_curve(self, config: str, iterations_per_samplesize: int, stepsize: int, save_to: str) -> None:
+    def learning_curve(self, config: str, iterations_per_samplesize: int, stepsize: int) -> None:
         '''Get learning curve of the model as a function of the amount of training data.
 
         Args:
             config: The configuration file to use to create the model.
             iterations_per_samplesize: Number of iterations per sample size to create an average score.
             stepsize: Step size for the sample sizes used for learning curve.
-            save_to: The path to save the learning curve plot to.
         '''
         print("Learning curve run started with stepsize", stepsize, "and",
               iterations_per_samplesize, "iterations per sample size.")
@@ -581,15 +580,23 @@ class TS_Model_Trainer:
         scores_mean = np.mean(scores, axis=1)
         print("\n\nMean Scores:", scores_mean)
         # save scores to json
-        # TODO
 
-        # TODO old remove
-        # with open(save_to+"_"+str(self.task)+".txt", "w") as f:
-        #     f.write("Scores:\n")
-        #     for s in scores:
-        #         f.write(str(s)+"\n")
-        #     f.write("Mean Scores:\n")
-        #     f.write(str(scores_mean))
+        with open("plots/run_histories/learning_curve_study.json", "r") as file:
+            data = json.load(file)
+
+        if config["model_type"] == "MiniRocket":
+            data["minirocket"] = scores.tolist()
+        elif config["model_type"] == "RandomForest":
+            data["rf"] = scores.tolist()
+        elif config["model_type"] == "ConvTranPlus":
+            data["convtran"] = scores.tolist()
+        elif config["model_type"] == "TST":
+            data["tst"] = scores.tolist()
+        else:
+            assert False, "Model type not supported for learning curve."
+
+        with open("plots/run_histories/learning_curve_study.json", "w") as f:
+            json.dump(data, f)
 
     def get_model_values(self, trial: optuna.Trial) -> tuple:
         '''Get the model values for the trial based on the configuration and the trial parameters.
