@@ -1,10 +1,15 @@
+
 Bootstrap: docker
 From: ubuntu:22.04
- 
+
 %labels
-    Maintainer Ptisni
+    Maintainer sensible_robots_lab
     Version 1.0
- 
+
+%files
+    # Add your requirements.txt file
+    /home/peter/Create-A-Container/requirements.txt /opt/requirements.txt    
+
 %post
     # Set noninteractive frontend to avoid interactive prompts
     export DEBIAN_FRONTEND=noninteractive
@@ -30,36 +35,32 @@ From: ubuntu:22.04
     # Set the timezone to UTC (or change to your preferred timezone)
     ln -fs /usr/share/zoneinfo/UTC /etc/localtime
     dpkg-reconfigure --frontend noninteractive tzdata
- 
-    # Install Python 3.11
+
+    # Install Python 3.12
     cd /opt
-    wget https://www.python.org/ftp/python/3.11.0/Python-3.11.0.tgz
-    tar xzf Python-3.11.0.tgz
-    cd Python-3.11.0
+    wget https://www.python.org/ftp/python/3.12.5/Python-3.12.5.tgz
+    tar xzf Python-3.12.5.tgz
+    cd Python-3.12.5
     ./configure --enable-optimizations
     make altinstall
-    ln -s /usr/local/bin/python3.11 /usr/bin/python3.11
- 
-    # Upgrade pip and install virtualenv
-    python3.11 -m ensurepip
-    python3.11 -m pip install --upgrade pip
+    ln -s /usr/local/bin/python3.12 /usr/bin/python3.12
 
-    # Install requirements.txt using relative path to find it
-    if [ -f requirements.txt ]; then
-        pip install -r requirements.txt
-    fi
-        
+    # Upgrade pip
+    python3.12 -m pip cache purge
+    python3.12 -m ensurepip
+    python3.12 -m pip install --upgrade pip
+
+    # Install requirements
+
+    python3.12 -m pip install -r /opt/requirements.txt
+    
     echo "export PS1=\"\[\033[01;32m\]Apptainer\[\033[00m\]:\[\033[01;33m\]\w\[\033[00m\]> \"" >> /.singularity.d/env/99-base.sh
-%files
-    # Add your requirements.txt file
-    requirements.txt requirements.txt
- 
+
 %environment
     # Set environment variables
     export PATH="/opt/myenv/bin:$PATH"
-    export PYTHON_VERSION=3.11.0
- 
+    export PYTHON_VERSION=3.12.5
+
 %runscript
     # Define the default command to run
     exec /bin/bash "$@"
-
