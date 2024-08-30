@@ -6,13 +6,6 @@ Our best model, an ensemble of MiniRocket classifiers, is the winning approach t
 
 **TL;DR:** Careful feature selection/preparation and models that utilize convolutions are key to successful interaction rupture predictions!
 
-![alt text](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/readme_image.png)
-<p align="center">
-  <b><i>Change in model accuracy compared to baseline for different feature combinations</i></b>
-</p>
-
-## Reference
-
 If you use our research in your work, please consider citing our paper:
 ```
 @inproceedings{wachowiak_hri2024,
@@ -27,6 +20,11 @@ If you use our research in your work, please consider citing our paper:
   series = {ICMI '24}
 }
 ```
+
+![alt text](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/readme_image.png)
+<p align="center">
+  <b><i>Change in model accuracy compared to baseline for different feature combinations</i></b>
+</p>
 
 ## Environment Setup
 
