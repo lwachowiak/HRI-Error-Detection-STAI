@@ -354,17 +354,23 @@ def plot_violins() -> None:
         plt.show()
 
     files = [f for f in os.listdir('plots/run_histories') if 'violin' in f]
+    plotting_order = ['rf', 'minirocket', 'convtran', 'tst']
+    files = sorted(files, 
+                       key=lambda x: next((i for i, substr in enumerate(plotting_order) if substr in x), 
+                                          len(plotting_order)))
     histories = []
     for f in files:
         p = pd.read_pickle(f'plots/run_histories/{f}')
         histories.append(p)
     # make one joint df and add model name as column
 
+    # sort the histories by desired plotting order: RF, MiniRocket, ConvTran, TST
+    
+
     for i, hist in enumerate(histories):
         hist['model_name'] = ['Random Forest',
                               'MiniRocket', 'ConvTran', 'TST'][i]
     df = pd.concat(histories)
-    print(df.columns)
     # drop rows were interval_length is nan
     df = df.dropna(subset=['interval_length'])
 
