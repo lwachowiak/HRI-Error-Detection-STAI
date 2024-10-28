@@ -1,19 +1,30 @@
 # HRI Error Detection: STAI Team Contribution
-
-**TL;DR:** Careful feature selection and models that utilize convolutions are key to successful interaction rupture predictions!
+**Paper**: A Time Series Classification Pipeline for Detecting Interaction Ruptures in HRI Based on User Reactions
 
 **Abstract:** To be able to react to interaction ruptures such as errors, a robot needs a way of realizing such a rupture occurred. We test whether it is possible to detect interaction ruptures from the user's anonymized speech, posture, and facial features. We showcase how to approach this task, presenting a time series classification pipeline that works well with various machine learning models. A sliding window is applied to the data and the continuously updated predictions make it suitable for detecting ruptures in real-time.
 Our best model, an ensemble of MiniRocket classifiers, is the winning approach to the ICMI ERR@HRI challenge. A feature importance analysis shows that the model heavily relies on speaker diarization data that indicates who spoke when. Posture data, on the other hand, impedes performance.
+
+**TL;DR:** Careful feature selection/preparation and models that utilize convolutions are key to successful interaction rupture predictions!
+
+If you use our research in your work, please consider citing our paper:
+```
+@inproceedings{wachowiak_hri2024,
+  author = {Wachowiak, Lennart and Tisnikar, Peter and Coles, Andrew and Canal, Gerard and Celiktutan, Oya},
+  title = {A Time Series Classification Pipeline for Detecting Interaction Ruptures in HRI Based on User Reactions},
+  year = {2024},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  doi = {10.1145/3678957.3688386},
+  booktitle = {Proceedings of the 2024 International Conference on Multimodal Interaction},
+  numpages = {9},
+  series = {ICMI '24}
+}
+```
 
 ![alt text](https://github.com/lwachowiak/HRI-Error-Detection-STAI/blob/main/readme_image.png)
 <p align="center">
   <b><i>Change in model accuracy compared to baseline for different feature combinations</i></b>
 </p>
-
-## Reference
-
-If you use our research in your work, please consider citing our paper:
-Bibtex forthcoming!
 
 ## Environment Setup
 
